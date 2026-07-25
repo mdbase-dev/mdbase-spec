@@ -17,14 +17,16 @@
 <body class="site-page runtime-page">
   <header class="landing-header">
     <a href="/" class="landing-logo">{{MDBASE_MARK}}mdbase</a>
-    <nav class="landing-nav" aria-label="Primary">
-      <a href="/">Home</a>
-      <a href="runtime.html" class="nav-active">Runtime</a>
-      <a href="ecosystem.html">Ecosystem</a>
-      <a href="https://github.com/mdbase-dev/mdbase-spec" class="hide-mobile">GitHub</a>
-      <select class="theme-select" aria-label="Color theme" data-theme-select><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
-      <a href="spec.html" class="nav-cta">Read the spec</a>
-    </nav>
+    <div class="spec-header-actions">
+      <nav class="landing-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="runtime.html" class="nav-active">Runtime</a>
+        <a href="ecosystem.html">Ecosystem</a>
+        <a href="https://github.com/mdbase-dev/mdbase-spec" class="hide-mobile">GitHub</a>
+        <a href="spec.html" class="nav-cta">Read the spec</a>
+      </nav>
+      {{THEME_MENU}}
+    </div>
   </header>
 
   <main>

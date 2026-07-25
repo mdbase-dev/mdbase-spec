@@ -24,8 +24,8 @@
     }
     const dark = next === "dark" || (next === "system" && media.matches);
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#1c1e24" : "#fcfcfd");
-    document.querySelectorAll("[data-theme-select]").forEach((select) => {
-      select.value = next;
+    document.querySelectorAll("[data-theme-option]").forEach((option) => {
+      option.setAttribute("aria-pressed", String(option.dataset.themeOption === next));
     });
   }
 
@@ -34,9 +34,23 @@
     if (preference === "system") apply("system");
   });
   addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-theme-select]").forEach((select) => {
-      select.value = preference;
-      select.addEventListener("change", (event) => apply(event.currentTarget.value, true));
+    const menus = document.querySelectorAll("[data-theme-menu]");
+    document.querySelectorAll("[data-theme-option]").forEach((option) => {
+      option.setAttribute("aria-pressed", String(option.dataset.themeOption === preference));
+      option.addEventListener("click", () => {
+        apply(option.dataset.themeOption, true);
+        option.closest("[data-theme-menu]")?.removeAttribute("open");
+      });
+    });
+    document.addEventListener("click", (event) => {
+      menus.forEach((menu) => {
+        if (!menu.contains(event.target)) menu.removeAttribute("open");
+      });
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        menus.forEach((menu) => menu.removeAttribute("open"));
+      }
     });
   });
 })();

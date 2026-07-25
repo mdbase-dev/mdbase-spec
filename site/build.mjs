@@ -41,6 +41,19 @@ const MDBASE_MARK = `<svg class="mdbase-mark" viewBox="18 18 84 84" aria-hidden=
   </g>
   <rect class="mdbase-mark-accent" x="42" y="44" width="56" height="10" rx="2"/>
 </svg>`;
+const THEME_MENU = `<details class="theme-menu" data-theme-menu>
+  <summary aria-label="Color theme" title="Color theme">
+    <svg class="theme-menu__icon" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="8" cy="8" r="5.5"></circle>
+      <path d="M8 2.5a5.5 5.5 0 0 0 0 11Z"></path>
+    </svg>
+  </summary>
+  <div class="theme-menu__options" role="group" aria-label="Color theme">
+    <button type="button" data-theme-option="system" aria-pressed="false">System</button>
+    <button type="button" data-theme-option="light" aria-pressed="false">Light</button>
+    <button type="button" data-theme-option="dark" aria-pressed="false">Dark</button>
+  </div>
+</details>`;
 
 function versionAssets(html) {
   return html
@@ -50,7 +63,8 @@ function versionAssets(html) {
 
 function renderTemplate(name) {
   return versionAssets(readFileSync(join(TEMPLATES, name), 'utf-8'))
-    .replaceAll('{{MDBASE_MARK}}', MDBASE_MARK);
+    .replaceAll('{{MDBASE_MARK}}', MDBASE_MARK)
+    .replaceAll('{{THEME_MENU}}', THEME_MENU);
 }
 
 // ---------------------------------------------------------------------------
