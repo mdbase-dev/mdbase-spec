@@ -516,7 +516,7 @@ Batch operations MUST support `--dry-run` which validates all changes and report
 
 ## 12.8 Backfill (Level 6)
 
-Backfill applies defaults and/or generated values to **missing** fields across many files. It is intended for schema evolution and migration workflows (see [§5.11.1](./05-types.md#5111-migration-manifests-optional)).
+Backfill applies defaults and/or generated values to **missing** fields across many files. It is intended for schema evolution and migration workflows (see [§5.11.1](./05-types.md#5111-migration-manifests-level-6)).
 
 ### Input
 

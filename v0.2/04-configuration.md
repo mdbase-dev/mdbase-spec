@@ -268,7 +268,7 @@ The types folder:
 
 ### `settings.migrations_folder`
 
-Folder containing migration manifests (see [§5.11.1](./05-types.md#5111-migration-manifests-optional)).
+Folder containing migration manifests (see [§5.11.1](./05-types.md#5111-migration-manifests-level-6)).
 
 **Default:** `"<types_folder>/_migrations"` (e.g., `_types/_migrations`)
 
