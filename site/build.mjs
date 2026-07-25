@@ -18,6 +18,7 @@ const ROOT = join(__dirname, '..');
 const DIST = join(__dirname, 'dist');
 const TEMPLATES = join(__dirname, 'templates');
 const STATIC = join(__dirname, 'static');
+const CONTENT = join(__dirname, 'content');
 const STYLE_VERSION = createHash('sha256')
   .update(readFileSync(join(STATIC, 'style.css')))
   .digest('hex')
@@ -79,6 +80,29 @@ const LEGACY_SPEC_FILES = [
   { file: 'v0.2/appendix-b-expression-grammar.md', num: 'B', title: 'Expression Grammar', id: 'appendix-b', group: 'Appendices' },
   { file: 'v0.2/appendix-c-error-codes.md',    num: 'C',  title: 'Error Codes',          id: 'appendix-c', group: 'Appendices' },
   { file: 'v0.2/appendix-d-compatibility.md',  num: 'D',  title: 'Compatibility',        id: 'appendix-d', group: 'Appendices' },
+];
+
+const LEGAL_PAGES = [
+  {
+    source: 'privacy.md',
+    output: 'privacy/index.html',
+    title: 'Privacy Policy',
+    label: 'Privacy',
+    description: 'How mdbase handles account information, service metadata, and collection content.',
+    summary: 'How account information, service metadata, and collection content are handled across the mdbase website and hosted services.',
+    date: 'Effective 25 July 2026',
+    url: 'https://mdbase.dev/privacy/',
+  },
+  {
+    source: 'terms.md',
+    output: 'terms/index.html',
+    title: 'Terms of Service',
+    label: 'Terms',
+    description: 'The terms that apply to the mdbase website and hosted services.',
+    summary: 'The agreement for using mdbase.dev, mdbase connect, hosted collections, and the hosted MCP gateway.',
+    date: 'Effective 25 July 2026',
+    url: 'https://mdbase.dev/terms/',
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -166,6 +190,10 @@ function build() {
   writeFileSync(join(DIST, 'runtime.html'), runtimeHtml);
   console.log('  Built runtime.html');
 
+  for (const page of LEGAL_PAGES) {
+    buildLegalPage(page);
+  }
+
   // Build spec page
   buildSpec({
     entries: SPEC_FILES,
@@ -183,6 +211,25 @@ function build() {
   });
 
   console.log('\nDone! Output in site/dist/');
+}
+
+function buildLegalPage(page) {
+  const template = versionAssets(readFileSync(join(TEMPLATES, 'legal.html'), 'utf-8'));
+  const markdown = readFileSync(join(CONTENT, page.source), 'utf-8');
+  const content = marked.parse(markdown);
+  const rendered = template
+    .replaceAll('{{PAGE_TITLE}}', page.title)
+    .replace('{{PAGE_LABEL}}', page.label)
+    .replaceAll('{{PAGE_DESCRIPTION}}', page.description)
+    .replace('{{PAGE_SUMMARY}}', page.summary)
+    .replace('{{PAGE_DATE}}', page.date)
+    .replaceAll('{{PAGE_URL}}', page.url)
+    .replace('{{PAGE_CONTENT}}', content);
+  const outputPath = join(DIST, page.output);
+
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, rendered);
+  console.log(`  Built ${page.output}`);
 }
 
 function buildSpec({ entries, output: outputFile, title, version, switchLink }) {

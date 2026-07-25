@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{PAGE_TITLE}} - mdbase</title>
+  <meta name="description" content="{{PAGE_DESCRIPTION}}">
+  <meta property="og:title" content="{{PAGE_TITLE}} - mdbase">
+  <meta property="og:description" content="{{PAGE_DESCRIPTION}}">
+  <meta property="og:url" content="{{PAGE_URL}}">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#fdfdfd">
+  <link rel="canonical" href="{{PAGE_URL}}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9670;</text></svg>">
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="site-page legal-site-page">
+  <header class="landing-header">
+    <a href="/" class="landing-logo"><span class="dot"></span>mdbase</a>
+    <nav class="landing-nav" aria-label="Primary">
+      <a href="/">Home</a>
+      <a href="/runtime.html">Runtime</a>
+      <a href="/ecosystem.html">Ecosystem</a>
+      <select class="theme-select" aria-label="Color theme" data-theme-select><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
+      <a href="/spec.html" class="nav-cta">Read the spec</a>
+    </nav>
+  </header>
+
+  <main>
+    <article class="legal-page">
+      <header class="legal-page-header">
+        <p class="section-kicker">Legal / {{PAGE_LABEL}}</p>
+        <h1>{{PAGE_TITLE}}</h1>
+        <p class="legal-page-summary">{{PAGE_SUMMARY}}</p>
+        <p class="legal-page-date">{{PAGE_DATE}}</p>
+      </header>
+      <div class="legal-content">
+        {{PAGE_CONTENT}}
+      </div>
+    </article>
+  </main>
+
+  <footer class="landing-footer">
+    <p>mdbase &middot; <a href="/privacy/">Privacy</a> &middot; <a href="/terms/">Terms</a> &middot; <a href="https://github.com/callumalpass/mdbase-spec">Source on GitHub</a></p>
+  </footer>
+</body>
+</html>
