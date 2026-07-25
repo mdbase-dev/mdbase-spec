@@ -111,9 +111,11 @@ services, your consent, and compliance with law.
 
 We disclose information only as needed for the following purposes:
 
-- **Infrastructure providers.** Current providers include GitHub Pages for the
-  public website, Cloudflare for network and security services, and Render for
-  application and database hosting.
+- **Infrastructure providers.** GitHub Pages hosts the public website, and
+  Render hosts the application services and database. These providers may use
+  their own infrastructure and subprocessors to deliver their services. For
+  example, Render currently delivers some mdbase traffic through Cloudflare
+  network infrastructure; mdbase does not contract with Cloudflare directly.
 - **Identity providers.** Google or GitHub processes sign-in information when
   you choose that provider.
 - **Applications and MCP hosts you authorise.** These parties receive collection
