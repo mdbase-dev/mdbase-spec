@@ -137,13 +137,24 @@ Atkinson Hyperlegible provides clarity across large headlines and long specifica
 
 Use the sans face for prose and hierarchy. Reserve mono for structural information and literal technical content.
 
-## 4. Layout and elevation
+## 4. Identity
+
+The shared mdbase Frontmatter mark precedes the live-type `mdbase` wordmark in
+every site header. Its segmented fences and key-value rows connect the
+specification identity directly to the files it defines. Ink follows the
+current theme; the first value uses the blue accent.
+
+Render the mark at 20px in site navigation. It identifies mdbase only and does
+not replace version, conformance, or runtime-profile labels. Use the dedicated
+favicon asset for browser metadata.
+
+## 5. Layout and elevation
 
 The system is flat. One-pixel rules establish sections, rows, navigation boundaries, and code surfaces. Page content uses a 64rem maximum width. Landing sections add an 8rem metadata gutter on wide screens, then collapse to a single column below 64rem.
 
 Whitespace carries hierarchy at page scale. Within resource lists and the specification reader, spacing becomes denser to support scanning.
 
-## 5. Components
+## 6. Components
 
 - **Primary button:** current surface, quiet neutral border, ink text, 3px radius, 44px minimum height.
 - **Secondary button:** the same light structure with quieter border emphasis.
@@ -152,7 +163,7 @@ Whitespace carries hierarchy at page scale. Within resource lists and the specif
 - **Spec sidebar link:** blue text with a quiet underline for the selected section.
 - **Tablist:** text labels with a blue underline for the selected tab and keyboard arrow support.
 
-## 6. Usage principles
+## 7. Usage principles
 
 - Lead pages with literal descriptions of the specification or runtime profile.
 - Show real collection structures, type definitions, records, and queries.
