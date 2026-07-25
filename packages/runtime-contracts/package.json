@@ -6,13 +6,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/callumalpass/mdbase-spec.git",
+    "url": "git+https://github.com/mdbase-dev/mdbase-spec.git",
     "directory": "packages/runtime-contracts"
   },
   "bugs": {
-    "url": "https://github.com/callumalpass/mdbase-spec/issues"
+    "url": "https://github.com/mdbase-dev/mdbase-spec/issues"
   },
-  "homepage": "https://mdbase.dev/runtime.html",
+  "homepage": "https://mdbase.dev/runtime/",
   "main": "./dist/browser.js",
   "types": "./dist/browser.d.ts",
   "exports": {

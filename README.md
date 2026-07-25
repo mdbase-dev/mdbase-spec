@@ -153,7 +153,9 @@ implementer material. Legacy fixtures are documented in
 - [`examples/v0.3/`](./examples/v0.3/) contains example and migration
   collections.
 - [`packages/`](./packages/) contains CEL and runtime support packages.
-- [`site/`](./site/) contains the mdbase.dev static site.
+- [`site/`](./site/) builds the versioned specification reader imported by the
+  independently deployed [mdbase.dev](https://github.com/mdbase-dev/mdbase.dev)
+  website.
 
 ## Repository Verification
 

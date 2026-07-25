@@ -14,8 +14,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Conformance level guardrail
+      - name: Legacy conformance level guardrail
         run: python scripts/check_test_levels.py
+      - name: Validate v0.3 fixture manifest and coverage
+        run: python scripts/check_v03_tests.py
+      - name: Verify migration fixture
+        run: python scripts/prototype_tasknotes_v03_migration.py --check-fixture
 
   runtime-package:
     name: runtime package (${{ matrix.os }})
@@ -42,3 +46,28 @@ jobs:
         run: npm test
       - name: Verify package contents
         run: npm pack --dry-run
+
+  site-artifact:
+    name: specification site artifact
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Build specification reader
+        run: npm run build
+      - name: Upload specification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdbase-spec-site
+          path: site/dist

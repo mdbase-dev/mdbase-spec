@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Build tagged specification artifact
 
 on:
   push:
@@ -13,11 +13,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: specification-artifact
   cancel-in-progress: false
 
 jobs:
@@ -38,18 +36,8 @@ jobs:
         working-directory: site
         run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload versioned artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: mdbase-spec-site-${{ github.ref_name }}
           path: site/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
