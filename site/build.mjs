@@ -27,11 +27,30 @@ const THEME_VERSION = createHash('sha256')
   .update(readFileSync(join(STATIC, 'theme.js')))
   .digest('hex')
   .slice(0, 12);
+const MDBASE_MARK = `<svg class="mdbase-mark" viewBox="18 18 84 84" aria-hidden="true" focusable="false">
+  <g class="mdbase-mark-ink">
+    <rect x="22" y="22" width="20" height="10" rx="2"/>
+    <rect x="50" y="22" width="20" height="10" rx="2"/>
+    <rect x="78" y="22" width="20" height="10" rx="2"/>
+    <rect x="22" y="44" width="12" height="10" rx="2"/>
+    <rect x="22" y="66" width="28" height="10" rx="2"/>
+    <rect x="58" y="66" width="40" height="10" rx="2"/>
+    <rect x="22" y="88" width="20" height="10" rx="2"/>
+    <rect x="50" y="88" width="20" height="10" rx="2"/>
+    <rect x="78" y="88" width="20" height="10" rx="2"/>
+  </g>
+  <rect class="mdbase-mark-accent" x="42" y="44" width="56" height="10" rx="2"/>
+</svg>`;
 
 function versionAssets(html) {
   return html
     .replaceAll('style.css', `style.css?v=${STYLE_VERSION}`)
     .replaceAll('theme.js', `theme.js?v=${THEME_VERSION}`);
+}
+
+function renderTemplate(name) {
+  return versionAssets(readFileSync(join(TEMPLATES, name), 'utf-8'))
+    .replaceAll('{{MDBASE_MARK}}', MDBASE_MARK);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,17 +195,17 @@ function build() {
   console.log('  Copied static assets');
 
   // Copy index.html
-  const indexHtml = versionAssets(readFileSync(join(TEMPLATES, 'index.html'), 'utf-8'));
+  const indexHtml = renderTemplate('index.html');
   writeFileSync(join(DIST, 'index.html'), indexHtml);
   console.log('  Built index.html');
 
   // Copy ecosystem.html
-  const ecosystemHtml = versionAssets(readFileSync(join(TEMPLATES, 'ecosystem.html'), 'utf-8'));
+  const ecosystemHtml = renderTemplate('ecosystem.html');
   writeFileSync(join(DIST, 'ecosystem.html'), ecosystemHtml);
   console.log('  Built ecosystem.html');
 
   // Copy runtime.html
-  const runtimeHtml = versionAssets(readFileSync(join(TEMPLATES, 'runtime.html'), 'utf-8'));
+  const runtimeHtml = renderTemplate('runtime.html');
   writeFileSync(join(DIST, 'runtime.html'), runtimeHtml);
   console.log('  Built runtime.html');
 
@@ -214,7 +233,7 @@ function build() {
 }
 
 function buildLegalPage(page) {
-  const template = versionAssets(readFileSync(join(TEMPLATES, 'legal.html'), 'utf-8'));
+  const template = renderTemplate('legal.html');
   const markdown = readFileSync(join(CONTENT, page.source), 'utf-8');
   const content = marked.parse(markdown);
   const rendered = template
@@ -233,7 +252,7 @@ function buildLegalPage(page) {
 }
 
 function buildSpec({ entries, output: outputFile, title, version, switchLink }) {
-  const specTemplate = versionAssets(readFileSync(join(TEMPLATES, 'spec.html'), 'utf-8'));
+  const specTemplate = renderTemplate('spec.html');
 
   // Build sidebar links
   let sidebarHtml = '';
