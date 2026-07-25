@@ -5,10 +5,10 @@
 :root {
   color-scheme: light;
 
-  --color-canvas: oklch(99.7% 0.002 255);
-  --color-surface: oklch(99.7% 0.002 255);
-  --color-surface-subtle: oklch(98.5% 0.004 255);
-  --color-surface-code: oklch(98.8% 0.004 255);
+  --color-canvas: oklch(99.5% 0.002 255);
+  --color-surface: oklch(99.5% 0.002 255);
+  --color-surface-subtle: oklch(97.5% 0.004 255);
+  --color-surface-code: oklch(97.5% 0.004 255);
   --color-text: oklch(21% 0.018 255);
   --color-text-soft: oklch(39% 0.016 255);
   --color-text-muted: oklch(54% 0.014 255);
@@ -49,19 +49,19 @@
   --measure: 72ch;
   --page: 64rem;
   --sidebar: 17rem;
-  --header: 3.5rem;
+  --header: 4rem;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-canvas: oklch(17.5% 0.012 255);
-  --color-surface: oklch(18.5% 0.012 255);
-  --color-surface-subtle: oklch(20.5% 0.013 255);
-  --color-surface-code: oklch(21.5% 0.014 255);
+  --color-surface: oklch(19.5% 0.012 255);
+  --color-surface-subtle: oklch(23.5% 0.014 255);
+  --color-surface-code: oklch(23.5% 0.014 255);
   --color-text: oklch(92% 0.008 255);
-  --color-text-soft: oklch(79% 0.01 255);
-  --color-text-muted: oklch(67% 0.012 255);
+  --color-text-soft: oklch(80% 0.01 255);
+  --color-text-muted: oklch(68% 0.012 255);
   --color-border: oklch(29% 0.012 255);
   --color-border-strong: oklch(40% 0.014 255);
   --color-accent: oklch(73% 0.105 238);
@@ -76,12 +76,12 @@
   :root:not([data-theme]) {
     color-scheme: dark;
     --color-canvas: oklch(17.5% 0.012 255);
-    --color-surface: oklch(18.5% 0.012 255);
-    --color-surface-subtle: oklch(20.5% 0.013 255);
-    --color-surface-code: oklch(21.5% 0.014 255);
+    --color-surface: oklch(19.5% 0.012 255);
+    --color-surface-subtle: oklch(23.5% 0.014 255);
+    --color-surface-code: oklch(23.5% 0.014 255);
     --color-text: oklch(92% 0.008 255);
-    --color-text-soft: oklch(79% 0.01 255);
-    --color-text-muted: oklch(67% 0.012 255);
+    --color-text-soft: oklch(80% 0.01 255);
+    --color-text-muted: oklch(68% 0.012 255);
     --color-border: oklch(29% 0.012 255);
     --color-border-strong: oklch(40% 0.014 255);
     --color-accent: oklch(73% 0.105 238);

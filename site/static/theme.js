@@ -23,7 +23,7 @@
       }
     }
     const dark = next === "dark" || (next === "system" && media.matches);
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#1b1d23" : "#fdfdfd");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#1c1e24" : "#fcfcfd");
     document.querySelectorAll("[data-theme-select]").forEach((select) => {
       select.value = next;
     });
