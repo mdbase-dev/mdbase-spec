@@ -27,14 +27,16 @@ Optional saved-view operations:
 
 Read returns a record by path, including:
 
-- raw frontmatter
-- effective frontmatter when requested
-- body when requested
+- persisted `frontmatter`
+- derived `effective_frontmatter`
+- body
 - file metadata
 - matched type names
 - diagnostics
 
 Read MUST NOT write defaults or lifecycle values to disk.
+Every successful read returns the complete record document defined in Chapter
+03.
 
 ## Create
 
@@ -240,10 +242,19 @@ result: {}
 diagnostics: []
 ```
 
-`valid` is false when any error-severity diagnostic applies. Mutating results
-MUST report the final path, raw persisted frontmatter, matched types, and new
-revision when a record was written. Dry runs use the same envelope and MUST NOT
-change files, indexes, runtime state, or revisions.
+`valid` is false when any error-severity diagnostic applies. Successful
+`create`, `update`, and `rename` operations MUST return the complete,
+authoritative post-write record document defined in Chapter 03. `rename` adds
+its rename-specific metadata to that document.
+
+The document MUST be derived from the bytes actually persisted after lifecycle
+hooks, normalization, validation, and the atomic write complete. Clients and
+transport adapters MUST NOT reconstruct missing document members from the
+request or from another response member.
+
+Dry runs return operation-specific preflight results rather than record
+documents. They use the same envelope and MUST NOT change files, indexes,
+runtime state, or revisions.
 
 ## Events
 

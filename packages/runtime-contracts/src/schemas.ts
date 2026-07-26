@@ -31,6 +31,7 @@ export async function loadCanonicalSchemas(schemaRoot?: string): Promise<Canonic
     conformanceClaim: await readJson(join(schemaRoot, "conformance-claim.schema.json")),
     coreDiagnostic: await readJson(join(schemaRoot, "diagnostic.schema.json")),
     operationResult: await readJson(join(schemaRoot, "operation-result.schema.json")),
+    recordDocument: await readJson(join(schemaRoot, "record-document.schema.json")),
     queryResult: await readJson(join(schemaRoot, "query-result.schema.json")),
     typeFile: await readJson(join(schemaRoot, "type-file.schema.json")),
     provider: await readJson(join(schemaRoot, "runtime/provider.schema.json")),

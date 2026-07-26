@@ -1,0 +1,16 @@
+path: tasks/fix-login.md
+revision: "sha256:opaque"
+types:
+  - task
+frontmatter:
+  title: Fix login
+effective_frontmatter:
+  title: Fix login
+  status: open
+body: |
+  Reproduce and fix the login failure.
+file:
+  name: fix-login.md
+  folder: tasks
+  size: 142
+  mtime: "2026-07-26T03:00:00Z"

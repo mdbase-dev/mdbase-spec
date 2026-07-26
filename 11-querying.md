@@ -211,16 +211,18 @@ cannot read bodies on demand.
 
 ## Frontmatter Mode
 
-`frontmatter` controls which record frontmatter appears in each result:
+`frontmatter_mode` controls which fixed-semantics frontmatter members appear in
+each result:
 
-- `effective` (the default) returns effective values in `frontmatter`
-- `raw` returns raw persisted values in `frontmatter`
-- `both` returns effective values in `frontmatter` and raw persisted values in
-  `raw_frontmatter`
+- `effective` (the default) returns `effective_frontmatter`
+- `persisted` returns `frontmatter`
+- `both` returns both `frontmatter` and `effective_frontmatter`
 
 The mode changes result serialization only. Filtering, projections, selection,
 ordering, grouping, and summaries continue to use effective values unless an
-expression explicitly reads the raw namespace.
+expression explicitly reads the persisted namespace. Unlike a complete record
+document returned by Core Read or a mutation, a query result is a summary and
+MAY omit the member excluded by the requested mode.
 
 ## Result Envelope
 
@@ -230,7 +232,7 @@ Query results MUST use this envelope:
 results:
   - file:
       path: tasks/fix-login.md
-    frontmatter:
+    effective_frontmatter:
       title: Fix login
       status: open
     values:
@@ -254,7 +256,7 @@ Each result MUST include `file.path`. `meta.total_count` is the count before
 pagination, and `meta.has_more` is true when additional matching records remain.
 Diagnostics use the canonical diagnostic envelope from the conformance chapter.
 
-Read defaults are included in effective frontmatter. `values` contains
+Read defaults are included in `effective_frontmatter`. `values` contains
 requested selection values and is omitted when `select` is omitted.
 
 `meta.context.path` identifies the bound invocation context and is omitted when

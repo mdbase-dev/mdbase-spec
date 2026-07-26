@@ -2,6 +2,17 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## 2026-07-26 (v0.3.0 record contract)
+
+### Changed
+
+- Defined `frontmatter` as persisted record data and
+  `effective_frontmatter` as the derived read/query view across all providers.
+- Required Core Read and successful create, update, and rename operations to
+  return the same complete authoritative record document.
+- Replaced the query `frontmatter` option with `frontmatter_mode` and removed
+  the overloaded `raw_frontmatter` result member.
+
 ## 2026-07-24 (v0.3.0 runtime RC)
 
 ### Added

@@ -28,4 +28,4 @@ summaries:
 limit: 20
 offset: 0
 include_body: false
-frontmatter: both
+frontmatter_mode: both

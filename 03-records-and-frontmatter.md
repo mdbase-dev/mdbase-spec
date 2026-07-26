@@ -25,7 +25,7 @@ frontmatter.
 
 Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
 
-If frontmatter is absent, the raw frontmatter object is `{}`.
+If frontmatter is absent, the persisted frontmatter object is `{}`.
 
 If frontmatter parses to a scalar, sequence, or other non-mapping value, the
 record is invalid at validation level `error`. At validation level `warn`, tools
@@ -45,14 +45,44 @@ These states are not interchangeable.
 `collection.read_defaults` applies only to missing keys. It does not replace
 explicit null.
 
-## Raw And Effective Records
+## Persisted And Effective Frontmatter
 
-A raw record is the persisted frontmatter object plus file metadata and body.
+`frontmatter` always means the parsed mapping persisted in the Markdown file.
+It does not contain read defaults, computed values, or other derived data.
 
-An effective record is a read/query view that may apply `collection.read_defaults`
-for matched types.
+`effective_frontmatter` is the derived read/query mapping after applying
+`collection.read_defaults` and any other read-time computation supported by the
+active profile.
 
-Validation of JSON Schema `required` is against the raw or draft persisted
+These names have fixed meanings in every operation and provider. An operation
+MUST NOT place effective values in `frontmatter`, place persisted values in
+`effective_frontmatter`, or change either meaning based on request options.
+
+A complete record document has this shape:
+
+```yaml
+path: tasks/fix-login.md
+revision: sha256:opaque
+types: [task]
+frontmatter:
+  title: Fix login
+effective_frontmatter:
+  title: Fix login
+  status: open
+body: |
+  Reproduce and fix the login failure.
+file:
+  name: fix-login.md
+  folder: tasks
+  size: 142
+  mtime: 2026-07-26T03:00:00Z
+```
+
+`path`, `revision`, `types`, `frontmatter`, `effective_frontmatter`, `body`, and
+`file` are all required on a complete record document. Empty frontmatter is
+represented by `{}`, not by an absent member.
+
+Validation of JSON Schema `required` is against the persisted or draft
 frontmatter object, not against effective read defaults.
 
 ## Body

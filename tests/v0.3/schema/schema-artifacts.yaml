@@ -105,6 +105,15 @@ groups:
         expect:
           valid: false
 
+      - name: "record document schema validates the complete canonical shape"
+        operation: yaml_document_schema_validate
+        input:
+          schema: "schemas/v0.3/record-document.schema.json"
+          paths:
+            - "tests/v0.3/fixtures/valid-record-document.yml"
+        expect:
+          valid: true
+
       - name: "view schema validates a portable task view record"
         operation: markdown_frontmatter_schema_validate
         input:

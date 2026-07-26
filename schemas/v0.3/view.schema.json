@@ -158,8 +158,8 @@
         "limit": { "type": "integer", "minimum": 0 },
         "offset": { "type": "integer", "minimum": 0 },
         "include_body": { "type": "boolean", "default": false },
-        "frontmatter": {
-          "enum": ["effective", "raw", "both"],
+        "frontmatter_mode": {
+          "enum": ["effective", "persisted", "both"],
           "default": "effective"
         },
         "presentation": { "$ref": "#/$defs/presentation" }
