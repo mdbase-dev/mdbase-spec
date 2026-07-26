@@ -71,6 +71,11 @@ effective_frontmatter:
   status: open
 body: |
   Reproduce and fix the login failure.
+document: |
+  ---
+  title: Fix login
+  ---
+  Reproduce and fix the login failure.
 file:
   name: fix-login.md
   folder: tasks
@@ -81,6 +86,14 @@ file:
 `path`, `revision`, `types`, `frontmatter`, `effective_frontmatter`, `body`, and
 `file` are all required on a complete record document. Empty frontmatter is
 represented by `{}`, not by an absent member.
+
+`document` is an optional complete UTF-8 source representation. It is returned
+when an operation explicitly requests source and MUST contain the exact record
+text whose bytes produced `revision`, including any byte-order mark, YAML
+delimiters, comments, quoting, whitespace, line endings, and trailing newline.
+`frontmatter` and `body` MUST be parsed from that same text. Providers MUST NOT
+reconstruct `document` from parsed frontmatter and body when exact source is
+unavailable.
 
 Validation of JSON Schema `required` is against the persisted or draft
 frontmatter object, not against effective read defaults.

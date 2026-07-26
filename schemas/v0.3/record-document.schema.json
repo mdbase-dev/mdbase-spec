@@ -37,6 +37,9 @@
     "body": {
       "type": "string"
     },
+    "document": {
+      "type": "string"
+    },
     "file": {
       "type": "object",
       "required": ["name", "folder", "size", "mtime"],

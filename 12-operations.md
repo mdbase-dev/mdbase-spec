@@ -38,6 +38,11 @@ Read MUST NOT write defaults or lifecycle values to disk.
 Every successful read returns the complete record document defined in Chapter
 03.
 
+Read accepts optional `include_document`. When true, the returned record MUST
+include the exact `document` source defined in Chapter 03. Providers that
+cannot supply exact source MUST reject the request rather than silently return
+a reconstructed serialization.
+
 ## Create
 
 Create builds a new record.
@@ -80,6 +85,19 @@ Pipeline:
 If a patch sets a field to missing, the key is removed. If a patch sets a field
 to null, the key is persisted as null unless the operation policy says null
 means remove.
+
+As an alternative to a frontmatter patch and body replacement, Update accepts
+`document` containing the complete candidate Markdown source. A document
+replacement MUST NOT be combined with `patch`, `fields`, `frontmatter`, or
+`body`. The candidate is parsed and passes through the same type matching,
+lifecycle, validation, concurrency, and atomic-write pipeline as a structured
+update. When lifecycle policy does not alter the candidate, the exact supplied
+source MUST be preserved. If policy changes persisted values, the authoritative
+post-policy source MAY be reserialized and is returned when source was
+requested.
+
+Update accepts optional `include_document`. A document replacement implies
+`include_document: true` for its successful result.
 
 ## Delete
 
@@ -251,6 +269,10 @@ The document MUST be derived from the bytes actually persisted after lifecycle
 hooks, normalization, validation, and the atomic write complete. Clients and
 transport adapters MUST NOT reconstruct missing document members from the
 request or from another response member.
+
+Create and rename accept optional `include_document`; when true, their
+successful record document includes the exact post-write source. Update follows
+the source rules above.
 
 Dry runs return operation-specific preflight results rather than record
 documents. They use the same envelope and MUST NOT change files, indexes,

@@ -2,6 +2,14 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## 2026-07-26 (exact record source)
+
+### Added
+
+- Added opt-in exact `document` source to complete record results.
+- Added whole-document record updates with the same validation, lifecycle, and
+  revision guarantees as structured updates.
+
 ## 2026-07-26 (v0.3.0 record contract)
 
 ### Changed
