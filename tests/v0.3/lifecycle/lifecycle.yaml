@@ -105,10 +105,9 @@ groups:
         operation: read
         input:
           path: "tasks/existing.md"
-          effective: true
         expect:
           valid: true
-          frontmatter:
+          effective_frontmatter:
             status: open
 
   - name: "lifecycle guards and conflicts"

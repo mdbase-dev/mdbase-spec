@@ -528,10 +528,9 @@ groups:
         operation: read
         input:
           path: "tasks/valid.md"
-          effective: true
         expect:
           valid: true
-          frontmatter:
+          effective_frontmatter:
             status: open
 
       - name: "read defaults do not replace explicit null"
@@ -540,19 +539,17 @@ groups:
         operation: read
         input:
           path: "tasks/null-status.md"
-          effective: true
         expect:
           valid: true
-          frontmatter:
+          effective_frontmatter:
             status: null
 
-      - name: "raw read does not materialize read defaults"
-        id: collection.raw_read
+      - name: "persisted frontmatter does not materialize read defaults"
+        id: collection.persisted_read
         covers: [collection_semantics.effective_read_defaults]
         operation: read
         input:
           path: "tasks/valid.md"
-          effective: false
         expect:
           valid: true
           frontmatter_not_contains:

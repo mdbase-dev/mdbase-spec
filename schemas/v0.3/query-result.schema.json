@@ -25,7 +25,7 @@
           "frontmatter": {
             "type": "object"
           },
-          "raw_frontmatter": {
+          "effective_frontmatter": {
             "type": "object"
           },
           "values": {

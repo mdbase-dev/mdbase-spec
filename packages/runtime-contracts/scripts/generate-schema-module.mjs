@@ -10,6 +10,7 @@ const schemaPaths = {
   conformanceClaim: "conformance-claim.schema.json",
   coreDiagnostic: "diagnostic.schema.json",
   operationResult: "operation-result.schema.json",
+  recordDocument: "record-document.schema.json",
   queryResult: "query-result.schema.json",
   typeFile: "type-file.schema.json",
   provider: "runtime/provider.schema.json",

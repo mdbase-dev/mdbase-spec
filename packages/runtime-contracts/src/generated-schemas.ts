@@ -634,6 +634,74 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
     },
     "additionalProperties": false
   },
+  "recordDocument": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mdbase.dev/schemas/v0.3/record-document.schema.json",
+    "title": "mdbase v0.3 record document",
+    "type": "object",
+    "required": [
+      "path",
+      "revision",
+      "types",
+      "frontmatter",
+      "effective_frontmatter",
+      "body",
+      "file"
+    ],
+    "properties": {
+      "path": {
+        "type": "string",
+        "minLength": 1
+      },
+      "revision": {
+        "type": "string",
+        "minLength": 1
+      },
+      "types": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "frontmatter": {
+        "type": "object"
+      },
+      "effective_frontmatter": {
+        "type": "object"
+      },
+      "body": {
+        "type": "string"
+      },
+      "file": {
+        "type": "object",
+        "required": [
+          "name",
+          "folder",
+          "size",
+          "mtime"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "folder": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mtime": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  },
   "queryResult": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://mdbase.dev/schemas/v0.3/query-result.schema.json",
@@ -669,7 +737,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             "frontmatter": {
               "type": "object"
             },
-            "raw_frontmatter": {
+            "effective_frontmatter": {
               "type": "object"
             },
             "values": {

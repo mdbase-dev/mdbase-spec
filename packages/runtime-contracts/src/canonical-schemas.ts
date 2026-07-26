@@ -8,6 +8,7 @@ export interface CanonicalSchemas {
   conformanceClaim: Record<string, unknown>;
   coreDiagnostic: Record<string, unknown>;
   operationResult: Record<string, unknown>;
+  recordDocument: Record<string, unknown>;
   queryResult: Record<string, unknown>;
   typeFile: Record<string, unknown>;
   provider: Record<string, unknown>;
