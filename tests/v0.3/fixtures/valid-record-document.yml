@@ -9,6 +9,11 @@ effective_frontmatter:
   status: open
 body: |
   Reproduce and fix the login failure.
+document: |
+  ---
+  title: Fix login
+  ---
+  Reproduce and fix the login failure.
 file:
   name: fix-login.md
   folder: tasks
