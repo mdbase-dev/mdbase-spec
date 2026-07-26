@@ -213,6 +213,7 @@ groups:
         payload:
           file:
             path: tasks/card-001.md
+          types: [pickle_request]
           zone:
             id: doing
       steps:
@@ -226,6 +227,31 @@ groups:
         input:
           context: workflow
           expression: 'event.payload.file.path == "tasks/card-001.md" && event.payload.zone.id == "doing"'
+        expect:
+          valid: true
+          value: true
+
+      - name: "record event type membership uses the CEL in operator"
+        id: cel.record_type_membership
+        covers:
+          - cel.portable_evaluation
+        operation: evaluate_cel
+        input:
+          context: workflow
+          expression: '"pickle_request" in event.payload.types'
+        expect:
+          valid: true
+          value: true
+
+      - name: "workflow CEL supports presence and comprehension macros"
+        id: cel.workflow_macros
+        covers:
+          - cel.portable_evaluation
+          - cel.context_bindings
+        operation: evaluate_cel
+        input:
+          context: workflow
+          expression: 'has(event.payload.file) && !has(event.payload.missing) && event.payload.types.exists(t, t == "pickle_request")'
         expect:
           valid: true
           value: true
