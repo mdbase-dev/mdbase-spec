@@ -1,58 +1,35 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import type {
+  ActionOutcome,
+  BridgeDescription,
+  CloudEvent,
+  InteropClient
+} from "@callumalpass/mdbase-interop";
 import {
-  RuntimeContractValidator,
+  admitWorkflow,
   type RuntimeDiagnostic,
-  type RuntimeRegistry,
-  type WorkflowContract,
-  type WorkflowStep,
-  parseMarkdownRecord
-} from "@callumalpass/mdbase-runtime/node";
+  type RuntimePolicy,
+  type RuntimeWorkflow,
+  type RuntimeWorkflowStep
+} from "@callumalpass/mdbase-runtime";
 import {
   buildWorkflowActivation,
   evaluateCel,
   evaluateTemplate
 } from "@mdbase/cel-host";
 
-export interface RuntimeRecordStore {
-  read(path: string): Promise<StoredRecord | undefined> | StoredRecord | undefined;
-  patch(path: string, patch: Record<string, unknown>): Promise<PatchRecordOutput> | PatchRecordOutput;
-}
-
-export interface StoredRecord {
-  path: string;
-  frontmatter: Record<string, unknown>;
-  body: string;
-}
-
-export interface PatchRecordOutput {
-  path: string;
-  frontmatter: Record<string, unknown>;
-}
-
-export interface ActionContext {
-  workflow: WorkflowContract;
-  step: WorkflowStep;
-  event: Record<string, unknown>;
-}
-
-export type ActionHandler = (input: unknown, context: ActionContext) => Promise<unknown> | unknown;
-
 export interface ExecuteRuntimeEventOptions {
-  collectionRoot: string;
-  event: Record<string, unknown>;
-  executor?: string;
-  handlers?: Record<string, ActionHandler>;
-  recordStore?: RuntimeRecordStore;
+  workflow: RuntimeWorkflow;
+  trigger_id: string;
+  event: CloudEvent;
+  bridge: BridgeDescription;
+  client: InteropClient;
+  policy: RuntimePolicy;
+  run_id?: string;
 }
 
 export interface RuntimeExecutionResult {
   valid: boolean;
   diagnostics: RuntimeDiagnostic[];
-  runs: WorkflowRunResult[];
-}
-
-export interface WorkflowRunResult {
   workflow: string;
   trigger: string;
   status: "succeeded" | "failed" | "skipped";
@@ -65,284 +42,205 @@ export interface StepExecutionResult {
   status: "succeeded" | "failed" | "skipped";
   input?: unknown;
   output?: unknown;
+  outcome?: ActionOutcome;
   diagnostics: RuntimeDiagnostic[];
 }
 
-export class InMemoryRecordStore implements RuntimeRecordStore {
-  private readonly records = new Map<string, StoredRecord>();
+export async function executeRuntimeEvent(
+  options: ExecuteRuntimeEventOptions
+): Promise<RuntimeExecutionResult> {
+  const admission = await admitWorkflow(options);
+  if (!admission.valid || !admission.plan) {
+    return result(options, "failed", admission.diagnostics, []);
+  }
+  const trigger = options.workflow.triggers.find(({ id }) => id === options.trigger_id);
+  if (!trigger) {
+    return result(options, "failed", [diagnostic(
+      "trigger_not_found",
+      `Workflow ${options.workflow.id} has no trigger ${options.trigger_id}.`
+    )], []);
+  }
+  const runId = options.run_id ?? `run:${options.event.id}:${options.workflow.id}:${trigger.id}`;
+  const steps: Record<string, StepExecutionResult> = {};
+  const vars = evaluateExpressionValue(
+    options.workflow.vars ?? {},
+    buildWorkflowActivation({ event: options.event, steps: {}, vars: {} }) as unknown as Record<string, unknown>,
+    options.workflow.id
+  );
+  if (vars.diagnostics.length > 0) {
+    return result(options, "failed", vars.diagnostics, []);
+  }
+  const activation = () => buildWorkflowActivation({
+    event: options.event,
+    steps,
+    vars: vars.value as Record<string, unknown>
+  }) as unknown as Record<string, unknown>;
+  const condition = evaluateCondition(trigger.if, activation(), trigger.id);
+  if (condition.diagnostics.length > 0) {
+    return result(options, "failed", condition.diagnostics, []);
+  }
+  if (!condition.matched) return result(options, "skipped", [], []);
 
-  static async fromCollection(collectionRoot: string, paths: string[]): Promise<InMemoryRecordStore> {
-    const store = new InMemoryRecordStore();
-    for (const path of paths) {
-      const parsed = parseMarkdownRecord(path, await readFile(resolve(collectionRoot, path), "utf8"));
-      if (!parsed.record || parsed.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
-        throw new Error(`Unable to load record ${path}.`);
-      }
-      store.set(parsed.record);
+  const executed: StepExecutionResult[] = [];
+  for (const [index, step] of options.workflow.steps.entries()) {
+    const binding = admission.plan.steps[index];
+    const stepResult = await executeStep(
+      step,
+      binding,
+      activation(),
+      options.client,
+      runId,
+      options.event
+    );
+    steps[step.id] = stepResult;
+    executed.push(stepResult);
+    if (stepResult.status === "failed" && options.workflow.run?.on_error !== "continue") {
+      return result(
+        options,
+        "failed",
+        executed.flatMap(({ diagnostics }) => diagnostics),
+        executed
+      );
     }
-    return store;
   }
-
-  set(record: StoredRecord): void {
-    this.records.set(record.path, cloneRecord(record));
-  }
-
-  read(path: string): StoredRecord | undefined {
-    const record = this.records.get(path);
-    return record ? cloneRecord(record) : undefined;
-  }
-
-  patch(path: string, patch: Record<string, unknown>): PatchRecordOutput {
-    const record = this.records.get(path);
-    if (!record) {
-      throw new Error(`Record ${path} was not found.`);
-    }
-    record.frontmatter = {
-      ...record.frontmatter,
-      ...patch
-    };
-    return {
-      path,
-      frontmatter: { ...record.frontmatter }
-    };
-  }
+  return result(
+    options,
+    executed.some(({ status }) => status === "failed") ? "failed" : "succeeded",
+    executed.flatMap(({ diagnostics }) => diagnostics),
+    executed
+  );
 }
 
-export function createMdbaseActionHandlers(recordStore: RuntimeRecordStore): Record<string, ActionHandler> {
-  return {
-    "mdbase.record.patch": async (input) => {
-      if (!isPlainObject(input) || typeof input.path !== "string" || !isPlainObject(input.patch)) {
-        throw new Error("mdbase.record.patch input must include path and patch.");
-      }
-      return recordStore.patch(input.path, input.patch);
-    }
-  };
-}
-
-export async function executeRuntimeEvent(options: ExecuteRuntimeEventOptions): Promise<RuntimeExecutionResult> {
-  const validator = await RuntimeContractValidator.create();
-  const loaded = await validator.loadRuntimeContracts(options.collectionRoot);
-  const diagnostics: RuntimeDiagnostic[] = [...loaded.diagnostics];
-  const runs: WorkflowRunResult[] = [];
-
-  if (!loaded.valid) {
-    return result(diagnostics, runs);
+async function executeStep(
+  step: RuntimeWorkflowStep,
+  binding: NonNullable<Awaited<ReturnType<typeof admitWorkflow>>["plan"]>["steps"][number],
+  activation: Record<string, unknown>,
+  client: InteropClient,
+  runId: string,
+  event: CloudEvent
+): Promise<StepExecutionResult> {
+  const condition = evaluateCondition(step.if, activation, step.id);
+  if (condition.diagnostics.length > 0) {
+    return failedStep(step, condition.diagnostics);
   }
-
-  const eventValidation = validator.validateEventEnvelope(loaded.registry, options.event);
-  diagnostics.push(...eventValidation.diagnostics);
-  if (!eventValidation.valid) {
-    return result(diagnostics, runs);
-  }
-
-  const handlers = {
-    ...(options.recordStore ? createMdbaseActionHandlers(options.recordStore) : {}),
-    ...(options.handlers ?? {})
-  };
-
-  for (const workflow of [...loaded.registry.workflows.values()].sort((a, b) => a.id.localeCompare(b.id))) {
-    if (workflow.enabled === false || !executorShouldRunWorkflow(loaded.registry, workflow, options.executor)) {
-      continue;
-    }
-    for (const trigger of workflow.triggers ?? []) {
-      if (trigger.event !== options.event.type) {
-        continue;
-      }
-
-      const steps: Record<string, StepExecutionResult> = {};
-      const activation = () => buildWorkflowActivation({
-        event: options.event,
-        steps,
-        vars: workflow.vars as Record<string, unknown> | undefined
-      }) as unknown as Record<string, unknown>;
-
-      const triggerCondition = evaluateCondition(trigger.if, activation(), workflow.id);
-      diagnostics.push(...triggerCondition.diagnostics);
-      if (!triggerCondition.matched) {
-        continue;
-      }
-
-      const run: WorkflowRunResult = {
-        workflow: workflow.id,
-        trigger: trigger.id,
-        status: "succeeded",
-        steps: []
-      };
-
-      for (const step of workflow.steps ?? []) {
-        const stepResult = await executeStep({
-          validator,
-          registry: loaded.registry,
-          workflow,
-          step,
-          event: options.event,
-          activation: activation(),
-          handlers
-        });
-        steps[step.id] = stepResult;
-        run.steps.push(stepResult);
-        diagnostics.push(...stepResult.diagnostics);
-
-        if (stepResult.status === "failed") {
-          run.status = "failed";
-          if (workflow.run?.on_error !== "continue") {
-            break;
-          }
-        }
-      }
-
-      runs.push(run);
-    }
-  }
-
-  return result(diagnostics, runs);
-}
-
-async function executeStep(options: {
-  validator: RuntimeContractValidator;
-  registry: RuntimeRegistry;
-  workflow: WorkflowContract;
-  step: WorkflowStep;
-  event: Record<string, unknown>;
-  activation: Record<string, unknown>;
-  handlers: Record<string, ActionHandler>;
-}): Promise<StepExecutionResult> {
-  const diagnostics: RuntimeDiagnostic[] = [];
-  const condition = evaluateCondition(options.step.if, options.activation, options.workflow.id);
-  diagnostics.push(...condition.diagnostics);
   if (!condition.matched) {
     return {
-      id: options.step.id,
-      action: options.step.action,
+      id: step.id,
+      action: step.action.id,
       status: "skipped",
-      diagnostics
+      diagnostics: []
     };
   }
-
-  if (options.step.for_each) {
-    return failedStep(options.step, diagnostics, diagnostic("unsupported_for_each", "The prototype executor does not implement for_each.", options.step.id));
+  if (step.for_each) {
+    return failedStep(step, [diagnostic(
+      "unsupported_for_each",
+      "The reference non-durable executor does not implement for_each; durable hosts must implement deterministic ordered iteration."
+    )]);
   }
 
-  const inputEvaluation = evaluateExpressionValue(options.step.input ?? {}, options.activation, options.step.id);
-  diagnostics.push(...inputEvaluation.diagnostics);
-  const inputValidation = options.validator.validateActionInput(options.registry, options.step.action, inputEvaluation.value);
-  diagnostics.push(...inputValidation.diagnostics);
-  if (!inputValidation.valid) {
-    return failedStep(options.step, diagnostics);
+  const evaluated = evaluateExpressionValue(step.input ?? {}, activation, step.id);
+  if (evaluated.diagnostics.length > 0) return failedStep(step, evaluated.diagnostics);
+  const outcome = await client.invokeAction({
+    request_id: `${runId}:${step.id}`,
+    contract: binding.contract,
+    correlation_id: event.correlationid ?? runId,
+    causation_id: event.id,
+    subject: event.subject,
+    idempotency_key: `${runId}:${step.id}`,
+    requested_provider: {
+      application: binding.provider.application,
+      implementation: binding.provider.implementation,
+      ...(binding.provider.instance_id ? { instance_id: binding.provider.instance_id } : {})
+    },
+    input: evaluated.value
+  });
+  if (outcome.status !== "succeeded") {
+    return failedStep(step, [diagnostic(
+      outcome.error.code,
+      outcome.error.message,
+      outcome.error.details
+    )], evaluated.value, outcome);
   }
-
-  const handler = options.handlers[options.step.action];
-  if (!handler) {
-    return failedStep(options.step, diagnostics, diagnostic("unsupported_action_handler", `No handler is registered for ${options.step.action}.`, options.step.action));
-  }
-
-  try {
-    const output = await handler(inputEvaluation.value, {
-      workflow: options.workflow,
-      step: options.step,
-      event: options.event
-    });
-    const outputValidation = options.validator.validateActionOutput(options.registry, options.step.action, output);
-    diagnostics.push(...outputValidation.diagnostics);
-    if (!outputValidation.valid) {
-      return failedStep(options.step, diagnostics);
-    }
-    return {
-      id: options.step.id,
-      action: options.step.action,
-      status: "succeeded",
-      input: inputEvaluation.value,
-      output,
-      diagnostics
-    };
-  } catch (error) {
-    return failedStep(options.step, diagnostics, diagnostic("action_handler_error", error instanceof Error ? error.message : "Action handler failed.", options.step.action));
-  }
+  return {
+    id: step.id,
+    action: step.action.id,
+    status: "succeeded",
+    input: evaluated.value,
+    output: outcome.output,
+    outcome,
+    diagnostics: []
+  };
 }
 
-function evaluateCondition(condition: { $expr: string } | undefined, activation: Record<string, unknown>, source: string): { matched: boolean; diagnostics: RuntimeDiagnostic[] } {
-  if (!condition) {
-    return { matched: true, diagnostics: [] };
-  }
+function evaluateCondition(
+  condition: { $expr: string } | undefined,
+  activation: Record<string, unknown>,
+  source: string
+): { matched: boolean; diagnostics: RuntimeDiagnostic[] } {
+  if (!condition) return { matched: true, diagnostics: [] };
   const evaluated = evaluateCel(condition.$expr, activation as Parameters<typeof evaluateCel>[1]);
   return {
     matched: evaluated.value === true,
-    diagnostics: evaluated.diagnostics.map((item) => diagnostic(item.code, item.message, source))
+    diagnostics: evaluated.diagnostics.map((item) => diagnostic(item.code, item.message, { source }))
   };
 }
 
-function evaluateExpressionValue(value: unknown, activation: Record<string, unknown>, source: string): { value: unknown; diagnostics: RuntimeDiagnostic[] } {
+function evaluateExpressionValue(
+  value: unknown,
+  activation: Record<string, unknown>,
+  source: string
+): { value: unknown; diagnostics: RuntimeDiagnostic[] } {
   const diagnostics: RuntimeDiagnostic[] = [];
   const evaluated = evaluateTemplate(value, activation, (expr, nestedActivation) => {
-    const result = evaluateCel(expr, nestedActivation as Parameters<typeof evaluateCel>[1]);
-    diagnostics.push(...result.diagnostics.map((item) => diagnostic(item.code, item.message, source)));
-    return result.value;
+    const evaluatedExpression = evaluateCel(
+      expr,
+      nestedActivation as Parameters<typeof evaluateCel>[1]
+    );
+    diagnostics.push(...evaluatedExpression.diagnostics.map((item) =>
+      diagnostic(item.code, item.message, { source })
+    ));
+    return evaluatedExpression.value;
   });
   return { value: evaluated, diagnostics };
 }
 
-function executorShouldRunWorkflow(registry: RuntimeRegistry, workflow: WorkflowContract, executor: string | undefined): boolean {
-  if (workflow.run?.execution?.mode !== "single_executor") {
-    return true;
-  }
-  return selectedExecutorForWorkflow(registry, workflow.id) === executor;
-}
-
-function selectedExecutorForWorkflow(registry: RuntimeRegistry, workflowId: string): string | undefined {
-  const policies = [...registry.policies.values()]
-    .filter((policy) => policy.enabled !== false)
-    .sort((a, b) => a.id.localeCompare(b.id));
-  for (const policy of policies) {
-    const workflowExecutor = policy.executors?.workflows?.[workflowId];
-    if (workflowExecutor) {
-      return workflowExecutor;
-    }
-  }
-  for (const policy of policies) {
-    if (policy.executors?.default) {
-      return policy.executors.default;
-    }
-  }
-  return undefined;
-}
-
-function failedStep(step: WorkflowStep, diagnostics: RuntimeDiagnostic[], extra?: RuntimeDiagnostic): StepExecutionResult {
-  if (extra) {
-    diagnostics.push(extra);
-  }
+function failedStep(
+  step: RuntimeWorkflowStep,
+  diagnostics: RuntimeDiagnostic[],
+  input?: unknown,
+  outcome?: ActionOutcome
+): StepExecutionResult {
   return {
     id: step.id,
-    action: step.action,
+    action: step.action.id,
     status: "failed",
+    ...(input === undefined ? {} : { input }),
+    ...(outcome === undefined ? {} : { outcome }),
     diagnostics
   };
 }
 
-function result(diagnostics: RuntimeDiagnostic[], runs: WorkflowRunResult[]): RuntimeExecutionResult {
+function result(
+  options: ExecuteRuntimeEventOptions,
+  status: RuntimeExecutionResult["status"],
+  diagnostics: RuntimeDiagnostic[],
+  steps: StepExecutionResult[]
+): RuntimeExecutionResult {
   return {
-    valid: !diagnostics.some((item) => item.severity === "error"),
+    valid: !diagnostics.some(({ severity }) => severity === "error"),
+    workflow: options.workflow.id,
+    trigger: options.trigger_id,
+    status,
     diagnostics,
-    runs
+    steps
   };
 }
 
-function diagnostic(code: string, message: string, id?: string): RuntimeDiagnostic {
+function diagnostic(code: string, message: string, details?: unknown): RuntimeDiagnostic {
   return {
     severity: "error",
     code,
     message,
-    id
+    ...(details === undefined ? {} : { details })
   };
-}
-
-function cloneRecord(record: StoredRecord): StoredRecord {
-  return {
-    path: record.path,
-    frontmatter: { ...record.frontmatter },
-    body: record.body
-  };
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

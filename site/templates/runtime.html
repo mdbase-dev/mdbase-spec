@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Runtime Profile - mdbase</title>
-  <meta name="description" content="Portable event, action, and workflow contracts for applications that automate mdbase collections.">
+  <meta name="description" content="Durable workflows built on ordinary mdbase contracts and shared event/action interoperability.">
   <meta property="og:title" content="Runtime Profile - mdbase">
-  <meta property="og:description" content="Portable automation contracts for typed Markdown collections.">
+  <meta property="og:description" content="Durable automation without a second contract system.">
   <meta property="og:url" content="https://mdbase.dev/runtime">
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#fcfcfd">
@@ -32,12 +32,12 @@
   <main>
     <section class="runtime-hero" aria-labelledby="runtime-title">
       <div class="runtime-hero-copy">
-        <div class="section-kicker">Runtime profile 0.1</div>
-        <h1 id="runtime-title">Portable automation contracts</h1>
+        <div class="section-kicker">Runtime companion 0.2</div>
+        <h1 id="runtime-title">Durability, without another contract system</h1>
         <p>
-          The runtime profile defines typed Markdown records for events, actions,
-          and workflows. Applications provide the executable behavior and decide
-          what is authorized.
+          Contracts define meaning. Interoperability connects live applications.
+          The runtime adds admission, persistence, retries, recovery, and honest
+          outcomes when effects cannot be known.
         </p>
         <div class="runtime-hero-actions">
           <a href="spec.html#section-13" class="btn btn-primary">Read the runtime profile</a>
@@ -48,31 +48,38 @@
 
     <section class="runtime-section" id="runtime-model">
       <div class="section-kicker">Model</div>
-      <h2 class="section-title">Declare, provide, execute</h2>
+      <h2 class="section-title">Define, connect, admit, recover</h2>
       <p class="section-intro">
-        The collection stores portable contracts. A runtime connects those
-        contracts to live application behavior.
+        Each layer has one job, so applications can consume the same types and
+        contracts without implementing a workflow engine.
       </p>
       <ol class="runtime-flow">
         <li>
           <span>01</span>
           <div>
-            <h3>Collection declares</h3>
-            <p>Event, action, and workflow records describe what can happen and how the pieces connect.</p>
+            <h3>Contracts define</h3>
+            <p>Record, event, and action artifacts share one identity, SemVer, schema, digest, and conflict model.</p>
           </div>
         </li>
         <li>
           <span>02</span>
           <div>
-            <h3>Provider implements</h3>
-            <p>An application registers the events it can emit and the actions it can perform.</p>
+            <h3>Applications connect</h3>
+            <p>Verified interoperability declarations bind live sources and handlers to exact artifacts.</p>
           </div>
         </li>
         <li>
           <span>03</span>
           <div>
-            <h3>Host executes</h3>
-            <p>The host validates contracts and policy, authorizes the action, and dispatches it.</p>
+            <h3>Runtime admits</h3>
+            <p>Policy selects one provider and pins exact contract, source, provider, and handler evidence.</p>
+          </div>
+        </li>
+        <li>
+          <span>04</span>
+          <div>
+            <h3>Durability recovers</h3>
+            <p>Runs, attempts, leases, timers, cursors, and outcomes survive crashes without guessing.</p>
           </div>
         </li>
       </ol>
@@ -80,52 +87,60 @@
 
     <section class="runtime-section" id="runtime-example">
       <div class="section-kicker">Example</div>
-      <h2 class="section-title">A drop event updates one record</h2>
+      <h2 class="section-title">Readable requirements, exact admitted evidence</h2>
       <p class="section-intro">
-        This abridged workflow comes from the canonical Canvas runtime fixture.
+        Authors name behavior and a compatible version. The runtime writes the
+        exact digests and implementation identities during admission.
       </p>
       <div class="runtime-example">
-        <pre data-lang="yaml"><code>type: workflow
+        <pre data-lang="yaml"><code>type: runtime_workflow
 id: canvas.zone.set-status
-version: 1
+version: 1.0.0
+name: Set status from canvas zone
+enabled: true
 
 triggers:
   - id: drop-on-status-zone
-    event: canvas.drop
+    event:
+      id: canvas.drop
+      version: ^1.0.0
 
 steps:
   - id: patch-task-status
-    action: mdbase.record.patch
+    action:
+      id: mdbase.record.patch
+      version: ^2.0.0
     input:
       path:
-        $expr: 'event.payload.file.path'
+        $expr: event.data.file.path
       patch:
         status:
-          $expr: 'event.payload.zone.id'</code></pre>
+          $expr: event.data.zone.id</code></pre>
         <div class="runtime-example-copy">
-          <p>The event supplies a file path and destination zone.</p>
-          <p>The workflow maps those values into a record patch action.</p>
-          <p>The host validates the contracts and active policy before dispatch.</p>
+          <p>The event is an ordinary structured CloudEvent.</p>
+          <p>The action uses the shared request, invocation, and outcome envelopes.</p>
+          <p>The admitted plan pins exact contracts and one selected provider before dispatch.</p>
         </div>
       </div>
     </section>
 
     <section class="runtime-section" id="runtime-reference">
       <div class="section-kicker">Reference</div>
-      <h2 class="section-title">Read the complete profile</h2>
+      <h2 class="section-title">Read and inspect the complete model</h2>
       <p class="section-intro">
-        <a href="spec.html#section-13">Runtime Contracts</a> defines providers,
-        events, actions, capabilities, and policy. <a href="spec.html#section-14">Workflows</a>
-        defines how events become validated action runs.
+        <a href="spec.html#section-13">The Durable Runtime Companion</a> defines
+        the boundary, standard pack, policy, and admission.
+        <a href="spec.html#section-14">Workflow Execution</a> defines durable
+        state, attempts, leases, recovery, cancellation, timers, and cursors.
       </p>
       <p class="runtime-source-link">
-        <a href="https://github.com/mdbase-dev/mdbase-spec/tree/main/examples/v0.3/canvas-runtime">Open the complete Canvas example on GitHub</a>
+        <a href="https://github.com/mdbase-dev/mdbase-spec/tree/main/standard-packs/mdbase-runtime/0.2.0">Inspect the complete standard runtime pack on GitHub</a>
       </p>
     </section>
   </main>
 
   <footer class="landing-footer">
-    <p>mdbase specification v0.3.0 &middot; runtime profile 0.1 &middot; <a href="spec-v0.2.html">v0.2 archive</a> &middot; <a href="/privacy/">Privacy</a> &middot; <a href="/terms/">Terms</a> &middot; <a href="https://opensource.org/licenses/MIT">MIT License</a> &middot; <a href="https://github.com/mdbase-dev/mdbase-spec">Source on GitHub</a></p>
+    <p>mdbase specification v0.3.0 &middot; runtime companion 0.2 &middot; <a href="spec-v0.2.html">v0.2 archive</a> &middot; <a href="/privacy/">Privacy</a> &middot; <a href="/terms/">Terms</a> &middot; <a href="https://opensource.org/licenses/MIT">MIT License</a> &middot; <a href="https://github.com/mdbase-dev/mdbase-spec">Source on GitHub</a></p>
   </footer>
 </body>
 </html>

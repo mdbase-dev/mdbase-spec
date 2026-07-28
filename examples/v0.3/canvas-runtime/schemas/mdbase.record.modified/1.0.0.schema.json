@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/examples/mdbase.record.modified/1.0.0.schema.json",
+  "type": "object",
+  "required": ["path", "types"],
+  "properties": {
+    "path": { "type": "string" },
+    "types": { "type": "array", "items": { "type": "string" } },
+    "previous_types": { "type": "array", "items": { "type": "string" } },
+    "before": { "type": "object" },
+    "after": { "type": "object" },
+    "changed_fields": { "type": "array", "items": { "type": "string" } },
+    "previous_revision": { "type": "string" },
+    "revision": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -30,9 +30,6 @@
     "lifecycle": {
       "$ref": "#/$defs/lifecycle"
     },
-    "runtime": {
-      "$ref": "#/$defs/runtime"
-    },
     "migrations": {
       "$ref": "#/$defs/migrations"
     },
@@ -509,26 +506,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "runtime": {
-      "type": "object",
-      "properties": {
-        "contracts": {
-          "type": "object",
-          "properties": {
-            "mode": {
-              "enum": ["runtime", "materialized", "strict"]
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "patternProperties": {
-        "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
-          "$ref": "#/$defs/domainExtension"
-        }
-      },
-      "additionalProperties": false
     },
     "migrations": {
       "type": "array",

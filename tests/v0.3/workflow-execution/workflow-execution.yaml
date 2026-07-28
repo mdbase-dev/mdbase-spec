@@ -9,7 +9,7 @@ groups:
     tests:
       - id: workflow.atomic-admission
         name: "event journal and every derived run become visible atomically"
-        covers: [workflow/0.1.durable_event_admission, workflow/0.1.trigger_admission]
+        covers: [runtime/0.2.durable_event_admission, runtime/0.2.trigger_admission]
         operation: runtime_admit_event
         input:
           event_id: evt_atomic
@@ -27,7 +27,7 @@ groups:
 
       - id: workflow.deterministic-plan
         name: "variables conditions and iteration are deterministic and bounded"
-        covers: [workflow/0.1.variables_and_conditions, workflow/0.1.deterministic_steps_and_iteration]
+        covers: [runtime/0.2.variables_and_conditions, runtime/0.2.deterministic_steps_and_iteration]
         operation: runtime_execute_event
         input:
           event_id: evt_iteration
@@ -40,7 +40,7 @@ groups:
 
       - id: workflow.executor-concurrency
         name: "single executor idempotency and concurrency decisions are shared"
-        covers: [workflow/0.1.execution_modes, workflow/0.1.idempotency_and_concurrency]
+        covers: [runtime/0.2.execution_modes, runtime/0.2.idempotency_and_concurrency]
         operation: runtime_race_workers
         input:
           workers: 16
@@ -57,7 +57,7 @@ groups:
     tests:
       - id: workflow.dispatch-authorization
         name: "current policy and host authorization are checked immediately before dispatch"
-        covers: [workflow/0.1.dispatch_authorization]
+        covers: [runtime/0.2.dispatch_authorization]
         operation: runtime_execute_event
         input:
           admit_with_policy: allow
@@ -69,7 +69,7 @@ groups:
 
       - id: workflow.idempotent-recovery
         name: "unknown idempotent dispatch reuses its invocation ID after lease recovery"
-        covers: [workflow/0.1.durable_action_attempts, workflow/0.1.lease_and_crash_recovery]
+        covers: [runtime/0.2.durable_action_attempts, runtime/0.2.lease_and_crash_recovery]
         operation: runtime_recover_dispatch
         input:
           dispatch_idempotency: invocation_id
@@ -83,7 +83,7 @@ groups:
 
       - id: workflow.non-idempotent-recovery
         name: "unknown non-idempotent dispatch becomes indeterminate without replay"
-        covers: [workflow/0.1.durable_action_attempts, workflow/0.1.lease_and_crash_recovery]
+        covers: [runtime/0.2.durable_action_attempts, runtime/0.2.lease_and_crash_recovery]
         operation: runtime_recover_dispatch
         input:
           dispatch_idempotency: none
@@ -95,7 +95,7 @@ groups:
 
       - id: workflow.state-machine
         name: "terminal transitions and stale lease writes are rejected"
-        covers: [workflow/0.1.run_state_machine]
+        covers: [runtime/0.2.run_state_machine]
         operation: runtime_transition_run
         input:
           transitions:
@@ -117,7 +117,7 @@ groups:
     tests:
       - id: workflow.one-shot-timer
         name: "only the current overdue timer generation fires once after restart"
-        covers: [workflow/0.1.one_shot_timers]
+        covers: [runtime/0.2.one_shot_timers]
         operation: runtime_fire_timer
         input:
           timer_id: reminder
@@ -134,7 +134,7 @@ groups:
 
       - id: workflow.journal-reset
         name: "pruning keeps dedupe tombstones and reports expired cursors"
-        covers: [workflow/0.1.durable_event_admission]
+        covers: [runtime/0.2.durable_event_admission]
         operation: runtime_prune_journal
         input:
           deliver_event: evt_retained

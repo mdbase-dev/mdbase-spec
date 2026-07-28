@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "mdbase durable runtime workflow",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "version",
+    "name",
+    "enabled",
+    "triggers",
+    "steps"
+  ],
+  "properties": {
+    "type": {
+      "const": "runtime_workflow"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "requires": {
+      "$ref": "#/$defs/requires"
+    },
+    "vars": {
+      "type": "object",
+      "additionalProperties": {}
+    },
+    "triggers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/trigger"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "run": {
+      "$ref": "#/$defs/runPolicy"
+    }
+  },
+  "patternProperties": {
+    "^x-[A-Za-z0-9._:-]+$": true
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "contractRequirement": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "exactContractReference": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "application",
+        "implementation",
+        "version"
+      ],
+      "properties": {
+        "application": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "providerSelector": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "application": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "expression": {
+      "type": "object",
+      "required": [
+        "$expr"
+      ],
+      "properties": {
+        "$expr": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "requires": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "trigger": {
+      "type": "object",
+      "required": [
+        "id",
+        "event"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "event": {
+          "$ref": "#/$defs/contractRequirement"
+        },
+        "if": {
+          "type": "object",
+          "required": [
+            "$expr"
+          ],
+          "properties": {
+            "$expr": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "debounce": {
+          "$ref": "#/$defs/duration"
+        },
+        "minimum_interval": {
+          "$ref": "#/$defs/duration"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "action"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "action": {
+          "$ref": "#/$defs/contractRequirement"
+        },
+        "provider": {
+          "$ref": "#/$defs/providerSelector"
+        },
+        "requires": {
+          "$ref": "#/$defs/requires"
+        },
+        "if": {
+          "type": "object",
+          "required": [
+            "$expr"
+          ],
+          "properties": {
+            "$expr": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "for_each": {
+          "type": "object",
+          "required": [
+            "items"
+          ],
+          "properties": {
+            "items": {},
+            "as": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            }
+          },
+          "patternProperties": {
+            "^x-[A-Za-z0-9._:-]+$": true
+          },
+          "additionalProperties": false
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "duration": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)(ms|s|m|h|d)$"
+    },
+    "runPolicy": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "idempotency": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {}
+          },
+          "patternProperties": {
+            "^x-[A-Za-z0-9._:-]+$": true
+          },
+          "additionalProperties": false
+        },
+        "concurrency": {
+          "type": "object",
+          "required": [
+            "policy"
+          ],
+          "properties": {
+            "group": {},
+            "policy": {
+              "enum": [
+                "skip",
+                "queue",
+                "replace",
+                "allow"
+              ]
+            }
+          },
+          "patternProperties": {
+            "^x-[A-Za-z0-9._:-]+$": true
+          },
+          "additionalProperties": false
+        },
+        "limits": {
+          "type": "object",
+          "required": [],
+          "properties": {
+            "timeout": {
+              "$ref": "#/$defs/duration"
+            },
+            "max_items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "patternProperties": {
+            "^x-[A-Za-z0-9._:-]+$": true
+          },
+          "additionalProperties": false
+        },
+        "on_error": {
+          "enum": [
+            "stop",
+            "continue"
+          ]
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    }
+  },
+  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.workflow/1.0.0.schema.json"
+}

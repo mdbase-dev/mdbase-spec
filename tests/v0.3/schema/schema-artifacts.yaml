@@ -20,7 +20,7 @@ groups:
         input:
           schema: "schemas/v0.3/type-file.schema.json"
           paths:
-            - "examples/v0.3/canvas-runtime/_types/*.md"
+            - "examples/v0.3/canvas-runtime/_types/task.md"
         expect:
           valid: true
 
@@ -178,76 +178,39 @@ groups:
         expect:
           valid: true
 
-  - name: "runtime record schemas"
+  - name: "runtime companion schemas"
     tests:
-      - name: "provider contract records validate"
-        operation: markdown_frontmatter_schema_validate
+      - name: "standard runtime record schemas validate"
+        operation: json_schema_meta_validate
         input:
-          schema: "schemas/v0.3/runtime/provider.schema.json"
           paths:
-            - "examples/v0.3/canvas-runtime/providers/*.md"
+            - "standard-packs/mdbase-runtime/0.2.0/schemas/**/*.schema.json"
         expect:
           valid: true
 
-      - name: "action contract records validate"
+      - name: "standard runtime type implementations validate"
         operation: markdown_frontmatter_schema_validate
         input:
-          schema: "schemas/v0.3/runtime/action.schema.json"
+          schema: "schemas/v0.3/type-file.schema.json"
           paths:
-            - "examples/v0.3/canvas-runtime/actions/*.md"
+            - "standard-packs/mdbase-runtime/0.2.0/_types/*.md"
         expect:
           valid: true
 
-      - name: "action provider requirements accept version ranges"
+      - name: "standard runtime contracts validate"
+        operation: markdown_frontmatter_schema_validate
+        input:
+          schema: "schemas/v0.3/data-contract.schema.json"
+          paths:
+            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
+        expect:
+          valid: true
+
+      - name: "standard runtime pack manifest validates"
         operation: yaml_document_schema_validate
         input:
-          schema: "schemas/v0.3/runtime/action.schema.json"
+          schema: "schemas/v0.3/type-pack.schema.json"
           paths:
-            - "tests/v0.3/fixtures/runtime/valid-action-provider-range.yml"
-        expect:
-          valid: true
-
-      - name: "event contract records validate"
-        operation: markdown_frontmatter_schema_validate
-        input:
-          schema: "schemas/v0.3/runtime/event.schema.json"
-          paths:
-            - "examples/v0.3/canvas-runtime/events/*.md"
-        expect:
-          valid: true
-
-      - name: "capability records validate"
-        operation: markdown_frontmatter_schema_validate
-        input:
-          schema: "schemas/v0.3/runtime/capability.schema.json"
-          paths:
-            - "examples/v0.3/canvas-runtime/capabilities/*.md"
-        expect:
-          valid: true
-
-      - name: "workflow records validate"
-        operation: markdown_frontmatter_schema_validate
-        input:
-          schema: "schemas/v0.3/runtime/workflow.schema.json"
-          paths:
-            - "examples/v0.3/canvas-runtime/workflows/*.md"
-        expect:
-          valid: true
-
-      - name: "runtime policy records validate"
-        operation: markdown_frontmatter_schema_validate
-        input:
-          schema: "schemas/v0.3/runtime/runtime-policy.schema.json"
-          paths:
-            - "examples/v0.3/canvas-runtime/policies/*.md"
-        expect:
-          valid: true
-
-      - name: "sample event envelope validates"
-        operation: json_document_schema_validate
-        input:
-          schema: "schemas/v0.3/runtime/event-envelope.schema.json"
-          paths:
-            - "examples/v0.3/canvas-runtime/runtime-events/sample-canvas-drop-event.json"
+            - "standard-packs/mdbase-runtime/0.2.0/mdbase-pack.yaml"
         expect:
           valid: true

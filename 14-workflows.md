@@ -1,384 +1,263 @@
-# 14. Workflows
+# 14. Durable Workflow Execution
 
 ## Purpose
 
-A workflow is a typed Markdown record that connects runtime events to runtime
-actions. Chapter 13 defines the event, action, provider, capability, and policy
-contracts that a workflow references. This chapter defines how a runtime turns a
-validated workflow and event into a run.
+Chapter 13 defines the companion-profile boundary, standard records, policy,
+and admission. This chapter defines the durable protocol after a workflow and
+event have been admitted.
 
-## Workflow Record
+JSON Schema proves that persisted evidence has the right shape. The transition,
+transaction, lease, replay, and recovery rules below are behavioral
+requirements and cannot be replaced by schema validation.
 
-Workflow records use `trigger.event` and `step.action` identifiers from the
-effective registry:
+## Execution Inputs
 
-```yaml
-type: workflow
-id: canvas.zone.set-status
-version: 1
-name: Set status from canvas zone
-enabled: true
+A worker executes only an immutable admitted plan. The plan contains:
 
-triggers:
-  - id: drop-on-zone
-    event: canvas.drop
-    if:
-      $expr: 'has(event.payload.zone) && has(event.payload.file)'
+- workflow content revision;
+- exact triggering event contract and source declaration;
+- exact action contracts;
+- one exact provider identity, declaration digest, and handler ID per step;
+- selected runtime policy revision;
+- evaluated limits and authority evidence;
+- run idempotency and concurrency decisions.
 
-steps:
-  - id: patch-status
-    action: mdbase.record.patch
-    input:
-      path:
-        $expr: 'event.payload.file.path'
-      patch:
-        status:
-          $expr: 'event.payload.zone.id'
+The worker may confirm that a live declaration still matches the pin. It must
+not silently resolve a replacement.
 
-run:
-  execution:
-    mode: single_executor
-  idempotency:
-    key:
-      $expr: 'workflow.id + ":" + event.id + ":" + trigger.id'
+## Deterministic Evaluation
+
+Workflow variables, conditions, templates, and iteration use the expression
+rules in Chapter 11. Runtime activation exposes the shared CloudEvent as
+`event`; portable payload values therefore appear below `event.data`.
+
+- variables are evaluated once in dependency order;
+- cycles fail preflight;
+- trigger and step conditions must evaluate to boolean true to continue;
+- object values are literals unless they have exactly one `$expr` key;
+- steps execute in document order;
+- `for_each` visits list items in list order;
+- evaluated action input is validated by the interoperability bridge before
+  provider invocation;
+- action output or declared error data is validated before it becomes durable
+  step state.
+
+Every execution limit is the stricter of the workflow and current policy.
+
+## Durable Event Admission
+
+Event delivery may be repeated. The data authority therefore commits the
+following atomically:
+
+- validated CloudEvent and exact source evidence;
+- duplicate/tombstone state;
+- monotonically increasing delivery cursor;
+- every run admitted from the event;
+- run idempotency reservations;
+- concurrency queue changes;
+- immutable admitted plans.
+
+A crash cannot expose the event without its derived runs or a run without its
+event. Retrying the same event ID and contract/source evidence returns the
+original cursor and does not create another logical run. Reuse of an event ID
+with different canonical content fails closed.
+
+Pruning may remove event bodies after the documented retention period but
+keeps sufficient tombstone evidence through the replay horizon. Reading from a
+cursor older than retained history reports `cursor_expired` and the earliest
+available cursor; it never silently skips the gap.
+
+## Run State Machine
+
+Portable run states and transitions are:
+
+| From | To | Cause |
+| --- | --- | --- |
+| admitted | `queued` | concurrency delays execution |
+| admitted or `queued` | `running` | worker obtains current lease |
+| `running` | `waiting` | durable checkpoint suspends execution |
+| `waiting` | `queued` | checkpoint becomes ready |
+| `running` | `succeeded` | all required steps complete |
+| `running` | `failed` | deterministic failure or deadline |
+| `queued`, `running`, `waiting` | `cancelled` | cancellation completes without ambiguous effects |
+| `running` | `indeterminate` | non-replayable action outcome is unknown |
+
+`succeeded`, `failed`, `cancelled`, and `indeterminate` are terminal. A host
+rejects every transition from a terminal state.
+
+## Leases
+
+A worker claims a run with a bounded lease containing owner, opaque token, and
+expiry. Every state-changing write compares the current lease token.
+
+- workers renew before expiry;
+- an expired lease may be recovered by another worker;
+- a stale worker cannot commit a step, checkpoint, or terminal state;
+- handler execution is never treated as proof that its outcome was committed.
+
+Lease duration and renewal strategy are host configuration. The observable
+stale-write rejection is portable.
+
+## Action Attempts
+
+Before invoking a provider, the runtime durably writes an action-attempt intent
+containing the shared request ID, invocation ID, attempt ID, exact contract,
+provider identity, provider-declaration digest, handler ID, idempotency key,
+deadline, and input.
+
+It then sends the ordinary interoperability request. The bridge produces the
+ordinary invocation and outcome evidence. The runtime stores those envelopes
+without redefining them.
+
+Attempt states are:
+
+```text
+admitted → dispatching → succeeded
+                      ↘ rejected
+                      ↘ failed
+                      ↘ cancelled
+                      ↘ indeterminate
 ```
 
-Workflow, trigger, and step objects use a strict core shape. Extension fields
-begin with `x-`. Runtime policy records select executors for the local
-deployment.
+Only an outcome with matching request, invocation, attempt, contract, and
+provider evidence completes the attempt.
 
-## Workflow Run Model
+## Idempotency And Crash Recovery
 
-A runtime processes a workflow through two phases.
-
-### Preflight
-
-Preflight occurs when the workflow or effective registry changes. The runtime:
-
-1. validates the workflow record against the canonical workflow schema
-2. verifies unique trigger IDs and unique step IDs
-3. resolves workflow, trigger, and step provider and capability requirements
-4. resolves every `trigger.event` and `step.action`
-5. compiles every CEL expression in variables, conditions, inputs, iteration,
-   idempotency, and concurrency policy
-6. confirms that action input and output schemas are compiled
-7. evaluates local runtime policy for required capabilities and executor
-   selection
-
-A failed preflight makes the workflow unavailable for execution and emits a
-runtime diagnostic. Preflight is repeated whenever a referenced contract,
-provider, capability, or active runtime policy changes.
-
-### Event-To-Run Sequence
-
-For each delivered event, the runtime:
-
-1. validates the event envelope, contract version, provider provenance, and
-   payload as defined in Chapter 13
-2. journals and deduplicates the event at the data authority
-3. finds enabled workflows with triggers for the event ID
-4. applies trigger debounce and minimum-interval admission
-5. evaluates workflow variables, the trigger condition, and the workflow-level
-   condition
-6. applies execution-mode and executor policy
-7. derives the idempotency key and concurrency group and admits, queues, skips,
-   or replaces the run
-8. pins a canonical execution plan and atomically commits event and run
-   admission
-9. claims the run with a bounded lease and executes steps in document order
-10. validates step outputs and emitted events and records every step result
-11. moves the run to a terminal status
-
-This sequence is normative. A runtime may combine internal stages while
-preserving their validation, authorization, ordering, and diagnostic outcomes.
-
-## Trigger Admission
-
-A trigger subscribes to one event contract ID. Its `id` is unique within the
-workflow.
-
-`trigger.debounce` groups matching deliveries for the same workflow and trigger.
-Each new delivery resets the timer; when the interval expires, the most recent
-validated event is evaluated. `trigger.minimum_interval` admits at most one run
-for that workflow and trigger during the interval. Suppressed deliveries do not
-create runs.
-
-Durations use an integer followed by `ms`, `s`, `m`, `h`, or `d`.
-
-After admission, the runtime evaluates `trigger.if` and the workflow-level `if`.
-Both conditions must evaluate to boolean true. False or null ends processing for
-that trigger. An evaluation error creates a failed-run diagnostic.
-
-## Variables
-
-`vars` defines values shared by the workflow's conditions, run policy, and
-steps. Literal values are preserved. Expression values are evaluated once for
-each admitted trigger using `event`, `workflow`, and `trigger`.
-
-Variables may reference other variables through `vars.<name>`. The runtime
-evaluates those dependencies in topological order. A cycle is a workflow
-preflight error. The resulting `vars` object is immutable for the run.
-
-## Steps
-
-Steps execute in document order. Each step ID is unique within the workflow and
-becomes the key for its standard result under `steps`.
-
-For a step, the runtime:
-
-1. resolves the action from the preflighted registry
-2. evaluates `step.if`
-3. expands an optional `for_each`
-4. recursively evaluates expression values in `step.input`
-5. validates the evaluated input against the action input schema
-6. checks step provider and capability requirements
-7. performs dispatch-time capability authorization
-8. calls the selected action handler
-9. validates the action output and each emitted event
-10. stores the step result before continuing
-
-A false or null step condition records `skipped`. An expression or input
-validation error records `failed` and applies `run.on_error`.
-
-### Expression Values
-
-Only an object containing exactly `$expr` is evaluated as an expression:
-
-```yaml
-input:
-  path:
-    $expr: 'event.payload.file.path'
-  patch:
-    status: in_progress
-    updated_at:
-      $expr: 'now()'
-  note: event.payload.file.path
-```
-
-Here, `note` remains the literal string `event.payload.file.path`.
-
-### Iteration
-
-`for_each.items` evaluates to a list:
-
-```yaml
-steps:
-  - id: patch-each
-    action: mdbase.record.patch
-    for_each:
-      items:
-        $expr: 'event.payload.files'
-      as: item
-    input:
-      path:
-        $expr: 'item.path'
-      patch:
-        status: open
-```
-
-The item binding defaults to `item` and may be renamed with `as`. Profile 0.1
-visits items in list order. The step output is an ordered list of per-item
-outputs, and an item failure fails the step. Runtime and workflow limits cap the
-number of items.
-
-## Run Coordination
-
-The optional `run` object controls executor selection, duplicate suppression,
-concurrency, limits, and step failure behavior:
-
-```yaml
-run:
-  execution:
-    mode: single_executor
-  idempotency:
-    key:
-      $expr: 'workflow.id + ":" + event.id + ":" + trigger.id'
-  concurrency:
-    group:
-      $expr: 'event.payload.file.path'
-    policy: replace
-  limits:
-    timeout: 5m
-    max_items: 100
-  on_error: stop
-```
-
-### Execution Modes
-
-| Mode | Executor behavior |
-| --- | --- |
-| `single_executor` | the executor selected by runtime policy may create the run |
-| `broadcast` | every eligible executor may create its own run |
-| `best_effort` | an eligible runtime may execute locally with duplicate or missed delivery accepted |
-
-`single_executor` is the default. Only the runtime selected by policy creates
-the run. Other runtimes may preflight and report diagnostics.
-
-Runtime policy selects the executor by workflow ID, falling back to its default
-executor:
-
-```yaml
-type: runtime_policy
-id: local.runtime
-version: 1
-name: Local runtime policy
-executors:
-  default: desktop
-  workflows:
-    canvas.zone.set-status: desktop
-    repo.skill.sync: automation-daemon
-```
-
-### Idempotency
-
-Event delivery is at least once. Every `single_executor` run therefore has an
-idempotency key. `run.idempotency.key` supplies it when declared; otherwise the
-runtime derives:
+The workflow run has an idempotency key. If the author does not supply one, the
+host derives:
 
 ```text
 workflow.id + ":" + event.id + ":" + trigger.id
 ```
 
-Before dispatching the first step, the selected executor MUST reserve that key
-in a store shared by every process using the same executor identity. A prior
-reservation suppresses the duplicate run. The reservation remains valid across
-the provider's documented replay horizon.
+The key is reserved during admission, before any dispatch.
 
-The idempotency reservation, concurrency decision, pinned execution plan, and
-run record are committed in the event-admission transaction. Reserving a key
-after dispatch begins is not conformant.
+Action replay follows the action artifact and provider declaration:
 
-A missing shared reservation store for a side-effecting `single_executor` run
-produces `idempotency_unavailable`. For `broadcast`, reservation scope includes
-the executor identity so each eligible executor can run once.
+- for request-idempotent actions, recovery reuses the same request and
+  invocation identity as required by the binding and obtains the retained
+  outcome or safely retries;
+- for non-idempotent actions, a crash after dispatch but before durable outcome
+  creates `indeterminate`; the runtime does not guess or replay;
+- conflicting reuse of a request or idempotency key fails closed;
+- an action marked as requiring idempotency is ineligible when the provider or
+  transport cannot supply it.
 
-### Concurrency
+Exactly-once external side effects are not promised. The profile provides
+durable intent, duplicate suppression, explicit replay rules, and honest
+indeterminate outcomes.
 
-When `run.concurrency` is absent, the policy is `allow`. When a policy is present
-without `group`, the workflow ID is the group.
+## Concurrency
 
-| Policy | Behavior for a new run in an active group |
+The optional workflow concurrency policy applies to an evaluated group:
+
+| Policy | New run while group is active |
 | --- | --- |
-| `skip` | discard the new run |
-| `queue` | start it after earlier runs reach a terminal state |
-| `replace` | request cancellation, then start it after the active run is terminal |
+| `skip` | record the admission decision and do not execute |
+| `queue` | preserve event-cursor order |
+| `replace` | request cancellation, then wait for a terminal state |
 | `allow` | run concurrently |
 
-Completed action effects remain committed during replacement. The replacement
-waits for an uncancellable active action to finish.
+When no group expression is supplied, the workflow ID is the group. Completed
+effects are never rolled back by `replace`. A replacement waits when the active
+action cannot be cancelled safely.
 
-Events are ordered within one provider stream. Queue order for a concurrency
-group preserves that delivery order. Ordering between different provider
-streams is unspecified, and runtimes tolerate replay.
+## Cancellation And Deadlines
 
-### Limits And Failure Policy
+Cancellation is cooperative and uses the interoperability cancellation
+envelope. The runtime records the request before delivery.
 
-Workflow limits and runtime-policy limits combine by taking the stricter value.
-`timeout` applies to the complete run. `max_items` caps the total items expanded
-by any one step.
+- not-yet-started attempts are not dispatched;
+- cooperative providers receive cancellation through the bridge;
+- a confirmed cancelled outcome permits `cancelled`;
+- a completed action outcome wins a race with cancellation;
+- loss of a non-idempotent outcome becomes `indeterminate`;
+- terminal runs ignore repeated cancellation requests idempotently.
 
-`run.on_error` defaults to `stop`. `stop` skips remaining steps after a failure.
-`continue` records the failed step and proceeds to the next step whose condition
-can be evaluated.
+A run deadline prevents all new dispatches after expiry. A deterministic
+deadline failure becomes `failed`; an already-dispatched action whose outcome
+cannot be known follows the indeterminate rule.
 
-## Run And Step Results
+## Checkpoints
 
-A run follows these portable transitions:
+A checkpoint stores enough state to resume deterministically:
 
-| From | To | Cause |
-| --- | --- | --- |
-| admitted | `queued` | concurrency policy delays execution |
-| admitted or `queued` | `running` | a worker obtains the current lease |
-| `running` | `waiting` | a durable checkpoint suspends execution |
-| `waiting` | `queued` | the checkpoint becomes ready |
-| `running` | `succeeded` | every required step completes |
-| `running` | `failed` | a deterministic failure or timeout is recorded |
-| `queued`, `running`, or `waiting` | `cancelled` | cancellation completes without ambiguous effects |
-| `running` | `indeterminate` | a non-idempotent dispatch has an unknown outcome |
+- run ID and current generation;
+- next step/item position;
+- immutable variables and completed step outputs;
+- pending request/invocation evidence;
+- wait condition;
+- current workflow/admitted-plan revision;
+- lease-safe updated time.
 
-`succeeded`, `failed`, `cancelled`, and `indeterminate` are terminal.
-Implementations MUST reject transitions from a terminal state and writes made
-with a stale lease token.
+Checkpoint generation only increases. A stale generation or stale lease write
+is rejected. Completion is recorded before the worker advances.
 
-Each step result contains `id`, `action`, and `status`, with `output` or `error`
-when applicable. Step status is one of:
+## Timers
 
-- `pending`
-- `running`
-- `succeeded`
-- `failed`
-- `skipped`
-- `cancelled`
-- `timed_out`
-- `indeterminate`
+A durable timer is generation-safe and one-shot.
 
-A run deadline prevents every not-yet-started dispatch. If no dispatch intent
-is active, the current step is recorded as `timed_out` and the run as `failed`.
-Cancellation records the active step and run as `cancelled`. These outcomes
-remain distinct in diagnostics and run history.
+1. scheduling writes generation `n`, fire time, and an event contract
+   requirement plus event data;
+2. rescheduling writes generation `n + 1` and makes older generations stale;
+3. a worker atomically claims the current due generation;
+4. firing publishes `mdbase.runtime.timer.fired` or the requested event through
+   an interoperability event source;
+5. the resulting CloudEvent is admitted through the ordinary event journal;
+6. the timer becomes `fired` only with matching event evidence.
 
-Action effects completed before a failure remain committed according to the
-action contract. Result details SHOULD identify completed external effects so a
-person or agent can reconcile partial work.
+After restart, an overdue current generation fires once under
+`missed_run_policy: fire_once`. Polling or racing workers cannot create two
+logical events.
 
-Profile 0.1 dispatches an action once for each step or iteration item. Retry
-behavior uses an `x-*` extension that defines retry conditions, limits, and
-result history. An action with external effects is retried only when its
-contract declares idempotency support or runtime policy explicitly authorizes
-the retry.
+## Policy Rechecks
 
-### Durable Action Attempt Protocol
+Admission pins compatibility and selection. Authority is checked again
+immediately before each dispatch because grants, scopes, or approval may have
+changed.
 
-For each step or iteration item, the executor:
+A new denial prevents dispatch and fails the attempt with
+`capability_denied`. A policy change does not substitute another provider or
+contract in an admitted plan. That requires re-admission.
 
-1. derives and persists a stable invocation ID
-2. evaluates and validates input
-3. performs current dispatch-time authorization
-4. persists a dispatch intent and attempt number
-5. invokes the provider with the invocation ID
-6. validates output and emitted events
-7. atomically persists the receipt, result, step state, and emitted-event
-   admissions
+## Diagnostics And Dead Letters
 
-Provider timeout does not prove that an effect failed. An executor MUST NOT
-erase an active dispatch intent or report a non-idempotent effect as merely
-`timed_out`. If no result is durable, recovery follows the action's declared
-idempotency contract from Chapter 13: an idempotent invocation may be replayed
-with the same invocation ID to reconcile its receipt, while a non-idempotent
-invocation becomes `indeterminate`. Reconciliation never permits a new
-invocation or subsequent workflow step after the run deadline. If an
-idempotent provider returns a committed result after the deadline, the runtime
-records its receipt and effect, marks the step `timed_out`, and fails the run.
+Protocol failures use stable codes and durable evidence. Important examples
+include:
 
-### Crash Recovery
+- `unknown_contract`;
+- `contract_digest_conflict`;
+- `event_source_unavailable`;
+- `no_provider`;
+- `ambiguous_provider`;
+- `capability_denied`;
+- `idempotency_unavailable`;
+- `invalid_run_transition`;
+- `stale_lease`;
+- `cursor_expired`;
+- `outcome_indeterminate`.
 
-On startup and periodically, an executor reclaims expired run and checkpoint
-leases. Recovery resumes from the last committed state:
+Unprocessable event/request/outcome evidence may be retained as
+`mdbase.runtime.dead-letter`. A dead-letter record is passive. Requeue is an
+explicit authorized operation that creates new admission evidence.
 
-- pending work can be claimed normally
-- an idempotent dispatch intent is replayed with its original invocation ID
-- a non-idempotent dispatch intent becomes `indeterminate`
-- a committed step result is never dispatched again
-- a committed emitted event can be redelivered but is deduplicated by event ID
+## Minimum Durable Conformance
 
-Recovery MUST NOT infer success from elapsed time or infer failure from a lost
-transport connection.
+A runtime claiming profile 0.2 must demonstrate:
 
-### Cancellation And Replacement
+- ordinary record-contract validation of runtime records;
+- exact contract/source/provider pinning through interoperability declarations;
+- authorization separate from conformance;
+- atomic event/run admission and duplicate suppression;
+- legal run and attempt transitions;
+- stale-lease rejection and crash recovery;
+- idempotent versus non-idempotent recovery;
+- generation-safe timers;
+- cursor expiry behavior;
+- cancellation and deadline races;
+- machine-readable diagnostics.
 
-Cancellation is durable intent. Queued work can be cancelled immediately.
-Cooperative actions receive a cancellation request; actions declaring
-`dispatch.cancellation: none` are allowed to finish before the run reaches a
-terminal state. Completed effects are never rolled back implicitly.
-
-`replace` records cancellation intent for the active run, waits until that run
-is terminal, and then makes the replacement runnable. If the active run becomes
-`indeterminate`, the replacement remains queued until policy or an operator
-explicitly allows it to proceed.
-
-## Workflow Sources
-
-Built-in, provider, pack, and collection workflows enter the effective registry
-through the composition rules in Chapter 13. Built-in workflows SHOULD be
-inspectable and MAY be materialized. Identical definitions coalesce; conflicting
-definitions produce `runtime_contract_conflict` with their origins.
+The reference TypeScript executor demonstrates the boundary and shared
+exchange model but is intentionally non-durable. Durable conformance belongs to
+hosts such as the Rust runtime and Connect binding.

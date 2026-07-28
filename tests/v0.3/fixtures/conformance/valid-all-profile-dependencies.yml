@@ -5,7 +5,7 @@ implementation:
   name: Valid dependency fixture
   version: 0.0.0-test
 spec_version: 0.3.0
-runtime_profile_version: 0.1.0
+runtime_profile_version: "0.2"
 interop_profile_version: "0.1"
 profiles:
   - core_read
@@ -17,8 +17,7 @@ profiles:
   - core_write
   - lifecycle
   - event_action_interop/0.1
-  - runtime_contracts/0.1
-  - workflow/0.1
+  - runtime/0.2
   - watch
 json_schema:
   dialect: https://json-schema.org/draft/2020-12/schema

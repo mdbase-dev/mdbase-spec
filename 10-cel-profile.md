@@ -127,7 +127,7 @@ receive the standard results of completed steps. Iteration adds the current
 item under the configured iteration name, with `item` as the default.
 
 ```cel
-event.payload.zone.id
+event.data.zone.id
 ```
 
 ```cel

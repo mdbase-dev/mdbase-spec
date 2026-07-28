@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/examples/mdbase.record.patch/2.0.0.schema.json",
+  "type": "object",
+  "required": ["path", "patch"],
+  "properties": {
+    "path": { "type": "string", "minLength": 1 },
+    "patch": { "type": "object", "minProperties": 1 }
+  },
+  "additionalProperties": false
+}

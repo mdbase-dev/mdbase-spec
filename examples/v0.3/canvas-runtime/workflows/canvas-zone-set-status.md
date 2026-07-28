@@ -1,7 +1,7 @@
 ---
-type: workflow
+type: runtime_workflow
 id: canvas.zone.set-status
-version: 1
+version: 1.0.0
 name: Set task status from canvas zone
 description: When a task card is dropped on a zone, patch the task status to the zone ID.
 enabled: true
@@ -12,29 +12,34 @@ requires:
 
 triggers:
   - id: drop-on-status-zone
-    event: canvas.drop
+    event:
+      id: canvas.drop
+      version: ^1.0.0
     if:
-      $expr: 'has(event.payload.file.path) && has(event.payload.zone.id)'
+      $expr: 'has(event.data.file.path) && has(event.data.zone.id)'
 
 steps:
   - id: patch-task-status
-    action: mdbase.record.patch
+    action:
+      id: mdbase.record.patch
+      version: ^2.0.0
+    requires:
+      capabilities:
+        - mdbase.record.write
     input:
       path:
-        $expr: 'event.payload.file.path'
+        $expr: 'event.data.file.path'
       patch:
         status:
-          $expr: 'event.payload.zone.id'
+          $expr: 'event.data.zone.id'
 
 run:
-  execution:
-    mode: single_executor
   idempotency:
     key:
       $expr: 'workflow.id + ":" + event.id + ":" + trigger.id'
   concurrency:
     group:
-      $expr: 'event.payload.file.path'
+      $expr: 'event.data.file.path'
     policy: replace
   limits:
     timeout: 30s
@@ -45,4 +50,5 @@ run:
 # Set task status from canvas zone
 
 This workflow is collection behavior. A canvas-aware runtime emits the event and
-implements the patch action; the workflow declares the mapping between them.
+implements the patch action through the interoperability profile; the workflow
+declares the mapping between them.

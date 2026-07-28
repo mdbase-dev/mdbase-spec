@@ -1,30 +1,31 @@
-# Canvas Runtime v0.3 Proof Collection
+# Canvas Runtime Companion Example
 
-This collection demonstrates the v0.3 split:
+This collection demonstrates runtime companion profile 0.2:
 
-- `schema.value` validates persisted task frontmatter.
-- `collection.*` declares mdbase-aware behavior such as display fields,
-  read defaults, and path policy.
-- `lifecycle.*` declares managed IDs and timestamps.
-- runtime contracts define providers, events, actions, capabilities, and policy
-  as typed records.
-- the workflow maps a runtime event to an action call, while runtime policy
-  selects the local executor.
+- `_contracts/` contains ordinary event/action artifacts;
+- `workflows/` and `policies/` contain passive runtime records;
+- `runtime-events/` contains an ordinary structured CloudEvent;
+- live Canvas and mdbase code implement the artifacts with event-source and
+  action-provider declarations;
+- durable admission pins exact artifact and declaration digests before the
+  workflow runs.
 
-The runtime still implements the actual event emission and action handler. The
-collection only declares the behavior contract.
-
-The prototype executor in `packages/runtime-executor` runs this flow in memory:
-sample `canvas.drop` event, CEL trigger/input evaluation, action input
-validation, `mdbase.record.patch`, and action output validation.
+Install
+[`mdbase.runtime.standard`](../../../standard-packs/mdbase-runtime/0.2.0/)
+before opening the workflow and policy as typed records. The pack supplies the
+canonical `runtime_workflow` and `runtime_policy` type implementations. Pack
+installation does not activate the workflow.
 
 ## Flow
 
-1. A canvas-capable runtime emits `canvas.drop`.
-2. The runtime validates the delivered event envelope against
-   `events/canvas.drop.md`.
-3. `workflows/canvas-zone-set-status.md` matches the event.
-4. The workflow evaluates its step input.
-5. The runtime validates the input against `actions/mdbase.record.patch.md`.
-6. `policies/local-runtime.md` selects the local executor for this workflow.
-7. The runtime dispatches its built-in `mdbase.record.patch` handler.
+1. Canvas registers `canvas.drop` through the interoperability profile.
+2. mdbase registers a handler for `mdbase.record.patch`.
+3. Canvas publishes the sample CloudEvent.
+4. the runtime validates the workflow through `mdbase.runtime.workflow`;
+5. policy authorizes `mdbase.record.write` and selects the mdbase provider;
+6. admission pins the event contract/source and action contract/provider;
+7. execution persists an action attempt and invokes the shared action request;
+8. the shared outcome becomes durable step evidence.
+
+There are no provider records, implicit contracts, runtime event envelope, or
+contract modes in this example.

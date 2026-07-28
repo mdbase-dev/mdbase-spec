@@ -17,8 +17,7 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Core Write | create, update, delete, rename, and batch records |
 | Lifecycle | apply standard managed-field policy during writes |
 | Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
-| Runtime Contracts | load contracts, compose registries, and preflight runtime references |
-| Workflow | execute workflows through runtime action handlers |
+| Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
 | Watch | report ordered collection changes after consistent state |
 
 Normative profile IDs and dependencies are:
@@ -34,8 +33,7 @@ Normative profile IDs and dependencies are:
 | `core_write` | `collection_semantics` |
 | `lifecycle` | `core_write`, `cel` |
 | `event_action_interop/0.1` | none |
-| `runtime_contracts/0.1` | `event_action_interop/0.1` |
-| `workflow/0.1` | `runtime_contracts/0.1`, `cel` |
+| `runtime/0.2` | `core_read`, `event_action_interop/0.1`, `cel` |
 | `watch` | `core_read` |
 
 An implementation claims a profile after passing every required behavior and
@@ -94,12 +92,11 @@ The v0.3 core codes include `unsupported_profile`, `type_conflict`,
 `invalid_data_contract`, `data_contract_not_found`,
 `data_contract_conflict`, `data_contract_version_mismatch`,
 `data_contract_binding_invalid`, `data_contract_field_invalid`, and
-`data_contract_record_invalid`. Runtime profile 0.1 additionally defines
-`runtime_contract_conflict`, `runtime_contract_version_mismatch`,
-`event_provider_mismatch`, `provider_version_mismatch`, `capability_denied`,
-`policy_not_selected`, `executor_not_selected`, and
-`idempotency_unavailable`, `event_cursor_expired`, `stale_lease`,
-`invalid_run_transition`, `action_outcome_indeterminate`, and
+`data_contract_record_invalid`. Runtime profile 0.2 reuses interoperability
+codes such as `unknown_contract`, `contract_digest_conflict`, `no_provider`,
+`ambiguous_provider`, and `capability_denied`, and additionally defines
+`event_source_unavailable`, `idempotency_unavailable`, `cursor_expired`,
+`stale_lease`, `invalid_run_transition`, `outcome_indeterminate`, and
 `stale_timer_generation`.
 
 ## Core Read Requirements

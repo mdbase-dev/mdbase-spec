@@ -23,12 +23,6 @@ settings:
   validation: error
   explicit_type_keys: [type, types]
   id_field: id
-
-runtime:
-  profile_version: "0.1.0"
-  enabled: true
-  contract_mode: runtime
-  policy: policies/local-runtime.md
 ```
 
 ## Required Keys
@@ -61,39 +55,18 @@ reserved control-file folders and are excluded from ordinary record discovery.
 Unknown config keys MUST produce a warning while normal config loading
 continues. An explicit strict-config mode MAY reject them.
 
-## Runtime Config
+## Runtime Host Config
 
-The `runtime` section configures runtime-aware tooling. It is optional.
+Durable-runtime enablement, worker identity, storage, transport binding, and
+policy selection are host concerns and are not part of the core `mdbase.yaml`
+schema. This prevents merely opening a collection from activating executable
+behavior.
 
-```yaml
-runtime:
-  profile_version: "0.1.0"
-  enabled: true
-  contract_mode: runtime
-  materialize:
-    implicit_contracts: annotate
-    runs: checkpoint
-```
-
-`runtime.contract_mode` values:
-
-| Value | Meaning |
-| --- | --- |
-| `runtime` | resolve contracts from the effective runtime registry; default |
-| `materialized` | prefer materialized contract records where available |
-| `strict` | require explicit collection or pack contracts for portable workflows |
-
-`runtime.policy` is the collection-relative path of the locally selected
-runtime policy record. Tools MUST NOT infer authorization merely because a
-policy record exists in the collection.
-
-Core Read and Core Write claims remain independent of runtime profiles. Config
-updates preserve the `runtime` section.
-
-`runtime.profile_version` versions the optional runtime-contract and workflow
-profile independently from the collection specification. A runtime-aware tool
-MUST reject an unsupported runtime profile before preflighting or executing
-workflows. Core-only tools do not need to support this profile.
+Portable runtime policies and workflow/state records are ordinary records
+implemented by the standard runtime pack. A host MAY preserve private
+configuration under an `x-*` extension or in its own settings store, but that
+configuration does not change core contract resolution. Runtime profile 0.2
+has one resolution model and no contract mode.
 
 ## Expressions
 
