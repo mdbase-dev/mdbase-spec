@@ -28,7 +28,7 @@ Record presence checks use `present`:
   even if its value is null
 - `present.record.status` is true when `status` exists in the effective record,
   including values supplied by `collection.read_defaults`
-- `has(event.payload.file.path)` checks runtime event payload presence
+- `has(event.data.file.path)` checks runtime event payload presence
 
 Bare `has(status)` is not portable CEL and is not part of the mdbase v0.3 profile.
 `has(raw.status)` is also insufficient for mdbase record presence because some

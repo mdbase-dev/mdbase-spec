@@ -1,8 +1,8 @@
 {
   "name": "@callumalpass/mdbase-runtime",
-  "version": "0.1.0-rc.3",
+  "version": "0.2.0-rc.1",
   "type": "module",
-  "description": "Portable mdbase runtime contracts, provider host, validation, and Node loaders.",
+  "description": "Durable mdbase workflow admission and runtime record contracts built on mdbase interoperability.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,17 +13,13 @@
     "url": "https://github.com/mdbase-dev/mdbase-spec/issues"
   },
   "homepage": "https://mdbase.dev/runtime/",
-  "main": "./dist/browser.js",
-  "types": "./dist/browser.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/browser.d.ts",
-      "import": "./dist/browser.js",
-      "require": "./dist/browser.cjs"
-    },
-    "./node": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/browser.cjs"
     }
   },
   "files": [
@@ -42,10 +38,13 @@
   "dependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "semver": "^7.8.5",
-    "yaml": "^2.8.1"
+    "semver": "^7.8.5"
+  },
+  "peerDependencies": {
+    "@callumalpass/mdbase-interop": ">=0.1.0-rc.2 <0.2.0"
   },
   "devDependencies": {
+    "@callumalpass/mdbase-interop": "file:../interop",
     "@types/node": "^25.9.3",
     "@types/semver": "^7.7.1",
     "esbuild": "^0.25.9",

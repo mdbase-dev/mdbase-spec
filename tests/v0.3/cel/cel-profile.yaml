@@ -205,12 +205,12 @@ groups:
   - name: "runtime expression host bindings"
     setup:
       event:
+        specversion: "1.0"
         type: canvas.drop
         id: evt_01J0V1CANVASDROP
-        occurred_at: "2026-06-14T08:15:00Z"
-        source:
-          runtime: canvas-bases
-        payload:
+        time: "2026-06-14T08:15:00Z"
+        source: urn:mdbase:app:canvas:canvas-bases
+        data:
           file:
             path: tasks/card-001.md
           types: [pickle_request]
@@ -226,7 +226,7 @@ groups:
         operation: evaluate_cel
         input:
           context: workflow
-          expression: 'event.payload.file.path == "tasks/card-001.md" && event.payload.zone.id == "doing"'
+          expression: 'event.data.file.path == "tasks/card-001.md" && event.data.zone.id == "doing"'
         expect:
           valid: true
           value: true
@@ -238,7 +238,7 @@ groups:
         operation: evaluate_cel
         input:
           context: workflow
-          expression: '"pickle_request" in event.payload.types'
+          expression: '"pickle_request" in event.data.types'
         expect:
           valid: true
           value: true
@@ -251,7 +251,7 @@ groups:
         operation: evaluate_cel
         input:
           context: workflow
-          expression: 'has(event.payload.file) && !has(event.payload.missing) && event.payload.types.exists(t, t == "pickle_request")'
+          expression: 'has(event.data.file) && !has(event.data.missing) && event.data.types.exists(t, t == "pickle_request")'
         expect:
           valid: true
           value: true
@@ -270,10 +270,10 @@ groups:
         input:
           template:
             path:
-              $expr: 'event.payload.file.path'
-            literal: 'event.payload.file.path'
+              $expr: 'event.data.file.path'
+            literal: 'event.data.file.path'
         expect:
           valid: true
           value:
             path: tasks/card-001.md
-            literal: event.payload.file.path
+            literal: event.data.file.path

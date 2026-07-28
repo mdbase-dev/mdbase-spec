@@ -69,8 +69,7 @@ CONFORMANCE_PROFILES = {
     "core_write",
     "lifecycle",
     "event_action_interop/0.1",
-    "runtime_contracts/0.1",
-    "workflow/0.1",
+    "runtime/0.2",
     "watch",
 }
 
@@ -628,8 +627,9 @@ def run_data_contract_implementation_test(
 ) -> None:
     failures: list[str] = []
     contract_path = resolve(input_data["contract"])
+    type_path = resolve(input_data["type"])
     contract = load_markdown_frontmatter(contract_path)
-    type_file = load_markdown_frontmatter(input_data["type"])
+    type_file = load_markdown_frontmatter(type_path)
 
     contract_meta = Draft202012Validator(load_json("schemas/v0.3/data-contract.schema.json"))
     type_meta = Draft202012Validator(load_json("schemas/v0.3/type-file.schema.json"))
@@ -664,6 +664,8 @@ def run_data_contract_implementation_test(
 
     implementation = matching[0]
     fields = implementation.get("fields") or {}
+    type_schema = resolve_schema_wrapper(type_file["schema"], type_path)
+    Draft202012Validator.check_schema(type_schema)
     required = contract_schema.get("required") or []
     for field_name in required:
         if not any(
@@ -675,7 +677,6 @@ def run_data_contract_implementation_test(
     for contract_field, record_field in fields.items():
         if not schema_declares_field(contract_schema, contract_field):
             failures.append(f"contract field is not declared: {contract_field}")
-        type_schema = get_pointer(type_file, "/schema/value")
         if not schema_declares_field(type_schema, record_field):
             failures.append(f"record field is not declared: {record_field}")
 

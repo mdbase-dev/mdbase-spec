@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/examples/canvas.drop/1.0.0.schema.json",
+  "type": "object",
+  "required": ["board", "file", "zone", "position"],
+  "properties": {
+    "board": {
+      "type": "object",
+      "required": ["path", "view"],
+      "properties": {
+        "path": { "type": "string" },
+        "view": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "file": {
+      "type": "object",
+      "required": ["path"],
+      "properties": { "path": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "zone": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "enum": ["todo", "doing", "done"] },
+        "label": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

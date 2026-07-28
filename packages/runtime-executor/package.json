@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Prototype mdbase v0.3 workflow executor.",
+  "description": "Reference non-durable executor for mdbase runtime profile 0.2.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,6 +17,7 @@
     "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@callumalpass/mdbase-interop": "file:../interop",
     "@mdbase/cel-host": "file:../cel-host",
     "@callumalpass/mdbase-runtime": "file:../runtime-contracts"
   },

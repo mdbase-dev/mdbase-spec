@@ -1,569 +1,127 @@
-name: "v0.3 runtime contract conformance"
+name: "runtime companion profile 0.2 conformance"
 spec_version: "0.3.0"
-fixture_set: runtime_contracts
-category: runtime_contracts
-spec_ref: "v0.3/13, v0.3/14"
+fixture_set: runtime_profile
+category: runtime
+spec_ref: "v0.3/13, v0.3/14, interop/0.1"
 
 groups:
-  - name: "canvas runtime proof package"
-    setup:
-      collection: "examples/v0.3/canvas-runtime"
+  - name: "standard runtime pack artifacts"
     tests:
-      - name: "runtime records load without structural diagnostics"
-        operation: runtime_load_contracts
+      - id: runtime.standard-pack-resources
+        name: "the standard pack is complete and every resource digest matches"
+        covers: [runtime/0.2.standard_runtime_pack]
+        operation: type_pack_resources_validate
         input:
-          collection: "examples/v0.3/canvas-runtime"
-        expect:
-          valid: true
-          counts:
-            type_files: 12
-            providers: 2
-            actions: 1
-            events: 2
-            capabilities: 1
-            workflows: 1
-
-      - name: "registry composition resolves explicit contracts"
-        operation: runtime_compose_registry
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-        expect:
-          valid: true
-          registry:
-            actions:
-              - mdbase.record.patch
-            providers:
-              - mdbase
-              - canvas-bases
-            events:
-              - canvas.drop
-              - mdbase.record.modified
-            capabilities:
-              - mdbase.record.write
-            workflows:
-              - canvas.zone.set-status
-
-      - name: "workflow preflight resolves event, action, emitted event, and capability references"
-        operation: runtime_preflight_workflows
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-        expect:
-          valid: true
-          diagnostics: []
-
-      - name: "reference loader returns contracts registry and preflight"
-        operation: runtime_reference_load
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-        expect:
-          valid: true
-          diagnostics: []
-          counts:
-            providers: 2
-            actions: 1
-            events: 2
-            capabilities: 1
-            workflows: 1
-
-      - name: "delivered event envelope validates against event contract"
-        operation: runtime_validate_event
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-          event: "examples/v0.3/canvas-runtime/runtime-events/sample-canvas-drop-event.json"
+          path: "standard-packs/mdbase-runtime/0.2.0/mdbase-pack.yaml"
         expect:
           valid: true
 
-      - name: "event envelope provider must match event contract provider"
-        operation: runtime_validate_event
+      - id: runtime.standard-pack-schemas
+        name: "every standard runtime schema is valid JSON Schema 2020-12"
+        operation: json_schema_meta_validate
         input:
-          collection: "examples/v0.3/canvas-runtime"
-          value:
-            type: canvas.drop
-            contract_version: 1
-            id: evt_wrong_provider
-            occurred_at: "2026-06-15T08:00:00Z"
-            source:
-              runtime: canvas-bases
-              provider: wrong-provider
-            payload:
-              board:
-                path: boards/work.md
-                view: status
-              file:
-                path: tasks/card-001.md
-              zone:
-                id: doing
-                label: Doing
-              position:
-                x: 120
-                y: 320
-        expect:
-          valid: false
-          diagnostics:
-            - code: event_provider_mismatch
-              id: canvas.drop
-
-      - name: "evaluated action input validates against action contract"
-        operation: runtime_validate_action_input
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-          action: mdbase.record.patch
-          value:
-            path: tasks/card-001.md
-            patch:
-              status: doing
+          paths:
+            - "standard-packs/mdbase-runtime/0.2.0/schemas/**/*.schema.json"
         expect:
           valid: true
 
-      - name: "runtime executor maps canvas drop to record patch"
-        operation: runtime_execute_event
+      - id: runtime.standard-record-types
+        name: "canonical runtime types are ordinary v0.3 type implementations"
+        covers: [runtime/0.2.ordinary_record_contract_implementations]
+        operation: markdown_frontmatter_schema_validate
         input:
-          collection: "examples/v0.3/canvas-runtime"
-          event: "examples/v0.3/canvas-runtime/runtime-events/sample-canvas-drop-event.json"
-          executor: obsidian
-          record_store:
-            - "tasks/card-001.md"
-        expect:
-          valid: true
-          runs:
-            - workflow: canvas.zone.set-status
-              trigger: drop-on-status-zone
-              status: succeeded
-              steps:
-                - id: patch-task-status
-                  action: mdbase.record.patch
-                  status: succeeded
-                  input:
-                    path: tasks/card-001.md
-                    patch:
-                      status: doing
-          records:
-            tasks/card-001.md:
-              frontmatter:
-                status: doing
-
-      - name: "invalid action input fails before dispatch"
-        operation: runtime_validate_action_input
-        input:
-          collection: "examples/v0.3/canvas-runtime"
-          action: mdbase.record.patch
-          value:
-            patch:
-              status: doing
-        expect:
-          valid: false
-          diagnostics:
-            - code: schema_required
-              field: path
-
-      - name: "capability records are optional catalog entries"
-        operation: runtime_preflight_workflows
-        input:
-          collection_inline:
-            mdbase.yaml: |
-              spec_version: "0.3.0"
-              runtime:
-                profile_version: "0.1.0"
-                policy: policies/local.md
-            workflows/good.md: |
-              ---
-              type: workflow
-              id: good.workflow
-              version: 1
-              name: Good workflow
-              enabled: true
-              requires:
-                capabilities:
-                  - mdbase.record.write
-              triggers:
-                - id: drop
-                  event: canvas.drop
-              steps:
-                - id: patch
-                  action: mdbase.record.patch
-              ---
-            events/canvas.drop.md: |
-              ---
-              type: event
-              id: canvas.drop
-              version: 1
-              provider: canvas-bases
-              name: Canvas drop
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-            actions/patch.md: |
-              ---
-              type: action
-              id: mdbase.record.patch
-              version: 1
-              provider: mdbase
-              name: Patch record
-              requires:
-                capabilities:
-                  - mdbase.record.write
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: object
-                output: null
-              effects:
-                - mdbase.record.write
-              ---
-            policies/local.md: |
-              ---
-              type: runtime_policy
-              id: local.policy
-              version: 1
-              name: Local policy
-              capabilities:
-                mdbase.record.write:
-                  mode: allow
-              ---
+          schema: "schemas/v0.3/type-file.schema.json"
+          paths:
+            - "standard-packs/mdbase-runtime/0.2.0/_types/*.md"
         expect:
           valid: true
 
-      - name: "action output validates after dispatch"
-        operation: runtime_validate_action_output
+      - id: runtime.standard-contract-artifacts
+        name: "standard runtime record event and action artifacts use the common contract schema"
+        covers: [runtime/0.2.shared_interop_envelopes_and_declarations]
+        operation: markdown_frontmatter_schema_validate
         input:
-          collection: "examples/v0.3/canvas-runtime"
-          action: mdbase.record.patch
-          value:
-            path: tasks/card-001.md
-            frontmatter:
-              type: task
-              id: task_001
-              title: Draft v0.3 runtime example
-              status: doing
+          schema: "schemas/v0.3/data-contract.schema.json"
+          paths:
+            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
         expect:
           valid: true
 
-      - name: "contract materialization creates an inspectable markdown record"
-        operation: runtime_materialize_contract
+      - id: runtime.standard-contract-registry
+        name: "standard artifacts have one deterministic identity and digest"
+        operation: data_contract_registry_validate
         input:
-          collection: "examples/v0.3/canvas-runtime"
-          contract: mdbase.record.patch
+          paths:
+            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
         expect:
           valid: true
-          markdown_contains:
-            - "type: action"
-            - "id: mdbase.record.patch"
 
-  - name: "implicit contracts and registry errors"
-    setup:
-      collection: "examples/v0.3/canvas-runtime"
-      implicit_contracts:
-        - type: event
-          id: timer.fired
-          version: 1
-          provider: mdbase
-          name: Timer fired
-          schemas:
-            dialect: json-schema-2020-12
-            payload:
-              type: object
-              required: [scheduled_at]
-              properties:
-                scheduled_at:
-                  type: string
-                  format: date-time
+      - id: runtime.workflow-implementation
+        name: "the canonical workflow type validates its record-contract binding"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "standard-packs/mdbase-runtime/0.2.0/_contracts/mdbase.runtime.workflow/1.0.0.md"
+          type: "standard-packs/mdbase-runtime/0.2.0/_types/workflow.md"
+        expect:
+          valid: true
+          contract: mdbase.runtime.workflow
+          version: 1.0.0
+
+  - name: "preflight and admission boundary"
     tests:
-      - name: "implicit event contracts compose with explicit collection contracts"
-        operation: runtime_compose_registry
+      - id: runtime.exact-admission
+        name: "admission pins exact contract source and provider evidence"
+        covers: [runtime/0.2.exact_contract_source_and_provider_admission]
+        operation: runtime_admit_workflow
         input:
-          collection: "examples/v0.3/canvas-runtime"
-          include_setup_implicit_contracts: true
+          workflow_requirements:
+            event: { id: canvas.drop, version: "^1.0.0" }
+            action: { id: mdbase.record.patch, version: "^2.0.0" }
+          event_source_declaration: exact
+          action_provider_declaration: exact
         expect:
           valid: true
-          registry:
-            events:
-              - timer.fired
-              - canvas.drop
+          plan:
+            contract_digests: pinned
+            source_declaration_digest: pinned
+            provider_declaration_digest: pinned
+            handler_id: pinned
 
-      - name: "unresolved action reference fails preflight"
-        operation: runtime_preflight_workflows
+      - id: runtime.provider-ambiguity
+        name: "two action providers require an explicit workflow or policy selection"
+        operation: runtime_preflight_workflow
         input:
-          collection_inline:
-            workflows/broken.md: |
-              ---
-              type: workflow
-              id: broken.workflow
-              version: 1
-              name: Broken workflow
-              enabled: true
-              triggers:
-                - id: drop
-                  event: canvas.drop
-              steps:
-                - id: missing
-                  action: missing.action
-              ---
-            events/canvas.drop.md: |
-              ---
-              type: event
-              id: canvas.drop
-              version: 1
-              provider: canvas-bases
-              name: Canvas drop
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
+          eligible_providers: [desktop, daemon]
+          explicit_selection: null
         expect:
           valid: false
           diagnostics:
-            - code: unresolved_action
-              id: missing.action
+            - code: ambiguous_provider
 
-      - name: "unresolved provider requirement fails preflight"
-        operation: runtime_preflight_workflows
+      - id: runtime.authorization-separate
+        name: "a conforming provider remains ineligible without current capability authority"
+        covers: [runtime/0.2.independent_authorization]
+        operation: runtime_preflight_workflow
         input:
-          collection_inline:
-            workflows/provider-required.md: |
-              ---
-              type: workflow
-              id: provider.required
-              version: 1
-              name: Provider required
-              enabled: true
-              requires:
-                providers:
-                  - missing.provider
-              triggers:
-                - id: drop
-                  event: canvas.drop
-              steps:
-                - id: patch
-                  action: mdbase.record.patch
-              ---
-            events/canvas.drop.md: |
-              ---
-              type: event
-              id: canvas.drop
-              version: 1
-              provider: canvas-bases
-              name: Canvas drop
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-            actions/patch.md: |
-              ---
-              type: action
-              id: mdbase.record.patch
-              version: 1
-              provider: mdbase
-              name: Patch record
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: object
-                output: null
-              ---
-        expect:
-          valid: false
-          diagnostics:
-            - code: unresolved_provider
-              id: missing.provider
-
-      - name: "runtime policy can deny a required capability"
-        operation: runtime_preflight_workflows
-        input:
-          collection_inline:
-            mdbase.yaml: |
-              spec_version: "0.3.0"
-              runtime:
-                profile_version: "0.1.0"
-                policy: policies/local.md
-            workflows/denied.md: |
-              ---
-              type: workflow
-              id: denied.workflow
-              version: 1
-              name: Denied workflow
-              enabled: true
-              requires:
-                capabilities:
-                  - mdbase.record.write
-              triggers:
-                - id: drop
-                  event: canvas.drop
-              steps:
-                - id: patch
-                  action: mdbase.record.patch
-              ---
-            events/canvas.drop.md: |
-              ---
-              type: event
-              id: canvas.drop
-              version: 1
-              provider: canvas-bases
-              name: Canvas drop
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-            actions/patch.md: |
-              ---
-              type: action
-              id: mdbase.record.patch
-              version: 1
-              provider: mdbase
-              name: Patch record
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: object
-                output: null
-              effects:
-                - mdbase.record.write
-              ---
-            policies/local.md: |
-              ---
-              type: runtime_policy
-              id: local.policy
-              version: 1
-              name: Local policy
-              capabilities:
-                mdbase.record.write:
-                  mode: deny
-              ---
+          provider_conformant: true
+          capability_policy: deny
         expect:
           valid: false
           diagnostics:
             - code: capability_denied
-              id: mdbase.record.write
 
-      - name: "single executor workflows require executor policy"
-        operation: runtime_preflight_workflows
+      - id: runtime.legacy-parallel-contract
+        name: "the superseded provider-owned action record is rejected with migration guidance"
+        operation: runtime_validate_record
         input:
-          collection_inline:
-            workflows/single.md: |
-              ---
-              type: workflow
-              id: single.workflow
-              version: 1
-              name: Single executor workflow
-              enabled: true
-              triggers:
-                - id: drop
-                  event: canvas.drop
-              steps:
-                - id: patch
-                  action: mdbase.record.patch
-              run:
-                execution:
-                  mode: single_executor
-              ---
-            events/canvas.drop.md: |
-              ---
-              type: event
-              id: canvas.drop
-              version: 1
-              provider: canvas-bases
-              name: Canvas drop
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-            actions/patch.md: |
-              ---
-              type: action
-              id: mdbase.record.patch
-              version: 1
-              provider: mdbase
-              name: Patch record
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: object
-                output: null
-              ---
+          value:
+            type: action
+            id: legacy.patch
+            version: 1
+            schemas:
+              dialect: json-schema-2020-12
+              input: { type: object }
         expect:
           valid: false
           diagnostics:
-            - code: executor_not_selected
-              id: single.workflow
-
-      - name: "invalid embedded action schema fails contract load"
-        operation: runtime_load_contracts
-        input:
-          collection_inline:
-            actions/bad.md: |
-              ---
-              type: action
-              id: bad.action
-              version: 1
-              provider: mdbase
-              name: Bad action
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: strung
-              ---
-        expect:
-          valid: false
-          diagnostics:
-            - code: invalid_embedded_schema
-
-      - name: "unknown runtime contract keys fail structural validation"
-        operation: runtime_load_contracts
-        input:
-          collection_inline:
-            actions/bad.md: |
-              ---
-              type: action
-              id: bad.action
-              version: 1
-              provider: mdbase
-              name: Bad action
-              typoed: true
-              schemas:
-                dialect: json-schema-2020-12
-                input:
-                  type: object
-              ---
-        expect:
-          valid: false
-          diagnostics:
-            - code: schema_additional_properties
-
-      - name: "duplicate contract IDs fail registry composition"
-        operation: runtime_compose_registry
-        input:
-          collection_inline:
-            events/a.md: |
-              ---
-              type: event
-              id: duplicate.event
-              version: 1
-              provider: one
-              name: Duplicate event
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-            events/b.md: |
-              ---
-              type: event
-              id: duplicate.event
-              version: 1
-              provider: two
-              name: Duplicate event
-              schemas:
-                dialect: json-schema-2020-12
-                payload:
-                  type: object
-              ---
-        expect:
-          valid: false
-          diagnostics:
-            - code: runtime_contract_conflict
-              id: duplicate.event
+            - code: runtime_record_type_unknown

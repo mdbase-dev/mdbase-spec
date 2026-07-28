@@ -113,7 +113,7 @@ order_by:
 | Validate, query, or save views over records | [JSON Schema Profile](./06-json-schema-profile.md), [CEL Profile](./10-cel-profile.md), and [Querying](./11-querying.md) |
 | Add links or managed fields | [Links](./08-links.md) and [Lifecycle](./09-lifecycle.md) |
 | Connect applications | [Event and Action Interoperability](./interop/0.1.md) |
-| Define durable automation | [Runtime Contracts](./13-runtime-contracts.md) and [Workflows](./14-workflows.md) |
+| Define durable automation | [Durable Runtime Companion](./13-runtime-contracts.md), [Workflow Execution](./14-workflows.md), and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./15-migrations-and-compatibility.md) |
 | Exchange typed events and actions | [Event/action interoperability profile 0.1](./interop/0.1.md) and [canonical interoperability schemas](./schemas/interop/v0.1/) |
 | Build a conforming tool | [Conformance](./16-conformance.md), [first-class contracts](./05-data-contracts.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
@@ -143,7 +143,8 @@ The specification is organized by topic:
 - Chapters 05–09 and 05A define types, data contracts, schemas, collection
   semantics, links, and lifecycle policy.
 - Chapters 10–12 define CEL expressions, queries, and record operations.
-- Chapters 13–14 define optional runtime contracts and workflows.
+- Chapters 13–14 define the optional durable runtime companion built on core
+  contracts and event/action interoperability.
 - Chapters 15–16 cover migration, compatibility, and conformance.
 
 The [v0.2.1 archive](./v0.2/README.md) preserves the earlier specification and
@@ -157,6 +158,8 @@ implementer material. Legacy fixtures are documented in
 - [`examples/v0.3/`](./examples/v0.3/) contains example and migration
   collections.
 - [`packages/`](./packages/) contains CEL and runtime support packages.
+- [`standard-packs/`](./standard-packs/) contains inspectable, transactional
+  standard-library distributions such as the durable runtime pack.
 - [`site/`](./site/) builds the versioned specification reader imported by the
   independently deployed [mdbase.dev](https://github.com/mdbase-dev/mdbase.dev)
   website.

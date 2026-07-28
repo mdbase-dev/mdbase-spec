@@ -197,7 +197,7 @@ test("builds workflow activation and evaluates expression templates", () => {
   const activation = buildWorkflowActivation({
     event: {
       type: "canvas.drop",
-      payload: {
+      data: {
         file: {
           path: "tasks/card-001.md"
         },
@@ -217,7 +217,7 @@ test("builds workflow activation and evaluates expression templates", () => {
   });
 
   assert.equal(
-    evaluateCel('has(event.payload.file.path) && event.payload.zone.id == "doing"', activation).value,
+    evaluateCel('has(event.data.file.path) && event.data.zone.id == "doing"', activation).value,
     true
   );
   assert.equal(evaluateCel('steps["patch-task-status"].status == "succeeded"', activation).value, true);
@@ -226,13 +226,13 @@ test("builds workflow activation and evaluates expression templates", () => {
     evaluateExpressionValueTemplate(
       {
         path: {
-          $expr: "event.payload.file.path"
+          $expr: "event.data.file.path"
         },
         patch: {
           status: {
-            $expr: "event.payload.zone.id"
+            $expr: "event.data.zone.id"
           },
-          literal: "event.payload.zone.id"
+          literal: "event.data.zone.id"
         }
       },
       activation
@@ -241,7 +241,7 @@ test("builds workflow activation and evaluates expression templates", () => {
       path: "tasks/card-001.md",
       patch: {
         status: "doing",
-        literal: "event.payload.zone.id"
+        literal: "event.data.zone.id"
       }
     }
   );

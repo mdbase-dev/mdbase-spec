@@ -22,6 +22,8 @@ jobs:
         run: python scripts/check_v03_tests.py
       - name: Verify migration fixture
         run: python scripts/prototype_tasknotes_v03_migration.py --check-fixture
+      - name: Verify generated standard runtime pack
+        run: node scripts/build_runtime_pack.mjs && git diff --exit-code
 
   runtime-package:
     name: runtime package (${{ matrix.os }})
@@ -43,11 +45,40 @@ jobs:
           cache: npm
           cache-dependency-path: packages/runtime-contracts/package-lock.json
       - name: Install dependencies
+        working-directory: packages/interop
+        run: npm ci
+      - name: Build interoperability dependency
+        working-directory: packages/interop
+        run: npm run build
+      - name: Install dependencies
         run: npm ci
       - name: Test package
         run: npm test
       - name: Verify package contents
         run: npm pack --dry-run
+
+  runtime-executor:
+    name: runtime boundary executor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Build local packages
+        run: |
+          npm --prefix packages/interop ci
+          npm --prefix packages/interop run build
+          npm --prefix packages/cel-host ci
+          npm --prefix packages/cel-host run build
+          npm --prefix packages/runtime-contracts ci
+          npm --prefix packages/runtime-contracts run build
+      - name: Test reference executor
+        run: |
+          npm --prefix packages/runtime-executor ci
+          npm --prefix packages/runtime-executor test
 
   site-artifact:
     name: specification site artifact

@@ -1,7 +1,7 @@
 ---
 type: runtime_policy
 id: local.canvas-runtime.policy
-version: 1
+version: 1.0.0
 name: Local canvas runtime policy
 enabled: true
 
@@ -10,14 +10,24 @@ executors:
   workflows:
     canvas.zone.set-status: obsidian
 
-capabilities:
-  mdbase.record.write:
-    mode: allow
-    max_files_per_run: 1
+provider_selections:
+  - contract:
+      id: mdbase.record.patch
+      version: ^2.0.0
+    selector:
+      application: mdbase
+      implementation: core
 
-limits:
-  workflow_timeout: 30s
-  max_concurrent_runs: 4
+grants:
+  - capability: mdbase.record.write
+    mode: allow
+    actions:
+      - id: mdbase.record.patch
+        version: ^2.0.0
+    providers:
+      - application: mdbase
+        implementation: core
+    max_records_per_run: 1
 ---
 
 # Local canvas runtime policy

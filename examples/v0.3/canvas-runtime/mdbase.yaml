@@ -2,6 +2,7 @@ spec_version: "0.3.0"
 
 settings:
   types_folder: _types
+  contracts_folder: _contracts
   record_extensions: [md]
   validation: error
   explicit_type_keys: [type, types]
@@ -9,12 +10,3 @@ settings:
   exclude:
     - ".git/**"
     - ".mdbase/**"
-
-runtime:
-  profile_version: "0.1.0"
-  enabled: true
-  contract_mode: runtime
-  policy: policies/local-runtime.md
-  materialize:
-    implicit_contracts: annotate
-    runs: checkpoint

@@ -10,9 +10,6 @@
     },
     "settings": {
       "$ref": "#/$defs/settings"
-    },
-    "runtime": {
-      "$ref": "#/$defs/runtime"
     }
   },
   "patternProperties": {
@@ -64,30 +61,6 @@
             "type": "string",
             "minLength": 1
           }
-        }
-      },
-      "additionalProperties": true
-    },
-    "runtime": {
-      "type": "object",
-      "required": ["profile_version"],
-      "properties": {
-        "profile_version": {
-          "const": "0.1.0"
-        },
-        "enabled": {
-          "type": "boolean"
-        },
-        "contract_mode": {
-          "enum": ["runtime", "materialized", "strict"]
-        },
-        "policy": {
-          "type": "string",
-          "minLength": 1
-        },
-        "materialize": {
-          "type": "object",
-          "additionalProperties": true
         }
       },
       "additionalProperties": true

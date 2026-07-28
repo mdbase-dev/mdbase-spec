@@ -34,7 +34,7 @@
       "type": "string",
       "pattern": "^0\\.3\\.0(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
     },
-    "runtime_profile_version": { "const": "0.1.0" },
+    "runtime_profile_version": { "const": "0.2" },
     "interop_profile_version": { "const": "0.1" },
     "profiles": {
       "type": "array",
@@ -166,24 +166,14 @@
       }
     },
     {
-      "if": { "properties": { "profiles": { "contains": { "const": "runtime_contracts/0.1" } } } },
+      "if": { "properties": { "profiles": { "contains": { "const": "runtime/0.2" } } } },
       "then": {
         "required": ["runtime_profile_version", "interop_profile_version"],
         "properties": {
           "profiles": {
-            "contains": { "const": "event_action_interop/0.1" }
-          }
-        }
-      }
-    },
-    {
-      "if": { "properties": { "profiles": { "contains": { "const": "workflow/0.1" } } } },
-      "then": {
-        "required": ["runtime_profile_version"],
-        "properties": {
-          "profiles": {
             "allOf": [
-              { "contains": { "const": "runtime_contracts/0.1" } },
+              { "contains": { "const": "core_read" } },
+              { "contains": { "const": "event_action_interop/0.1" } },
               { "contains": { "const": "cel" } }
             ]
           }
@@ -211,8 +201,7 @@
         "core_write",
         "lifecycle",
         "event_action_interop/0.1",
-        "runtime_contracts/0.1",
-        "workflow/0.1",
+        "runtime/0.2",
         "watch"
       ]
     },

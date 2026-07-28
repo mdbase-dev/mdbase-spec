@@ -1,17 +1,16 @@
 {
+  "specversion": "1.0",
+  "id": "evt_canvas_drop_001",
+  "source": "urn:mdbase:app:canvas:canvas-bases:local",
   "type": "canvas.drop",
-  "contract_version": 1,
-  "id": "evt_01J0V1CANVASDROP",
-  "occurred_at": "2026-06-14T08:15:00Z",
-  "source": {
-    "runtime": "canvas-bases",
-    "provider": "canvas-bases",
-    "collection": "examples/v0.3/canvas-runtime"
-  },
-  "payload": {
+  "time": "2026-06-14T12:00:00Z",
+  "subject": "tasks/card-001.md",
+  "datacontenttype": "application/json",
+  "dataschema": "urn:mdbase:contract:canvas.drop:1.0.0:sha256:92e0e0a8431cafe9ce7506c10dfe0f1beb0c96220fdcb6ce3521bfdb1d0c101a",
+  "data": {
     "board": {
       "path": "boards/work.md",
-      "view": "Board"
+      "view": "status"
     },
     "file": {
       "path": "tasks/card-001.md"
@@ -21,8 +20,16 @@
       "label": "Doing"
     },
     "position": {
-      "x": 240,
-      "y": 360
+      "x": 120,
+      "y": 320
     }
-  }
+  },
+  "mdbaseprofile": "0.1",
+  "mdbasecontractversion": "1.0.0",
+  "mdbasecontractdigest": "sha256:92e0e0a8431cafe9ce7506c10dfe0f1beb0c96220fdcb6ce3521bfdb1d0c101a",
+  "mdbaseapplication": "canvas",
+  "mdbaseimplementation": "canvas-bases",
+  "mdbaseimplementationversion": "1.0.0",
+  "mdbaseinstanceid": "local",
+  "correlationid": "corr_canvas_drop_001"
 }

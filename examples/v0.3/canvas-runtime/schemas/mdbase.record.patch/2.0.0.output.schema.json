@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/examples/mdbase.record.patch/2.0.0.output.schema.json",
+  "type": "object",
+  "required": ["path", "frontmatter"],
+  "properties": {
+    "path": { "type": "string" },
+    "frontmatter": { "type": "object" }
+  },
+  "additionalProperties": false
+}

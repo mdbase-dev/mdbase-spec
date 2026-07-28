@@ -105,19 +105,15 @@ claim_profiles:
       - independent_authorization
       - duplicate_and_indeterminate_semantics
       - cancellation_and_unload
-  - id: runtime_contracts/0.1
+  - id: runtime/0.2
     status: draft
-    requires: [event_action_interop/0.1]
+    requires: [core_read, event_action_interop/0.1, cel]
     requirements:
-      - deterministic_registry
-      - strict_contract_validation
-      - event_and_action_schema_validation
-      - provider_registration
-      - policy_preflight
-  - id: workflow/0.1
-    status: draft
-    requires: [runtime_contracts/0.1, cel]
-    requirements:
+      - standard_runtime_pack
+      - ordinary_record_contract_implementations
+      - shared_interop_envelopes_and_declarations
+      - exact_contract_source_and_provider_admission
+      - independent_authorization
       - durable_event_admission
       - trigger_admission
       - variables_and_conditions
@@ -185,9 +181,9 @@ fixture_sets:
     coverage_targets: [cel_query]
     files:
       - views/view-records.yaml
-  - id: runtime_contracts
-    description: runtime registries, event/action validation, implicit contracts, and materialization.
-    coverage_targets: [runtime_contracts/0.1]
+  - id: runtime_profile
+    description: standard runtime records, interoperability-based admission, durable execution, recovery, cancellation, journals, and timers.
+    coverage_targets: [runtime/0.2]
     files:
       - runtime-contracts/runtime-contracts.yaml
   - id: event_action_interop
@@ -196,7 +192,7 @@ fixture_sets:
     files:
       - event-action-interop/event-action-interop.yaml
   - id: workflow_execution
-    description: durable workflow admission, execution, recovery, cancellation, journals, and timers.
-    coverage_targets: [workflow/0.1]
+    description: durable workflow execution, recovery, cancellation, journals, and timers.
+    coverage_targets: [runtime/0.2]
     files:
       - workflow-execution/workflow-execution.yaml
