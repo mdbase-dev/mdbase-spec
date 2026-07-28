@@ -1,8 +1,9 @@
 ---
 kind: mdbase.contract
+contract_type: record
 id: example.typed-contact
 version: 1.0.0
-schema:
+record_schema:
   dialect: json-schema-2020-12
   value:
     type: object

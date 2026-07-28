@@ -20,3 +20,6 @@ POST.md
 __pycache__/
 *.py[cod]
 /.ops/
+/packages/interop/node_modules/
+/packages/interop/dist/
+/packages/interop-rs/target/

@@ -16,6 +16,7 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
 | Lifecycle | apply standard managed-field policy during writes |
+| Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
 | Runtime Contracts | load contracts, compose registries, and preflight runtime references |
 | Workflow | execute workflows through runtime action handlers |
 | Watch | report ordered collection changes after consistent state |
@@ -32,7 +33,8 @@ Normative profile IDs and dependencies are:
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
 | `lifecycle` | `core_write`, `cel` |
-| `runtime_contracts/0.1` | none |
+| `event_action_interop/0.1` | none |
+| `runtime_contracts/0.1` | `event_action_interop/0.1` |
 | `workflow/0.1` | `runtime_contracts/0.1`, `cel` |
 | `watch` | `core_read` |
 

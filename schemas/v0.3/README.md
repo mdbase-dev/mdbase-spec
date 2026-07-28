@@ -10,7 +10,7 @@ yet published package artifacts.
 | Schema | Purpose |
 | --- | --- |
 | `type-file.schema.json` | frontmatter of `_types/*.md` v0.3 type files |
-| `data-contract.schema.json` | frontmatter of `_contracts/*.md` data contract files |
+| `data-contract.schema.json` | first-class record, event, and action contract frontmatter in `_contracts/*.md` |
 | `type-pack.schema.json` | transactional type-pack manifests |
 | `query.schema.json` | portable query input objects |
 | `query-result.schema.json` | query results plus optional context, view, grouping, and summary metadata |

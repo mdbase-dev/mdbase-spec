@@ -1,0 +1,217 @@
+name: "event and action interoperability profile 0.1"
+spec_version: "0.3.0"
+profile_version: "0.1"
+fixture_set: event_action_interop
+category: event_action_interop
+spec_ref: "event_action_interop/0.1"
+
+groups:
+  - name: "event contracts and CloudEvents delivery"
+    tests:
+      - id: interop-event-multicast
+        name: "one exact event is delivered to two compatible consumers"
+        operation: interop_event_multicast
+        input:
+          source: tasknotes
+          contract: tasknotes.task.completed
+          version: 1.0.0
+          subscribers:
+            - id: workflow-a
+              version: "^1.0.0"
+            - id: workflow-b
+              version: ">=1.0.0 <2.0.0"
+        expect:
+          deliveries: [workflow-a, workflow-b]
+          cloudevents_specversion: "1.0"
+          exact_contract: true
+        covers:
+          - event_action_interop/0.1.first_class_event_and_action_contracts
+          - event_action_interop/0.1.cloudevents_event_envelope
+          - event_action_interop/0.1.event_multicast_and_version_resolution
+
+      - id: interop-event-invalid-data
+        name: "event data is rejected against the exact artifact"
+        operation: interop_event_publish
+        input:
+          contract: tasknotes.task.completed
+          version: 1.0.0
+          data: { task_id: task-123 }
+        expect:
+          valid: false
+          error: invalid_event_data
+        covers:
+          - event_action_interop/0.1.boundary_validation
+
+      - name: "event correlation and causation survive delivery"
+        operation: interop_event_publish
+        input:
+          contract: tasknotes.task.completed
+          version: 1.0.0
+          id: evt_01
+          correlation_id: flow_01
+          causation_id: req_01
+          data:
+            task_id: task-123
+            completed_at: "2026-07-28T01:30:00Z"
+        expect:
+          id: evt_01
+          correlation_id: flow_01
+          causation_id: req_01
+
+      - id: interop-event-duplicate
+        name: "duplicate logical event delivery is identifiable"
+        operation: interop_event_duplicate
+        input:
+          source: "urn:mdbase:app:tasknotes:tasknotes.obsidian"
+          id: evt_01
+        expect:
+          duplicate: true
+          additional_deliveries: 0
+        covers:
+          - event_action_interop/0.1.duplicate_and_indeterminate_semantics
+
+  - name: "action admission and provider resolution"
+    tests:
+      - id: interop-action-success
+        name: "one caller invokes one provider with exact execution evidence"
+        operation: interop_action_invoke
+        input:
+          contract:
+            id: canvas.card.create
+            version: "^1.0.0"
+          providers: [canvas-bases]
+          value:
+            canvas: Projects/Report.canvas
+            title: Prepare report
+        expect:
+          status: succeeded
+          exact_contract: true
+          request_id: true
+          invocation_id: true
+          attempt_id: true
+          outcome_id: true
+          provider: canvas-bases
+        covers:
+          - event_action_interop/0.1.action_request_admission_and_outcome
+          - event_action_interop/0.1.exact_contract_and_provider_evidence
+
+      - id: interop-action-ambiguous
+        name: "two eligible action providers are explicitly ambiguous"
+        operation: interop_action_invoke
+        input:
+          contract:
+            id: canvas.card.create
+            version: "^1.0.0"
+          providers: [canvas-bases, alternate-canvas]
+        expect:
+          valid: false
+          error: ambiguous_provider
+        covers:
+          - event_action_interop/0.1.explicit_provider_ambiguity
+
+      - name: "an explicit provider selector resolves ambiguity"
+        operation: interop_action_invoke
+        input:
+          contract:
+            id: canvas.card.create
+            version: "^1.0.0"
+          providers: [canvas-bases, alternate-canvas]
+          requested_provider: canvas-bases
+        expect:
+          provider: canvas-bases
+
+      - name: "adding a provider does not alter an admitted invocation"
+        operation: interop_action_pin_then_register
+        input:
+          initial_provider: canvas-bases
+          added_provider: alternate-canvas
+        expect:
+          admitted_provider: canvas-bases
+          outcome_provider: canvas-bases
+
+      - id: interop-action-invalid-output
+        name: "invalid provider output becomes a failed outcome"
+        operation: interop_action_invalid_output
+        input:
+          contract: canvas.card.create
+        expect:
+          status: failed
+          error: invalid_action_output
+        covers:
+          - event_action_interop/0.1.boundary_validation
+
+      - name: "rejection and handler failure remain distinct"
+        operation: interop_action_failures
+        input: {}
+        expect:
+          rejected:
+            status: rejected
+            error: request_rejected
+          failed:
+            status: failed
+            error: handler_failure
+
+  - name: "authorization duplicates cancellation and lifecycle"
+    tests:
+      - id: interop-authorization-default-deny
+        name: "unauthorized role operations fail closed"
+        operation: interop_authorization
+        input: {}
+        expect:
+          publish: unauthorized
+          subscribe: unauthorized
+          provider_registration: unauthorized
+          invocation: unauthorized
+        covers:
+          - event_action_interop/0.1.independent_authorization
+
+      - name: "contract conflict fails before registration becomes visible"
+        operation: interop_contract_conflict
+        input: {}
+        expect:
+          valid: false
+          error: contract_digest_conflict
+          atomic: true
+
+      - name: "declared request deduplication returns the recorded outcome"
+        operation: interop_action_duplicate
+        input:
+          idempotency: request
+        expect:
+          handler_calls: 1
+          same_outcome: true
+
+      - name: "unknown external effect is outcome indeterminate"
+        operation: interop_action_indeterminate
+        input: {}
+        expect:
+          status: outcome_indeterminate
+          error: outcome_indeterminate
+
+      - id: interop-action-cancellation
+        name: "unsupported and cooperative cancellation are distinguished"
+        operation: interop_action_cancellation
+        input: {}
+        expect:
+          unsupported: cancellation_unsupported
+          cooperative: cancelled
+        covers:
+          - event_action_interop/0.1.cancellation_and_unload
+
+      - name: "plugin unload removes its subscriptions and providers"
+        operation: interop_client_dispose
+        input: {}
+        expect:
+          subscriptions: 0
+          providers: 0
+          new_invocation: no_provider
+
+      - id: interop-transport-capabilities
+        name: "required transport capabilities fail before exchange"
+        operation: interop_transport_requirement
+        input:
+          binding: ephemeral
+          required: durable_cursor
+        expect:
+          valid: false
+          error: unsupported_transport_capability

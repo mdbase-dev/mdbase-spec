@@ -93,7 +93,7 @@ groups:
         input:
           contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
         expect:
-          digest: "sha256:7111c47ba7b1abed8c9823500c30ce0b80d3b3950a982d0acbc29523b5cb4d1c"
+          digest: "sha256:a49d25136bf3024e146017771d068cdf59abfddbcdd1bfbf8010018c7f13f476"
         covers:
           - core_read.data_contract_digest
 
@@ -104,7 +104,7 @@ groups:
           contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
           type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
         expect:
-          digest: "sha256:2d3a40ba07e03e20a6bd1eae2f44c267a5bb14c3e693f09629f28b7a69277601"
+          digest: "sha256:54a839d00a740e29bca41e3440f56c84337ffc2f4b79e0c6c618a00455959902"
         covers:
           - core_read.data_contract_implementation_digest
 
@@ -133,9 +133,10 @@ groups:
         example.note.md: |
           ---
           kind: mdbase.contract
+          contract_type: record
           id: example.note
           version: 1.0.0
-          schema:
+          record_schema:
             dialect: json-schema-2020-12
             value:
               type: object

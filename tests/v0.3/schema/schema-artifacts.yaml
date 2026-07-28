@@ -93,7 +93,7 @@ groups:
           paths:
             - "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
           pointers:
-            - "/schema/value"
+            - "/record_schema/value"
             - "/binding_schema/value"
         expect:
           valid: true

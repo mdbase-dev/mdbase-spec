@@ -1,0 +1,31 @@
+kind: mdbase.interop.conformance
+profile_version: "0.1"
+implementation:
+  application: mdbase-interop
+  implementation: mdbase-interop.typescript.in-memory
+  version: 0.1.0-rc.2
+roles:
+  - event_source
+  - event_consumer
+  - action_caller
+  - action_provider
+  - bridge
+transport:
+  delivery: [ephemeral]
+  ordering: [none]
+  cancellation: true
+  deadlines: true
+  provider_discovery: true
+  request_deduplication: true
+  cross_process_identity: false
+evidence:
+  - scenario: CloudEvents multicast, exact validation, and duplicate suppression
+    result: pass
+  - scenario: action admission, exact provider selection, and portable outcomes
+    result: pass
+  - scenario: provider ambiguity and explicit selection
+    result: pass
+  - scenario: default-deny authorization and transport requirements
+    result: pass
+  - scenario: request deduplication, cancellation, and unload lifecycle
+    result: pass

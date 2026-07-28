@@ -1,9 +1,9 @@
-# 05A. Data Contracts
+# 05A. First-Class Contracts
 
 ## Why Data Contracts Exist
 
-A type describes one collection's records. A data contract describes the
-portable meaning that one or more independently designed types agree to expose.
+A contract describes one portable interface independently from the local type
+or application that implements it.
 
 For example, `personal_task`, `work_task`, and `task` can all implement
 `tasknotes.task`. Their filenames, additional fields, matching rules, and local
@@ -11,24 +11,29 @@ presentation can differ. An application can discover the shared contract,
 understand each type's field mapping, and operate without requiring every
 collection to use one canonical type name.
 
-Data contracts are passive data interoperability. They do not describe
-executable actions, events, providers, permissions, or workflows. Those are
-runtime contracts and are defined in Chapter 13.
+`mdbase.contract` is the shared identity and JSON Schema substrate for passive
+record views, events, and actions. `contract_type` discriminates their
+subject-specific schema fields. This chapter defines the shared artifact and
+record implementation rules. The optional
+[event/action interoperability profile](./interop/0.1.md) defines executable
+source/provider declarations and message exchange. Contracts never grant
+permission.
 
 ## Three Portable Artifacts
 
-The complete data-contract model has three intentionally small parts:
+The complete collection contract model has three intentionally small parts:
 
-1. An `mdbase.contract` artifact defines a versioned interface and optional
-   binding schema using JSON Schema 2020-12.
-2. A type's `implements` entry maps that interface to the type and supplies
-   contract-specific binding data.
+1. An `mdbase.contract` artifact defines a versioned subject-specific
+   interface using JSON Schema 2020-12.
+2. For a `record` contract, a type's `implements` entry maps that interface to
+   the type and supplies contract-specific binding data.
 3. An optional `mdbase.type-pack` manifest groups contracts, types, and their
    referenced schemas for transactional installation.
 
-An application requirement, authorization grant, or network protocol is not a
-fourth collection artifact. Such systems consume the verified facts exposed by
-the collection.
+Event sources and action providers make runtime declarations because they are
+executable, instance-specific implementations rather than record types.
+Requirements, authorization grants, and transports are not collection
+contract artifacts.
 
 ## Contract Files
 
@@ -39,12 +44,13 @@ validates against `schemas/v0.3/data-contract.schema.json`.
 ```markdown
 ---
 kind: mdbase.contract
+contract_type: record
 id: example.task
 version: 1.0.0
 name: Example task
 description: A small portable task interface.
 
-schema:
+record_schema:
   dialect: json-schema-2020-12
   value:
     $schema: "https://json-schema.org/draft/2020-12/schema"
@@ -80,10 +86,15 @@ frontmatter schemas.
 `id` is a lower-case namespaced identifier. `version` is an exact semantic
 version. A type implementation never names a version range.
 
-`schema` validates the normalized contract view produced from a record.
+`record_schema` validates the normalized contract view produced from a record.
 `binding_schema`, when present, validates implementation-specific semantic
 configuration. Both use the same JSON Schema profile and reference rules as
 type schemas.
+
+An event contract instead requires `data_schema` and may declare
+`source_schema`. An action contract requires `input_schema` and may declare
+`output_schema`, `error_schema`, `provider_schema`, and `behavior`. Subject
+fields belonging to another `contract_type` are invalid.
 
 Contract files are control files, not records. They do not participate in
 ordinary record scans, queries, links, or runtime workflow discovery.
@@ -94,7 +105,7 @@ During collection load, a data-contract-aware implementation:
 
 1. scans the configured contracts folder recursively
 2. validates every candidate against the built-in data-contract schema
-3. resolves and compiles `schema` and `binding_schema`
+3. resolves and compiles the schemas selected by `contract_type`
 4. registers each contract by the exact pair `(id, version)`
 5. computes its contract digest
 6. validates every type `implements` entry against the resulting registry
@@ -110,8 +121,10 @@ contract files they require, usually in a type pack.
 
 ## Type Implementations
 
-`implements` belongs in the type file because an implementation is a claim
-about each record that matches that one type.
+`implements` belongs in the type file because a record implementation is a
+claim about each record that matches that one type. A type can implement only a
+`record` contract. Event sources and action providers declare implementations
+through the interoperability profile instead.
 
 ```yaml
 implements:
@@ -144,10 +157,11 @@ is direct: core does not rename values, coerce values, run expressions, or
 apply hidden transforms.
 
 A type MUST NOT contain two implementations of the same contract ID and
-version. Field mappings MUST address fields declared by the resolved contract
-schema and the resolved type schema. Every unconditional top-level field named
-by the contract schema's `required` array MUST be mapped, either by the matching
-one-segment field path or by the matching one-token JSON Pointer.
+version. Field mappings MUST address fields declared by the resolved
+`record_schema` and the resolved type schema. Every unconditional top-level
+field named by the contract's `record_schema.required` array MUST be mapped,
+either by the matching one-segment field path or by the matching one-token JSON
+Pointer.
 
 When a contract has a `binding_schema`, the implementation's `binding` value, or
 an empty object when omitted, MUST validate against it. When a contract has no
@@ -161,14 +175,14 @@ contract-discovery, conformance, or authorization meaning.
 To construct a contract view, a tool starts with a record's effective
 frontmatter and copies every mapped value to its contract field reference. Missing
 optional values remain missing. The resulting object is validated against the
-contract's `schema`.
+contract's `record_schema`.
 
 Contract validation complements rather than replaces type validation:
 
 - the type schema validates raw persisted frontmatter
 - collection semantics construct the effective record
 - the field map constructs a normalized contract view
-- the contract schema validates that view
+- the contract's `record_schema` validates that view
 
 A record can therefore satisfy its type schema and still produce
 `data_contract_record_invalid` for one declared implementation. Implementations
@@ -191,19 +205,23 @@ storage wrappers or reference paths:
 ```json
 {
   "kind": "mdbase.contract",
+  "contract_type": "record",
   "id": "...",
   "version": "...",
-  "schema": {},
+  "record_schema": {},
   "binding_schema": {}
 }
 ```
 
-`binding_schema` is omitted when absent. Human-facing `name`, `description`,
-Markdown body, `x-*` metadata, schema wrapper dialects, and local `ref` paths
-do not affect portable identity. Consequently, an inline schema and a local
-referenced schema with identical resolved JSON values have the same contract
-digest, while changing the bytes at a stable reference path changes the
-digest.
+The digest object contains the subject-specific schema keys selected by
+`contract_type`: `record_schema` and `binding_schema`; `data_schema` and
+`source_schema`; or `input_schema`, `output_schema`, `error_schema`,
+`provider_schema`, and `behavior`. Absent optional members are omitted.
+Human-facing `name`, `description`, Markdown body, `x-*` metadata, schema
+wrapper dialects, and local `ref` paths do not affect portable identity.
+Consequently, an inline schema and a local referenced schema with identical
+resolved JSON values have the same contract digest, while changing the bytes
+at a stable reference path changes the digest.
 
 The implementation digest is SHA-256 over RFC 8785 bytes for:
 

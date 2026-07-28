@@ -1,0 +1,50 @@
+{
+  "name": "@callumalpass/mdbase-interop",
+  "version": "0.1.0-rc.2",
+  "type": "module",
+  "description": "Portable mdbase event/action contracts, CloudEvents envelopes, and reference bridge.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdbase-dev/mdbase-spec.git",
+    "directory": "packages/interop"
+  },
+  "bugs": {
+    "url": "https://github.com/mdbase-dev/mdbase-spec/issues"
+  },
+  "homepage": "https://mdbase.dev/interop/",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "conformance",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "generate:schemas": "node scripts/generate-schema-module.mjs",
+    "build": "npm run generate:schemas && tsc -p tsconfig.json && esbuild src/index.ts --bundle --platform=node --format=cjs --target=node18 --external:ajv --external:ajv/* --external:ajv-formats --external:semver --outfile=dist/index.cjs",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "semver": "^7.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "@types/semver": "^7.7.1",
+    "esbuild": "^0.25.9",
+    "typescript": "^6.0.3"
+  }
+}

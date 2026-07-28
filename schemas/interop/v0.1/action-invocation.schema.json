@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/interop/v0.1/action-invocation.schema.json",
+  "title": "mdbase admitted action invocation",
+  "$ref": "profile.schema.json#/$defs/actionInvocation"
+}
