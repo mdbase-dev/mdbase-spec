@@ -914,7 +914,26 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       },
       "jsonPointer": {
         "type": "string",
+        "format": "json-pointer",
         "pattern": "^(/([^/~]|~0|~1)*)*$"
+      },
+      "fieldReference": {
+        "description": "A legacy mdbase field path or a non-root RFC 6901 JSON Pointer.",
+        "oneOf": [
+          {
+            "$ref": "#/$defs/fieldPath"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/$defs/jsonPointer"
+              },
+              {
+                "minLength": 1
+              }
+            ]
+          }
+        ]
       },
       "jsonSchema": {
         "type": "object",
@@ -985,7 +1004,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             "type": "array",
             "minItems": 1,
             "items": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             },
             "uniqueItems": true
           },
@@ -1001,6 +1020,9 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       "matchWhere": {
         "type": "object",
         "minProperties": 1,
+        "propertyNames": {
+          "$ref": "#/$defs/fieldReference"
+        },
         "additionalProperties": {
           "$ref": "#/$defs/matchPredicate"
         }
@@ -1089,16 +1111,16 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
         "type": "object",
         "properties": {
           "name_field": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "description_field": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "icon": {
             "type": "string"
           },
           "color_field": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           }
         },
         "additionalProperties": false
@@ -1107,7 +1129,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
         "type": "object",
         "minProperties": 1,
         "propertyNames": {
-          "$ref": "#/$defs/fieldPath"
+          "$ref": "#/$defs/fieldReference"
         },
         "additionalProperties": {
           "$ref": "#/$defs/linkRule"
@@ -1158,7 +1180,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           ],
           "properties": {
             "field": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             },
             "scope": {
               "enum": [
@@ -1285,7 +1307,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             "type": "object",
             "minProperties": 1,
             "propertyNames": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             },
             "additionalProperties": {
               "$ref": "#/$defs/lifecycleValue"
@@ -1351,7 +1373,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             ],
             "properties": {
               "slugify": {
-                "$ref": "#/$defs/fieldPath"
+                "$ref": "#/$defs/fieldReference"
               }
             },
             "additionalProperties": false
@@ -1363,7 +1385,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             ],
             "properties": {
               "copy": {
-                "$ref": "#/$defs/fieldPath"
+                "$ref": "#/$defs/fieldReference"
               }
             },
             "additionalProperties": false
@@ -1475,10 +1497,10 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           "fields": {
             "type": "object",
             "propertyNames": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             },
             "additionalProperties": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             }
           },
           "binding": {

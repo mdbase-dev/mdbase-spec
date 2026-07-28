@@ -32,6 +32,15 @@ groups:
         covers:
           - core_read.data_contract_projection
 
+      - name: "JSON Pointer maps JSON-LD and escaped property names"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "tests/v0.3/fixtures/data-contracts/json-pointer-contact.contract.md"
+          type: "tests/v0.3/fixtures/data-contracts/json-pointer-contact-type.md"
+          record: "tests/v0.3/fixtures/data-contracts/json-pointer-contact.yml"
+        expect:
+          valid: true
+
       - name: "binding schema rejects incomplete semantic configuration"
         operation: data_contract_implementation_validate
         input:

@@ -1,0 +1,5 @@
+card:
+  "@type": Contact
+  label: Ada Lovelace
+  "a/b": slash
+  "a~b": tilde

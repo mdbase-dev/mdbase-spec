@@ -2,6 +2,20 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## 2026-07-28 (standard field references)
+
+### Added
+
+- Added non-root RFC 6901 JSON Pointer as the exact field-reference form for
+  collection semantics and data-contract mappings.
+- Added conformance coverage for JSON-LD `@type` and escaped `/` and `~`
+  property names.
+
+### Changed
+
+- Retained the existing mdbase field-path syntax as a compatible shorthand,
+  including its `[]` array-item selector.
+
 ## 2026-07-26 (exact record source)
 
 ### Added
