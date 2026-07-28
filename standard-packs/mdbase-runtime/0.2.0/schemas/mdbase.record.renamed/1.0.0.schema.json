@@ -1,19 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "mdbase record-modified event data",
+  "title": "mdbase record-renamed event data",
   "type": "object",
   "required": [
-    "path",
+    "from",
+    "to",
     "before",
     "after",
-    "changed_fields",
     "previous_revision",
     "revision",
     "previous_types",
     "types"
   ],
   "properties": {
-    "path": {
+    "from": {
+      "type": "string",
+      "minLength": 1
+    },
+    "to": {
       "type": "string",
       "minLength": 1
     },
@@ -22,13 +26,6 @@
     },
     "after": {
       "type": "object"
-    },
-    "changed_fields": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string"
-      }
     },
     "previous_revision": {
       "type": "string",
@@ -194,5 +191,5 @@
       "additionalProperties": false
     }
   },
-  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.record.modified/1.0.0.schema.json"
+  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.record.renamed/1.0.0.schema.json"
 }

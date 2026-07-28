@@ -1,24 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "mdbase record-modified event data",
+  "title": "mdbase record-created event data",
   "type": "object",
   "required": [
     "path",
-    "before",
     "after",
     "changed_fields",
-    "previous_revision",
     "revision",
-    "previous_types",
     "types"
   ],
   "properties": {
     "path": {
       "type": "string",
       "minLength": 1
-    },
-    "before": {
-      "type": "object"
     },
     "after": {
       "type": "object"
@@ -30,21 +24,9 @@
         "type": "string"
       }
     },
-    "previous_revision": {
-      "type": "string",
-      "minLength": 1
-    },
     "revision": {
       "type": "string",
       "minLength": 1
-    },
-    "previous_types": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
-      }
     },
     "types": {
       "type": "array",
@@ -194,5 +176,5 @@
       "additionalProperties": false
     }
   },
-  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.record.modified/1.0.0.schema.json"
+  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.record.created/1.0.0.schema.json"
 }

@@ -125,6 +125,38 @@ resources:
     target: _types/dead-letter.md
     digest: sha256:b0d60190734983889d63400b2c9aa1c0b5fa668e37920ab5969575cea43aa1f3
   - kind: schema
+    source: schemas/mdbase.record.created/1.0.0.schema.json
+    target: schemas/mdbase.record.created/1.0.0.schema.json
+    digest: sha256:8d28a2a32083ab9a55f53ad1a619da47022fa3ef291191c6c2e5a9848ce59fcc
+  - kind: contract
+    source: _contracts/mdbase.record.created/1.0.0.md
+    target: _contracts/mdbase.record.created/1.0.0.md
+    digest: sha256:4c157f94e63d1f4fb1a74da640e03264ccb6c78cfa9f88ddb71b09c8bd6d1d44
+  - kind: schema
+    source: schemas/mdbase.record.modified/1.0.0.schema.json
+    target: schemas/mdbase.record.modified/1.0.0.schema.json
+    digest: sha256:1ecda771bdeb4b6cea32b81ee344257005b49c4dcf71cdf95a1577a7459b74b0
+  - kind: contract
+    source: _contracts/mdbase.record.modified/1.0.0.md
+    target: _contracts/mdbase.record.modified/1.0.0.md
+    digest: sha256:2f670ef18bf7330fbba73861f41889ee946b33644074ca7366e88913f6e4d88a
+  - kind: schema
+    source: schemas/mdbase.record.deleted/1.0.0.schema.json
+    target: schemas/mdbase.record.deleted/1.0.0.schema.json
+    digest: sha256:b5a1fa20b6526ea8d857e03a2eebfc8b2ed126b1c4e7ca2d9735c59ddbeb7206
+  - kind: contract
+    source: _contracts/mdbase.record.deleted/1.0.0.md
+    target: _contracts/mdbase.record.deleted/1.0.0.md
+    digest: sha256:cb4f4a09f9f9b1f7f5e2207de0074ce02fd89008c08386626fd964a29299f956
+  - kind: schema
+    source: schemas/mdbase.record.renamed/1.0.0.schema.json
+    target: schemas/mdbase.record.renamed/1.0.0.schema.json
+    digest: sha256:11546c9497c9700ed48b2f634be8001a009b7cea92f19584ed8b8aafc783e990
+  - kind: contract
+    source: _contracts/mdbase.record.renamed/1.0.0.md
+    target: _contracts/mdbase.record.renamed/1.0.0.md
+    digest: sha256:b6c507198379ba48408c9b48161a1c22d46dad2d291691af449167618484bb4c
+  - kind: schema
     source: schemas/mdbase.runtime.timer.fired/1.0.0.schema.json
     target: schemas/mdbase.runtime.timer.fired/1.0.0.schema.json
     digest: sha256:986cdde8c88a6ff363062d056101141c436271608e565d2a02f250cd74853f74
