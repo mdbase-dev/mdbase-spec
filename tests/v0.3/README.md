@@ -4,17 +4,18 @@ This directory is the parallel v0.3 conformance suite. It does not replace the
 existing `tests/level-*` v0.2.x suite.
 
 v0.3 conformance claims use the atomic profiles defined by the specification.
-The tests below are grouped into nine fixture sets for the rollout plan:
+The tests below are grouped into ten fixture sets for the rollout plan:
 
 1. `schema_artifacts`
 2. `migration`
 3. `core_collection`
 4. `data_contracts`
 5. `lifecycle`
-6. `cel`
-7. `views`
-8. `runtime_contracts`
-9. `workflow_execution`
+6. `type_packs`
+7. `cel`
+8. `views`
+9. `runtime_contracts`
+10. `workflow_execution`
 
 The suite covers JSON Schema artifacts, type wrappers, first-class data
 contracts and projections, collection semantics, CEL host bindings, saved

@@ -180,7 +180,8 @@ Digests let a consumer distinguish an approved implementation from a later
 change that happens to retain the same name.
 
 The contract digest is SHA-256 over RFC 8785 JSON Canonicalization Scheme bytes
-for this object:
+for this object, using the fully resolved JSON Schema values rather than their
+storage wrappers or reference paths:
 
 ```json
 {
@@ -193,7 +194,11 @@ for this object:
 ```
 
 `binding_schema` is omitted when absent. Human-facing `name`, `description`,
-Markdown body, and `x-*` metadata do not affect portable identity.
+Markdown body, `x-*` metadata, schema wrapper dialects, and local `ref` paths
+do not affect portable identity. Consequently, an inline schema and a local
+referenced schema with identical resolved JSON values have the same contract
+digest, while changing the bytes at a stable reference path changes the
+digest.
 
 The implementation digest is SHA-256 over RFC 8785 bytes for:
 
@@ -246,8 +251,11 @@ read or mutate it.
 ## Contract Access And Whole Records
 
 The portable contract view contains only mapped contract fields. A gateway that
-grants access "through a contract" SHOULD expose that view plus the minimum
-record identity needed by its protocol.
+grants access "through a contract" MUST expose only that view plus the minimum
+record identity needed by its protocol. If a record has several approved views
+and the operation does not identify one unambiguously, the gateway MUST require
+an explicit contract ID, exact version, and implementing type rather than merge
+or guess.
 
 Access to unmapped frontmatter, the Markdown body, or arbitrary records is
 whole-record or whole-collection access and MUST be requested and presented
@@ -308,6 +316,13 @@ complete committed state before normal collection operations resume.
 Revoking an application's access does not uninstall its type pack. Uninstall is
 a separate, explicitly requested operation because records may still depend on
 the installed types.
+
+A pack install or dry-run result reports the pack `id`, exact `version`, and
+every resource in manifest order as `{ target, action, digest }`, where
+`action` is `create`, `replace`, or `unchanged`. It also reports
+`cleanup_deferred` when committed state is valid but transaction-journal cleanup
+must be retried. Reinstalling identical bytes is valid and reports every
+resource as `unchanged`; it MUST NOT create a new logical collection revision.
 
 ## Diagnostics
 

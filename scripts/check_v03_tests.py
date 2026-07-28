@@ -52,6 +52,7 @@ EXECUTABLE_OPERATIONS = {
     "inspect_yaml",
     "migrate_type",
     "type_pack_resources_validate",
+    "install_type_pack",
     "data_contract_implementation_validate",
     "data_contract_digest",
     "data_contract_implementation_digest",
@@ -394,6 +395,10 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         run_type_pack_resources_test(input_data, expect)
         return
 
+    if operation == "install_type_pack":
+        run_install_type_pack_test(input_data, expect, setup)
+        return
+
     if operation == "data_contract_implementation_validate":
         run_data_contract_implementation_test(input_data, expect)
         return
@@ -509,6 +514,110 @@ def run_type_pack_resources_test(input_data: dict[str, Any], expect: dict[str, A
     assert_expected_validation_result(failures, expect)
 
 
+def run_install_type_pack_test(
+    input_data: dict[str, Any], expect: dict[str, Any], setup: dict[str, Any]
+) -> None:
+    """Simulate the normative preflight/diff/atomicity rules without an engine."""
+    manifest_path = resolve(input_data["pack"])
+    manifest = load_yaml(manifest_path)
+    resources = manifest.get("resources", []) or []
+    live = {
+        str(target): str(content).encode()
+        for target, content in (setup.get("files") or {}).items()
+    }
+    corrupt_digest = input_data.get("corrupt_digest") is True
+    runs: list[dict[str, Any]] = []
+
+    for _ in range(int(input_data.get("repeat", 1))):
+        planned: list[tuple[str, bytes, str]] = []
+        error: dict[str, str] | None = None
+        seen_sources: set[str] = set()
+        seen_targets: set[str] = set()
+        for index, resource in enumerate(resources):
+            source = resource.get("source")
+            target = resource.get("target")
+            digest = resource.get("digest")
+            if not all(isinstance(value, str) for value in (source, target, digest)):
+                error = {"code": "invalid_type_pack", "message": "incomplete resource"}
+                break
+            if source in seen_sources or target in seen_targets:
+                error = {"code": "invalid_type_pack", "message": "duplicate resource"}
+                break
+            seen_sources.add(source)
+            seen_targets.add(target)
+            source_path = (manifest_path.parent / source).resolve()
+            try:
+                source_path.relative_to(manifest_path.parent.resolve())
+            except ValueError:
+                error = {"code": "invalid_type_pack", "message": "unsafe source"}
+                break
+            if not source_path.is_file():
+                error = {"code": "invalid_type_pack", "message": "missing source"}
+                break
+            document = source_path.read_bytes()
+            actual_digest = "sha256:" + hashlib.sha256(document).hexdigest()
+            declared_digest = (
+                "sha256:" + ("0" * 64) if corrupt_digest and index == 0 else digest
+            )
+            if actual_digest != declared_digest:
+                error = {"code": "invalid_type_pack", "message": "digest mismatch"}
+                break
+            action = (
+                "create"
+                if target not in live
+                else "unchanged"
+                if live[target] == document
+                else "replace"
+            )
+            planned.append((target, document, action))
+
+        if error is None and len(planned) != len(resources):
+            error = {"code": "invalid_type_pack", "message": "incomplete pack"}
+        if error is None and any(action == "replace" for _, _, action in planned):
+            error = {"code": "type_pack_conflict", "message": "target conflict"}
+
+        if error is not None:
+            runs.append({"valid": False, "actions": [], "error": error})
+            break
+
+        for target, document, _ in planned:
+            live[target] = document
+        runs.append(
+            {
+                "valid": True,
+                "actions": [action for _, _, action in planned],
+            }
+        )
+
+    implementation_count = 0
+    for target, document in live.items():
+        if not target.startswith("_types/") or not target.endswith(".md"):
+            continue
+        try:
+            frontmatter = parse_markdown_frontmatter_text(document.decode(), target)
+        except (UnicodeDecodeError, ValueError, yaml.YAMLError):
+            continue
+        implementation_count += sum(
+            1
+            for implementation in frontmatter.get("implements", []) or []
+            if implementation.get("contract") == "tasknotes.task"
+            and implementation.get("version") == "0.2.0"
+        )
+
+    last = runs[-1]
+    actual = {
+        "valid": last["valid"],
+        "runs": runs,
+        "implementations": implementation_count,
+        "targets_exist": [
+            resource.get("target") in live for resource in resources
+        ],
+    }
+    if "error" in last:
+        actual["error"] = last["error"]
+    assert_subset(actual, expect)
+
+
 def run_data_contract_implementation_test(
     input_data: dict[str, Any], expect: dict[str, Any]
 ) -> None:
@@ -594,9 +703,23 @@ def run_data_contract_implementation_test(
 def data_contract_digest(contract: dict[str, Any]) -> str:
     payload = {
         key: contract[key]
-        for key in ("kind", "id", "version", "schema", "binding_schema")
+        for key in ("kind", "id", "version")
         if key in contract
     }
+    if "schema" in contract:
+        schema = contract["schema"]
+        payload["schema"] = (
+            schema["value"]
+            if isinstance(schema, dict) and "value" in schema
+            else schema
+        )
+    if "binding_schema" in contract:
+        binding_schema = contract["binding_schema"]
+        payload["binding_schema"] = (
+            binding_schema["value"]
+            if isinstance(binding_schema, dict) and "value" in binding_schema
+            else binding_schema
+        )
     canonical = json.dumps(
         payload,
         ensure_ascii=False,

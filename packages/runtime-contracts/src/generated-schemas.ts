@@ -1602,20 +1602,18 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             "required": [
               "value"
             ],
-            "not": {
-              "required": [
-                "ref"
-              ]
+            "properties": {
+              "value": true,
+              "ref": false
             }
           },
           {
             "required": [
               "ref"
             ],
-            "not": {
-              "required": [
-                "value"
-              ]
+            "properties": {
+              "ref": true,
+              "value": false
             }
           }
         ],
