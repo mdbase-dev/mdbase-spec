@@ -78,6 +78,42 @@ groups:
         expect:
           valid: true
 
+      - name: "data-contract schema validates the TaskNotes contract"
+        operation: markdown_frontmatter_schema_validate
+        input:
+          schema: "schemas/v0.3/data-contract.schema.json"
+          paths:
+            - "examples/v0.3/tasknotes-migration/v0.3/_contracts/*.md"
+        expect:
+          valid: true
+
+      - name: "TaskNotes contract record and binding schemas are valid JSON Schema"
+        operation: embedded_json_schema_validate
+        input:
+          paths:
+            - "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          pointers:
+            - "/schema/value"
+            - "/binding_schema/value"
+        expect:
+          valid: true
+
+      - name: "type-pack schema validates the TaskNotes pack"
+        operation: yaml_document_schema_validate
+        input:
+          schema: "schemas/v0.3/type-pack.schema.json"
+          paths:
+            - "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+        expect:
+          valid: true
+
+      - name: "TaskNotes pack resources match their declared digests"
+        operation: type_pack_resources_validate
+        input:
+          path: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+        expect:
+          valid: true
+
       - name: "type-file schema validates the canonical view type"
         operation: markdown_frontmatter_schema_validate
         input:

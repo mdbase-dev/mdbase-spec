@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -50,6 +51,11 @@ EXECUTABLE_OPERATIONS = {
     "json_document_valid",
     "inspect_yaml",
     "migrate_type",
+    "type_pack_resources_validate",
+    "data_contract_implementation_validate",
+    "data_contract_digest",
+    "data_contract_implementation_digest",
+    "data_contract_registry_validate",
 }
 
 CONFORMANCE_PROFILES = {
@@ -292,26 +298,31 @@ def validate_suite_shape(
 
 def validate_setup_artifacts(path: Path, group: dict[str, Any], errors: list[str]) -> None:
     setup = group.get("setup") or {}
-    types = setup.get("types") or {}
-    if not isinstance(types, dict):
-        errors.append(f"{path}: group {group.get('name')!r} setup.types must be a mapping")
-        return
-    for file_name, content in types.items():
-        if not isinstance(content, str):
-            errors.append(f"{path}: setup type {file_name} content must be a string")
+    for artifact_kind, identity_key in (("types", "name"), ("contracts", "id")):
+        artifacts = setup.get(artifact_kind) or {}
+        if not isinstance(artifacts, dict):
+            errors.append(
+                f"{path}: group {group.get('name')!r} setup.{artifact_kind} must be a mapping"
+            )
             continue
-        label = f"{path}: setup type {file_name}"
-        try:
-            if str(file_name).endswith(".md"):
-                frontmatter = parse_markdown_frontmatter_text(content, label)
-                if not isinstance(frontmatter.get("name"), str) or not frontmatter["name"]:
-                    errors.append(f"{label}: missing non-empty frontmatter name")
-            elif str(file_name).endswith(".json"):
-                parsed = json.loads(content)
-                if not isinstance(parsed, dict):
-                    errors.append(f"{label}: JSON schema fixture must be an object")
-        except (ValueError, json.JSONDecodeError, yaml.YAMLError) as error:
-            errors.append(f"{label}: {error}")
+        for file_name, content in artifacts.items():
+            if not isinstance(content, str):
+                errors.append(f"{path}: setup {artifact_kind} {file_name} content must be a string")
+                continue
+            label = f"{path}: setup {artifact_kind} {file_name}"
+            try:
+                if str(file_name).endswith(".md"):
+                    frontmatter = parse_markdown_frontmatter_text(content, label)
+                    if not isinstance(frontmatter.get(identity_key), str) or not frontmatter[identity_key]:
+                        errors.append(
+                            f"{label}: missing non-empty frontmatter {identity_key}"
+                        )
+                elif str(file_name).endswith(".json"):
+                    parsed = json.loads(content)
+                    if not isinstance(parsed, dict):
+                        errors.append(f"{label}: JSON schema fixture must be an object")
+            except (ValueError, json.JSONDecodeError, yaml.YAMLError) as error:
+                errors.append(f"{label}: {error}")
 
 
 def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = None) -> None:
@@ -335,10 +346,12 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         return
 
     if operation == "embedded_json_schema_validate":
-        pointer = input_data.get("pointer", "/schema/value")
+        pointers = input_data.get("pointers") or [input_data.get("pointer", "/schema/value")]
         for path in expand_paths(input_data.get("paths", [])):
-            embedded = get_pointer(load_markdown_frontmatter(path), pointer)
-            Draft202012Validator.check_schema(embedded)
+            frontmatter = load_markdown_frontmatter(path)
+            for pointer in pointers:
+                embedded = get_pointer(frontmatter, pointer)
+                Draft202012Validator.check_schema(embedded)
         assert_valid(expect)
         return
 
@@ -375,6 +388,51 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
 
     if operation == "migrate_type":
         run_migrate_type_test(input_data, expect, setup)
+        return
+
+    if operation == "type_pack_resources_validate":
+        run_type_pack_resources_test(input_data, expect)
+        return
+
+    if operation == "data_contract_implementation_validate":
+        run_data_contract_implementation_test(input_data, expect)
+        return
+
+    if operation == "data_contract_digest":
+        contract = load_markdown_frontmatter(input_data["contract"])
+        actual = data_contract_digest(contract)
+        if expect.get("digest") != actual:
+            raise AssertionError(f"expected digest {expect.get('digest')!r}, got {actual!r}")
+        return
+
+    if operation == "data_contract_implementation_digest":
+        contract = load_markdown_frontmatter(input_data["contract"])
+        type_file = load_markdown_frontmatter(input_data["type"])
+        matching = [
+            entry
+            for entry in type_file.get("implements", []) or []
+            if entry.get("contract") == contract.get("id")
+            and entry.get("version") == contract.get("version")
+        ]
+        if len(matching) != 1:
+            raise AssertionError("type must have one exact implementation")
+        actual = data_contract_implementation_digest(contract, type_file, matching[0])
+        if expect.get("digest") != actual:
+            raise AssertionError(f"expected digest {expect.get('digest')!r}, got {actual!r}")
+        return
+
+    if operation == "data_contract_registry_validate":
+        failures: list[str] = []
+        registry: dict[tuple[str, str], str] = {}
+        for contract_path in expand_paths(input_data.get("paths", [])):
+            contract = load_markdown_frontmatter(contract_path)
+            key = (contract.get("id"), contract.get("version"))
+            digest = data_contract_digest(contract)
+            existing = registry.get(key)
+            if existing is not None and existing != digest:
+                failures.append(f"data contract conflict for {key[0]}@{key[1]}")
+            registry[key] = digest
+        assert_expected_validation_result(failures, expect)
         return
 
     raise AssertionError(f"unsupported operation: {operation}")
@@ -417,6 +475,187 @@ def run_migrate_type_test(input_data: dict[str, Any], expect: dict[str, Any], se
         raise AssertionError("detected_generator mismatch")
     if subset := expect.get("report_contains"):
         assert_subset(report, subset)
+
+
+def run_type_pack_resources_test(input_data: dict[str, Any], expect: dict[str, Any]) -> None:
+    manifest_path = resolve(input_data["path"])
+    manifest = load_yaml(manifest_path)
+    failures: list[str] = []
+    seen_targets: set[str] = set()
+
+    for resource in manifest.get("resources", []) or []:
+        source = resource.get("source")
+        target = resource.get("target")
+        declared = resource.get("digest")
+        if not isinstance(source, str) or not isinstance(target, str) or not isinstance(declared, str):
+            failures.append("resource is missing source, target, or digest")
+            continue
+        if target in seen_targets:
+            failures.append(f"duplicate target: {target}")
+        seen_targets.add(target)
+        source_path = (manifest_path.parent / source).resolve()
+        try:
+            source_path.relative_to(manifest_path.parent.resolve())
+        except ValueError:
+            failures.append(f"source escapes pack root: {source}")
+            continue
+        if not source_path.is_file():
+            failures.append(f"source does not exist: {source}")
+            continue
+        actual = "sha256:" + hashlib.sha256(source_path.read_bytes()).hexdigest()
+        if actual != declared:
+            failures.append(f"digest mismatch for {source}: expected {declared}, got {actual}")
+
+    assert_expected_validation_result(failures, expect)
+
+
+def run_data_contract_implementation_test(
+    input_data: dict[str, Any], expect: dict[str, Any]
+) -> None:
+    failures: list[str] = []
+    contract = load_markdown_frontmatter(input_data["contract"])
+    type_file = load_markdown_frontmatter(input_data["type"])
+
+    contract_meta = Draft202012Validator(load_json("schemas/v0.3/data-contract.schema.json"))
+    type_meta = Draft202012Validator(load_json("schemas/v0.3/type-file.schema.json"))
+    failures.extend(error.message for error in contract_meta.iter_errors(contract))
+    failures.extend(error.message for error in type_meta.iter_errors(type_file))
+    if failures:
+        assert_expected_validation_result(failures, expect)
+        return
+
+    contract_schema = get_pointer(contract, "/schema/value")
+    Draft202012Validator.check_schema(contract_schema)
+    binding_schema = contract.get("binding_schema", {}).get("value")
+    if binding_schema is not None:
+        Draft202012Validator.check_schema(binding_schema)
+
+    matching = [
+        entry
+        for entry in type_file.get("implements", []) or []
+        if entry.get("contract") == contract.get("id")
+        and entry.get("version") == contract.get("version")
+    ]
+    if len(matching) != 1:
+        failures.append(
+            "type must contain exactly one implementation for the contract ID and version"
+        )
+        assert_expected_validation_result(failures, expect)
+        return
+
+    implementation = matching[0]
+    fields = implementation.get("fields") or {}
+    required = contract_schema.get("required") or []
+    for field_name in required:
+        if field_name not in fields:
+            failures.append(f"required contract field is not mapped: {field_name}")
+
+    for contract_field, record_field in fields.items():
+        if not schema_declares_field(contract_schema, contract_field):
+            failures.append(f"contract field is not declared: {contract_field}")
+        type_schema = get_pointer(type_file, "/schema/value")
+        if not schema_declares_field(type_schema, record_field):
+            failures.append(f"record field is not declared: {record_field}")
+
+    binding = implementation.get("binding") or {}
+    if binding_schema is None:
+        if binding:
+            failures.append("binding is non-empty but contract has no binding_schema")
+    else:
+        failures.extend(
+            f"binding: {error.message}"
+            for error in Draft202012Validator(binding_schema).iter_errors(binding)
+        )
+
+    record_path = input_data.get("record")
+    if record_path and not failures:
+        record_path = resolve(record_path)
+        if record_path.suffix.lower() == ".md":
+            record = load_markdown_frontmatter(record_path)
+        else:
+            record = load_yaml(record_path)
+        view = {
+            contract_field: record[record_field]
+            for contract_field, record_field in fields.items()
+            if "." not in contract_field
+            and "[]" not in contract_field
+            and "." not in record_field
+            and "[]" not in record_field
+            and record_field in record
+        }
+        failures.extend(
+            f"record: {error.message}"
+            for error in Draft202012Validator(contract_schema).iter_errors(view)
+        )
+
+    assert_expected_validation_result(failures, expect)
+
+
+def data_contract_digest(contract: dict[str, Any]) -> str:
+    payload = {
+        key: contract[key]
+        for key in ("kind", "id", "version", "schema", "binding_schema")
+        if key in contract
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def data_contract_implementation_digest(
+    contract: dict[str, Any],
+    type_file: dict[str, Any],
+    implementation: dict[str, Any],
+) -> str:
+    type_semantics = {
+        key: type_file[key]
+        for key in ("name", "version", "match", "schema", "collection", "lifecycle")
+        if key in type_file
+    }
+    payload = {
+        "contract_digest": data_contract_digest(contract),
+        "type": type_semantics,
+        "implementation": implementation,
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def schema_declares_field(schema: dict[str, Any], field_path: str) -> bool:
+    current: Any = schema
+    for part in field_path.replace("[]", "").split("."):
+        properties = current.get("properties") if isinstance(current, dict) else None
+        if not isinstance(properties, dict) or part not in properties:
+            return False
+        current = properties[part]
+        if "[]" in field_path and isinstance(current, dict) and "items" in current:
+            current = current["items"]
+    return True
+
+
+def assert_expected_validation_result(failures: list[str], expect: dict[str, Any]) -> None:
+    if expect.get("valid") is False:
+        if not failures:
+            raise AssertionError("expected validation to fail")
+        expected_contains = expect.get("error_contains")
+        if expected_contains and not any(expected_contains in failure for failure in failures):
+            raise AssertionError(
+                f"expected an error containing {expected_contains!r}, got {failures!r}"
+            )
+        return
+    if failures:
+        raise AssertionError("; ".join(failures))
 
 
 def assert_subset(actual: Any, expected_subset: Any) -> None:

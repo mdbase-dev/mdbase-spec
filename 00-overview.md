@@ -170,6 +170,18 @@ JSON Schema validates the persisted frontmatter object. The `collection`
 section supplies rules that require collection context, including effective
 read defaults, links, uniqueness, and path policy.
 
+### Data contracts make type meaning portable
+
+Types can implement exact, versioned data contracts stored under
+`_contracts/`. A contract uses JSON Schema for its normalized record interface
+and optional binding. The type's `implements` entry maps contract fields to
+record fields.
+
+Several types can implement one contract, and several applications can consume
+the same type. Discovery returns the complete implementation set; it never
+silently picks a provider. Data contracts are passive interoperability and do
+not grant access.
+
 ### Records are Markdown files with typed frontmatter
 
 A record provides field values in frontmatter and free-form Markdown in its
@@ -264,6 +276,7 @@ testable.
 | [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing and YAML value semantics |
 | [04-configuration.md](./04-configuration.md) | The `mdbase.yaml` configuration file |
 | [05-type-files.md](./05-type-files.md) | JSON Schema type wrappers and metadata |
+| [05-data-contracts.md](./05-data-contracts.md) | versioned data contracts, type implementations, and transactional type packs |
 | [06-json-schema-profile.md](./06-json-schema-profile.md) | Supported JSON Schema vocabulary and reference rules |
 | [07-collection-semantics.md](./07-collection-semantics.md) | Matching, defaults, uniqueness, links, and paths |
 | [08-links.md](./08-links.md) | Link syntax, resolution, traversal, and backlinks |

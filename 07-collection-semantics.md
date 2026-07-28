@@ -241,9 +241,10 @@ their declared field names. Query- and view-local named projections are
 separate, live under the `projection` CEL namespace, and never replace a
 collection projection or persisted field with the same name.
 
-## Domain Namespaces
+## Private Domain Namespaces
 
-Domain annotations use namespaced extension sections:
+Private annotations with no portable interoperability meaning use namespaced
+extension sections:
 
 ```yaml
 x-example-app:
@@ -253,5 +254,6 @@ x-example-app:
       completed_values: [done, cancelled]
 ```
 
-This keeps the JSON Schema reusable and gives each domain extension an explicit
-owner.
+This keeps the JSON Schema reusable and gives each private extension an
+explicit owner. Portable domain interfaces use the first-class data contracts
+and type-local `implements` entries from Chapter 05A.

@@ -260,6 +260,8 @@ test("host-owned policy resolvers refresh authorization without replacing provid
 
 test("main package export is browser-safe", async () => {
   const schemas = getCanonicalSchemas();
+  assert.equal(typeof schemas.dataContract.$id, "string");
+  assert.equal(typeof schemas.typePack.$id, "string");
   assert.equal(
     schemas.provider.$id,
     "https://mdbase.dev/schemas/runtime/v0.1/provider.schema.json",

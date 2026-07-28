@@ -3,15 +3,15 @@
 ## Collection
 
 A collection is a directory tree identified by an `mdbase.yaml` file. It
-contains Markdown records, type files, optional runtime records, and optional
-derived state.
+contains Markdown records, type files, optional data contract files, optional
+runtime records, and optional derived state.
 
 A collection root is the directory containing the active `mdbase.yaml`.
 
 ## Record
 
 A record is a Markdown file in the collection that is not excluded, not a type
-file, and not another reserved collection file. A record has:
+or data contract file, and not another reserved collection file. A record has:
 
 - a collection-relative path
 - optional YAML frontmatter
@@ -30,6 +30,17 @@ mdbase sections.
 
 Types define shape and collection semantics for matching records. Runtime
 providers and workflows supply executable behavior.
+
+## Data Contract
+
+A data contract is a versioned `mdbase.contract` control file that defines a
+portable record interface and optional implementation binding using JSON Schema
+2020-12.
+
+A type implements a data contract through its top-level `implements` section.
+The contract does not replace the type, select a provider, assign ownership, or
+grant access. Several types can implement one contract, and several
+applications can consume the same implementing type.
 
 ## Schema
 
@@ -114,16 +125,16 @@ runtime-profile behavior for a collection.
 The core collection model is runtime-neutral. Runtime records make active
 behavior portable and inspectable without making every implementation a runtime.
 
-## Contract
+## Runtime Contract
 
-A contract is a typed record or virtual registry entry describing the interface
-of a provider, event, action, capability, policy, run, checkpoint, diagnostic,
-or workflow.
+A runtime contract is a typed record or virtual registry entry describing the
+interface of a provider, event, action, capability, policy, run, checkpoint,
+diagnostic, or workflow.
 
-Contracts describe the interfaces used by action handlers, event sources,
-watchers, schedulers, agents, and provider APIs supplied by a runtime.
+Runtime contracts describe the interfaces used by action handlers, event
+sources, watchers, schedulers, agents, and provider APIs supplied by a runtime.
 
-## Explicit And Implicit Contracts
+## Explicit And Implicit Runtime Contracts
 
 Explicit contracts are ordinary Markdown records in a collection or installed
 pack.

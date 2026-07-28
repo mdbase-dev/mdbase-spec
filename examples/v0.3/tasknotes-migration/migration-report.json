@@ -26,7 +26,7 @@
   "mappings": [
     {
       "from": "fields.title",
-      "to": ["schema.value.properties.title", "x-tasknotes.field_roles.title"]
+      "to": ["schema.value.properties.title", "implements.0.fields.title"]
     },
     {
       "from": "fields.status.values",
@@ -34,11 +34,11 @@
     },
     {
       "from": "fields.status.default",
-      "to": ["schema.value.properties.status.default", "collection.read_defaults.status", "x-tasknotes.status.default"]
+      "to": ["schema.value.properties.status.default", "collection.read_defaults.status", "implements.0.binding.status.default"]
     },
     {
       "from": "fields.status.tn_completed_values",
-      "to": "x-tasknotes.status.completed_values"
+      "to": "implements.0.binding.status.completed_values"
     },
     {
       "from": "fields.dateCreated.generated",

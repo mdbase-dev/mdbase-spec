@@ -8,7 +8,7 @@ be transformed into the v0.3 split:
 - JSON Schema frontmatter shape
 - `collection` defaults, links, display, and path policy
 - `lifecycle` managed fields
-- `x-tasknotes` extension metadata
+- a first-class `tasknotes.task` implementation
 - machine-readable migration report
 """
 
@@ -196,17 +196,18 @@ def migrate_tasknotes_type(old: dict[str, Any]) -> dict[str, Any]:
             "path": migrate_path_policy(old.get("path_pattern")),
         },
         "lifecycle": lifecycle,
-        "x-tasknotes": {
-            "contract": "tasknotes.task",
-            "version": 1,
-            "field_roles": field_roles,
-            "status": status_metadata,
-            "priority": priority_metadata,
-            "archive": {
-                "tags_field": field_roles.get("tags", "tags"),
-                "archived_tag": "archived",
-            },
-        },
+        "implements": [
+            {
+                "contract": "tasknotes.task",
+                "version": "0.2.0",
+                "fields": field_roles,
+                "binding": {
+                    "status": status_metadata,
+                    "priority": priority_metadata,
+                    "archive": {"archived_tag": "archived"},
+                },
+            }
+        ],
     }
 
     return prune_empty(task_type)
@@ -315,10 +316,10 @@ def build_report(old: dict[str, Any], migrated: dict[str, Any]) -> dict[str, Any
             "tasknotes_annotations_moved": True,
         },
         "mappings": [
-            {"from": "fields.title", "to": ["schema.value.properties.title", "x-tasknotes.field_roles.title"]},
+            {"from": "fields.title", "to": ["schema.value.properties.title", "implements.0.fields.title"]},
             {"from": "fields.status.values", "to": "schema.value.properties.status.enum"},
-            {"from": "fields.status.default", "to": ["schema.value.properties.status.default", "collection.read_defaults.status", "x-tasknotes.status.default"]},
-            {"from": "fields.status.tn_completed_values", "to": "x-tasknotes.status.completed_values"},
+            {"from": "fields.status.default", "to": ["schema.value.properties.status.default", "collection.read_defaults.status", "implements.0.binding.status.default"]},
+            {"from": "fields.status.tn_completed_values", "to": "implements.0.binding.status.completed_values"},
             {"from": "fields.dateCreated.generated", "to": "lifecycle.on_create.set.dateCreated"},
             {"from": "fields.dateModified.generated", "to": "lifecycle.on_update.set.dateModified"},
             {"from": "fields.projects.items.type", "to": ["schema.value.properties.projects.items.type", "collection.links.projects[]"]},

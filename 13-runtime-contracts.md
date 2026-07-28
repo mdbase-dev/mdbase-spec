@@ -6,6 +6,11 @@ Runtime contracts let a collection describe event-driven behavior through
 portable records. They give providers, events, actions, capabilities, policies,
 and workflows stable identities and data shapes.
 
+These are runtime contracts, not the passive record-interface data contracts
+defined in Chapter 05A. Runtime contract records participate in the normal
+record model and become active only through a selected runtime host. Data
+contract files are reserved control files implemented by record types.
+
 Contract records describe the interfaces and policy that a runtime uses. The
 runtime supplies event delivery, action handlers, authorization, scheduling,
 and execution.
@@ -120,7 +125,7 @@ Resolution MUST NOT depend on filesystem enumeration order.
 Duplicate contracts with the same ID, version, and canonically identical
 content coalesce. The registry preserves every origin for diagnostics.
 Duplicate IDs with different versions or content MUST produce a
-`contract_conflict` error.
+`runtime_contract_conflict` error.
 
 Runtime profile 0.1 treats non-identical duplicate definitions as conflicts. A
 runtime-specific override uses an `x-*` extension and MUST make the effective

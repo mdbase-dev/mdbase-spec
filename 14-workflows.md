@@ -381,4 +381,4 @@ explicitly allows it to proceed.
 Built-in, provider, pack, and collection workflows enter the effective registry
 through the composition rules in Chapter 13. Built-in workflows SHOULD be
 inspectable and MAY be materialized. Identical definitions coalesce; conflicting
-definitions produce `contract_conflict` with their origins.
+definitions produce `runtime_contract_conflict` with their origins.

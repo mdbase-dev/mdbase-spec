@@ -35,6 +35,9 @@
     },
     "migrations": {
       "$ref": "#/$defs/migrations"
+    },
+    "implements": {
+      "$ref": "#/$defs/implementations"
     }
   },
   "patternProperties": {
@@ -544,6 +547,53 @@
         ],
         "additionalProperties": false
       }
+    },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/implementation"
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["contract", "version", "fields"],
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/contractId"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "fields": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/fieldPath"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/fieldPath"
+          }
+        },
+        "binding": {
+          "type": "object"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+          "$ref": "#/$defs/domainExtension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contractId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
     },
     "expression": {
       "type": "object",

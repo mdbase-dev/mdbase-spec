@@ -11,6 +11,8 @@ export interface CanonicalSchemas {
   recordDocument: Record<string, unknown>;
   queryResult: Record<string, unknown>;
   typeFile: Record<string, unknown>;
+  dataContract: Record<string, unknown>;
+  typePack: Record<string, unknown>;
   provider: Record<string, unknown>;
   action: Record<string, unknown>;
   event: Record<string, unknown>;

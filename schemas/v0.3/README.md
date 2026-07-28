@@ -10,6 +10,8 @@ yet published package artifacts.
 | Schema | Purpose |
 | --- | --- |
 | `type-file.schema.json` | frontmatter of `_types/*.md` v0.3 type files |
+| `data-contract.schema.json` | frontmatter of `_contracts/*.md` data contract files |
+| `type-pack.schema.json` | transactional type-pack manifests |
 | `query.schema.json` | portable query input objects |
 | `query-result.schema.json` | query results plus optional context, view, grouping, and summary metadata |
 | `record-document.schema.json` | complete authoritative record documents returned by read and successful mutations |
