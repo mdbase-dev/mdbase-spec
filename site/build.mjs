@@ -78,6 +78,7 @@ const SPEC_FILES = [
   { file: '03-records-and-frontmatter.md', num: '03', title: 'Records & Frontmatter', id: 'section-03' },
   { file: '04-configuration.md',          num: '04', title: 'Configuration',        id: 'section-04' },
   { file: '05-type-files.md',             num: '05', title: 'Type Files',           id: 'section-05' },
+  { file: '05-data-contracts.md',         num: '05A', title: 'Data Contracts',      id: 'section-05a' },
   { file: '06-json-schema-profile.md',    num: '06', title: 'JSON Schema Profile',  id: 'section-06' },
   { file: '07-collection-semantics.md',   num: '07', title: 'Collection Semantics', id: 'section-07' },
   { file: '08-links.md',                  num: '08', title: 'Links',                id: 'section-08' },

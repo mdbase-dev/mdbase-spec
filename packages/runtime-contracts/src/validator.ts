@@ -287,7 +287,7 @@ export class RuntimeContractValidator {
     if (contractVersion !== contract.version) {
       diagnostics.push({
         severity: "error",
-        code: "contract_version_mismatch",
+        code: "runtime_contract_version_mismatch",
         message: `Event ${eventType} declares contract version ${String(contractVersion)}, but the registry provides ${String(contract.version)}.`,
         id: eventType,
         details: {
@@ -429,7 +429,7 @@ export class RuntimeContractValidator {
       }
       registry.diagnostics.push({
         severity: "error",
-        code: "contract_conflict",
+        code: "runtime_contract_conflict",
         message: `Conflicting ${contract.type} contract ${contract.id}.`,
         path: record.path,
         id: contract.id,

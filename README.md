@@ -107,12 +107,12 @@ order_by:
 | Goal | Start here |
 | --- | --- |
 | Understand the model | [Overview](./00-overview.md) and [Concepts](./01-concepts.md) |
-| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), and [Type Files](./05-type-files.md) |
+| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [Data Contracts](./05-data-contracts.md) |
 | Validate, query, or save views over records | [JSON Schema Profile](./06-json-schema-profile.md), [CEL Profile](./10-cel-profile.md), and [Querying](./11-querying.md) |
 | Add links or managed fields | [Links](./08-links.md) and [Lifecycle](./09-lifecycle.md) |
 | Define automation | [Runtime Contracts](./13-runtime-contracts.md) and [Workflows](./14-workflows.md) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./15-migrations-and-compatibility.md) |
-| Build a conforming tool | [Conformance](./16-conformance.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
+| Build a conforming tool | [Conformance](./16-conformance.md), [data contracts](./05-data-contracts.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
 
 ## Implementations
 
@@ -136,8 +136,8 @@ The specification is organized by topic:
 
 - Chapters 00–04 introduce the model, records, collection layout, and
   configuration.
-- Chapters 05–09 define types, schemas, collection semantics, links, and
-  lifecycle policy.
+- Chapters 05–09 and 05A define types, data contracts, schemas, collection
+  semantics, links, and lifecycle policy.
 - Chapters 10–12 define CEL expressions, queries, and record operations.
 - Chapters 13–14 define optional runtime contracts and workflows.
 - Chapters 15–16 cover migration, compatibility, and conformance.

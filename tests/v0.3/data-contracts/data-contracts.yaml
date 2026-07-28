@@ -1,0 +1,206 @@
+name: "v0.3 data contract conformance"
+spec_version: "0.3.0"
+fixture_set: data_contracts
+category: data_contracts
+spec_ref: "v0.3/02, v0.3/04, v0.3/05, v0.3/05A, v0.3/06, v0.3/16"
+
+groups:
+  - name: "contract artifacts and implementations"
+    tests:
+      - id: data-contract-schema
+        name: "data contract frontmatter and embedded schemas validate"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
+        expect:
+          valid: true
+        covers:
+          - core_read.data_contract_discovery
+          - core_read.data_contract_schema_validation
+          - core_read.data_contract_implementation_validation
+
+      - id: data-contract-projection
+        name: "a valid record projects through the declared field map"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
+          record: "tests/v0.3/fixtures/data-contracts/valid-task.yml"
+        expect:
+          valid: true
+        covers:
+          - core_read.data_contract_projection
+
+      - name: "binding schema rejects incomplete semantic configuration"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/invalid-binding-type.md"
+        expect:
+          valid: false
+          error_contains: "binding"
+
+      - name: "all unconditionally required contract fields are mapped"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/missing-required-map-type.md"
+        expect:
+          valid: false
+          error_contains: "required contract field"
+
+      - name: "mapped record fields must exist in the type schema"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/unknown-record-field-type.md"
+        expect:
+          valid: false
+          error_contains: "record field is not declared"
+
+      - name: "contract view validation rejects an invalid projected record"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
+          record: "tests/v0.3/fixtures/data-contracts/invalid-task.yml"
+        expect:
+          valid: false
+          error_contains: "record"
+
+      - name: "legacy x extensions do not implement data contracts"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/legacy-extension-type.md"
+        expect:
+          valid: false
+          error_contains: "exactly one implementation"
+
+      - id: data-contract-digest
+        name: "contract digest is deterministic over portable semantics"
+        operation: data_contract_digest
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+        expect:
+          digest: "sha256:7111c47ba7b1abed8c9823500c30ce0b80d3b3950a982d0acbc29523b5cb4d1c"
+        covers:
+          - core_read.data_contract_digest
+
+      - id: data-contract-implementation-digest
+        name: "implementation digest pins contract, type semantics, and binding"
+        operation: data_contract_implementation_digest
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
+        expect:
+          digest: "sha256:2d3a40ba07e03e20a6bd1eae2f44c267a5bb14c3e693f09629f28b7a69277601"
+        covers:
+          - core_read.data_contract_implementation_digest
+
+      - id: data-contract-conflict
+        name: "different content for one exact contract identity conflicts"
+        operation: data_contract_registry_validate
+        input:
+          paths:
+            - "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+            - "tests/v0.3/fixtures/data-contracts/conflicting-tasknotes.task.md"
+        expect:
+          valid: false
+          error_contains: "data contract conflict"
+        covers:
+          - core_read.data_contract_conflict
+
+  - name: "multiple local implementations"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          types_folder: _types
+          contracts_folder: _contracts
+          explicit_type_keys: [type]
+      contracts:
+        example.note.md: |
+          ---
+          kind: mdbase.contract
+          id: example.note
+          version: 1.0.0
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+          ---
+      types:
+        personal-note.md: |
+          ---
+          kind: mdbase.type
+          name: personal_note
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [type, title]
+              properties:
+                type: { const: personal_note }
+                title: { type: string }
+          implements:
+            - contract: example.note
+              version: 1.0.0
+              fields:
+                title: title
+          ---
+        work-note.md: |
+          ---
+          kind: mdbase.type
+          name: work_note
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [type, summary]
+              properties:
+                type: { const: work_note }
+                summary: { type: string }
+          implements:
+            - contract: example.note
+              version: 1.0.0
+              fields:
+                title: summary
+          ---
+      files:
+        personal.md: |
+          ---
+          type: personal_note
+          title: Personal note
+          ---
+        work.md: |
+          ---
+          type: work_note
+          summary: Work note
+          ---
+    tests:
+      - name: "lookup returns every implementing type in canonical order"
+        operation: get_data_contracts
+        input:
+          contract: example.note
+          version: 1.0.0
+        expect:
+          implementations:
+            - type: personal_note
+            - type: work_note
+
+      - name: "each implementing record exposes the normalized contract view"
+        operation: get_contract_view
+        input:
+          path: work.md
+          contract: example.note
+          version: 1.0.0
+        expect:
+          view:
+            title: Work note

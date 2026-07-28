@@ -180,50 +180,50 @@ lifecycle:
     set:
       dateModified: { now: true }
 
-x-tasknotes:
-  contract: tasknotes.task
-  version: 1
-  field_roles:
-    title: title
-    status: status
-    priority: priority
-    due: due
-    scheduled: scheduled
-    completedDate: completedDate
-    tags: tags
-    contexts: contexts
-    projects: projects
-    timeEstimate: timeEstimate
-    dateCreated: dateCreated
-    dateModified: dateModified
-    recurrence: recurrence
-    recurrenceAnchor: recurrenceAnchor
-    recurrenceParent: recurrenceParent
-    occurrenceDate: occurrenceDate
-    occurrenceMaterialization: occurrenceMaterialization
-    occurrenceNextTrigger: occurrenceNextTrigger
-    occurrenceTemplate: occurrenceTemplate
-    occurrencePastHorizon: occurrencePastHorizon
-    occurrenceFutureHorizon: occurrenceFutureHorizon
-    completeInstances: completeInstances
-    skippedInstances: skippedInstances
-    timeEntries: timeEntries
-    blockedBy: blockedBy
-    reminders: reminders
-  status:
-    completed_values: [done, cancelled]
-    default: open
-  priority:
-    default: normal
-  archive:
-    tags_field: tags
-    archived_tag: archived
+implements:
+  - contract: tasknotes.task
+    version: 0.2.0
+    fields:
+      title: title
+      status: status
+      priority: priority
+      due: due
+      scheduled: scheduled
+      completedDate: completedDate
+      tags: tags
+      contexts: contexts
+      projects: projects
+      timeEstimate: timeEstimate
+      dateCreated: dateCreated
+      dateModified: dateModified
+      recurrence: recurrence
+      recurrenceAnchor: recurrenceAnchor
+      recurrenceParent: recurrenceParent
+      occurrenceDate: occurrenceDate
+      occurrenceMaterialization: occurrenceMaterialization
+      occurrenceNextTrigger: occurrenceNextTrigger
+      occurrenceTemplate: occurrenceTemplate
+      occurrencePastHorizon: occurrencePastHorizon
+      occurrenceFutureHorizon: occurrenceFutureHorizon
+      completeInstances: completeInstances
+      skippedInstances: skippedInstances
+      timeEntries: timeEntries
+      blockedBy: blockedBy
+      reminders: reminders
+    binding:
+      status:
+        completed_values: [done, cancelled]
+        default: open
+      priority:
+        default: normal
+      archive:
+        archived_tag: archived
 ---
 
 # Task
 
 Generated from TaskNotes settings. The JSON Schema section describes persisted
 frontmatter shape. The `collection` section describes mdbase-aware behavior.
-The `lifecycle` section describes managed writes. The `x-tasknotes` section
-describes TaskNotes semantics for tools that understand the TaskNotes task
-contract.
+The `lifecycle` section describes managed writes. The `implements` section maps
+the exact local `tasknotes.task` contract and carries schema-validated TaskNotes
+binding semantics.

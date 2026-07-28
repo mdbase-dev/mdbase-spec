@@ -13,6 +13,8 @@ const schemaPaths = {
   recordDocument: "record-document.schema.json",
   queryResult: "query-result.schema.json",
   typeFile: "type-file.schema.json",
+  dataContract: "data-contract.schema.json",
+  typePack: "type-pack.schema.json",
   provider: "runtime/provider.schema.json",
   action: "runtime/action.schema.json",
   event: "runtime/event.schema.json",

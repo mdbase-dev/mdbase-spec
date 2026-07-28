@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Stage or apply a complete mdbase v0.2 collection metadata migration.
 
-The migrator rewrites only ``mdbase.yaml`` and Markdown files in the configured
-types folder. Record files are never modified. It flattens v0.2 inheritance,
-maps field definitions to JSON Schema, and moves collection behavior into the
-v0.3 ``collection`` and ``lifecycle`` sections.
+The migrator rewrites only ``mdbase.yaml`` and control files in the configured
+types and contracts folders. Record files are never modified. It flattens v0.2
+inheritance, maps field definitions to JSON Schema, and moves collection
+behavior into the v0.3 ``collection`` and ``lifecycle`` sections.
 
-TaskNotes-generated types receive the ``tasknotes.task`` contract wrapper used
-by current TaskNotes releases. Source features without a portable v0.3 mapping
-are retained under ``x-legacy-v0.2`` and listed in the report.
+TaskNotes-generated types receive a first-class ``tasknotes.task``
+implementation and the exact local contract artifact. Source features without
+a portable v0.3 mapping are retained under ``x-legacy-v0.2`` and listed in the
+report.
 """
 
 from __future__ import annotations
@@ -35,9 +36,15 @@ from jsonschema import Draft202012Validator
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_SCHEMA = REPO_ROOT / "schemas/v0.3/config.schema.json"
 TYPE_FILE_SCHEMA = REPO_ROOT / "schemas/v0.3/type-file.schema.json"
+DATA_CONTRACT_SCHEMA = REPO_ROOT / "schemas/v0.3/data-contract.schema.json"
+TASKNOTES_CONTRACT_SOURCE = (
+    REPO_ROOT
+    / "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+)
 FRONTMATTER = re.compile(r"\A---(?:\r?\n)(.*?)(?:\r?\n)---(?=\r?\n|\Z)", re.S)
 CORE_CONFIG_SETTINGS = {
     "types_folder",
+    "contracts_folder",
     "record_extensions",
     "validation",
     "explicit_type_keys",
@@ -170,7 +177,33 @@ def analyze(collection: Path, output: Path, mdb_bin: Path | None) -> dict[str, A
                 "source_sha256": sha256(source.path.read_bytes()),
                 "target_sha256": sha256(rendered.encode()),
                 "flattened_inheritance": inheritance,
-                "tasknotes_contract": migrated.get("x-tasknotes", {}).get("contract"),
+                "tasknotes_contract": next(
+                    (
+                        implementation.get("contract")
+                        for implementation in migrated.get("implements", [])
+                        if implementation.get("contract") == "tasknotes.task"
+                    ),
+                    None,
+                ),
+            }
+        )
+
+    contract_summaries: list[dict[str, Any]] = []
+    if any(item["tasknotes_contract"] == "tasknotes.task" for item in type_summaries):
+        contracts_folder = str(proposed_config["settings"]["contracts_folder"])
+        contract_relative = Path(contracts_folder) / "tasknotes.task.md"
+        contract_frontmatter = load_markdown_frontmatter(TASKNOTES_CONTRACT_SOURCE)
+        validate_schema(DATA_CONTRACT_SCHEMA, contract_frontmatter, "data contract tasknotes.task")
+        contract_bytes = TASKNOTES_CONTRACT_SOURCE.read_bytes()
+        contract_target = proposed / contract_relative
+        contract_target.parent.mkdir(parents=True, exist_ok=True)
+        contract_target.write_bytes(contract_bytes)
+        contract_summaries.append(
+            {
+                "id": "tasknotes.task",
+                "version": "0.2.0",
+                "path": contract_relative.as_posix(),
+                "target_sha256": sha256(contract_bytes),
             }
         )
 
@@ -214,6 +247,7 @@ def analyze(collection: Path, output: Path, mdb_bin: Path | None) -> dict[str, A
             "target_sha256": sha256((proposed / "mdbase.yaml").read_bytes()),
         },
         "types": sorted(type_summaries, key=lambda item: item["name"].casefold()),
+        "contracts": contract_summaries,
         "unsupported": unsupported,
         "target_validation": target_validation,
         "record_validation": record_validation,
@@ -276,6 +310,7 @@ def migrate_config(source: dict[str, Any]) -> dict[str, Any]:
     if "extensions" in settings and "record_extensions" not in target_settings:
         target_settings["record_extensions"] = [str(value).lstrip(".") for value in settings["extensions"]]
     target_settings.setdefault("record_extensions", ["md"])
+    target_settings.setdefault("contracts_folder", "_contracts")
     target_settings.setdefault("validation", "warn")
     # Preserve an explicitly empty list: this collection uses CSL's `type`
     # field as data and therefore cannot use the default explicit type keys.
@@ -448,28 +483,29 @@ def migrate_type(
             }
         status_field = tasknotes_roles.get("status")
         priority_field = tasknotes_roles.get("priority")
-        target["x-tasknotes"] = {
-            "contract": "tasknotes.task",
-            "version": 1,
-            "field_roles": tasknotes_roles,
-            "status": {
-                "completed_values": completed_values,
-                **(
-                    {"default": read_defaults[status_field]}
-                    if status_field in read_defaults
-                    else {}
-                ),
-            },
-            "priority": (
-                {"default": read_defaults[priority_field]}
-                if priority_field in read_defaults
-                else {}
-            ),
-            "archive": {
-                "tags_field": tasknotes_roles.get("tags", "tags"),
-                "archived_tag": "archived",
-            },
-        }
+        target["implements"] = [
+            {
+                "contract": "tasknotes.task",
+                "version": "0.2.0",
+                "fields": tasknotes_roles,
+                "binding": {
+                    "status": {
+                        "completed_values": completed_values,
+                        **(
+                            {"default": read_defaults[status_field]}
+                            if status_field in read_defaults
+                            else {}
+                        ),
+                    },
+                    "priority": (
+                        {"default": read_defaults[priority_field]}
+                        if priority_field in read_defaults
+                        else {}
+                    ),
+                    "archive": {"archived_tag": "archived"},
+                },
+            }
+        ]
 
     if collection:
         target["collection"] = collection
@@ -732,13 +768,16 @@ def migrated_body(source: SourceType, target: dict[str, Any]) -> str:
             "This materialized meta type mirrors the canonical mdbase v0.3 type-file schema.\n"
             "The implementation's built-in schema remains authoritative during collection bootstrap.\n"
         )
-    if target.get("x-tasknotes", {}).get("contract") == "tasknotes.task":
+    if any(
+        implementation.get("contract") == "tasknotes.task"
+        for implementation in target.get("implements", [])
+    ):
         return (
             "\n\n# Task\n\n"
             "This type definition is generated from TaskNotes settings for mdbase v0.3.\n"
             "Its JSON Schema describes persisted task frontmatter; collection and lifecycle\n"
-            "metadata describe generic mdbase behavior; `x-tasknotes` records the optional\n"
-            "TaskNotes task contract.\n\n"
+            "metadata describe generic mdbase behavior; `implements` maps the exact\n"
+            "TaskNotes task data contract.\n\n"
             "This file is automatically generated and should not be edited manually.\n"
         )
     return source.body
@@ -763,6 +802,15 @@ def validate_staged_collection(
         if staged_types.exists():
             shutil.rmtree(staged_types)
         shutil.copytree(proposed / target_types, staged_types)
+        target_contracts = load_yaml(proposed / "mdbase.yaml")["settings"].get(
+            "contracts_folder", "_contracts"
+        )
+        proposed_contracts = proposed / target_contracts
+        if proposed_contracts.exists():
+            staged_contracts = stage / target_contracts
+            if staged_contracts.exists():
+                shutil.rmtree(staged_contracts)
+            shutil.copytree(proposed_contracts, staged_contracts)
         target = run_mdb_validate(mdb, stage)
 
     baseline_keys = diagnostic_keys(baseline)
@@ -877,24 +925,28 @@ def apply_migration(
     if backup.exists():
         raise SystemExit(f"backup already exists: {backup}")
     backup.mkdir(parents=True)
-    paths = [Path("mdbase.yaml"), *(Path(item["path"]) for item in report["types"])]
+    paths = [
+        Path("mdbase.yaml"),
+        *(Path(item["path"]) for item in report["types"]),
+        *(Path(item["path"]) for item in report.get("contracts", [])),
+    ]
     manifest = {"collection": str(collection), "files": []}
     for relative in paths:
         source = collection / relative
-        backup_file = backup / relative
-        backup_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, backup_file)
-        manifest["files"].append(
-            {
-                "path": relative.as_posix(),
-                "sha256": sha256(source.read_bytes()),
-            }
-        )
+        existed = source.exists()
+        item = {"path": relative.as_posix(), "existed": existed}
+        if existed:
+            backup_file = backup / relative
+            backup_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, backup_file)
+            item["sha256"] = sha256(source.read_bytes())
+        manifest["files"].append(item)
     (backup / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     for relative in paths:
         target = collection / relative
         staged = proposed / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
         temporary = target.with_name(f".{target.name}.mdbase-v03.tmp")
         shutil.copy2(staged, temporary)
         os.replace(temporary, target)
@@ -914,6 +966,16 @@ def validate_schema(schema_path: Path, value: Any, label: str) -> None:
 
 def load_yaml(path: Path) -> Any:
     return normalize_yaml(yaml.safe_load(path.read_text()))
+
+
+def load_markdown_frontmatter(path: Path) -> dict[str, Any]:
+    match = FRONTMATTER.match(path.read_text())
+    if not match:
+        raise SystemExit(f"control file lacks frontmatter: {path}")
+    value = normalize_yaml(yaml.safe_load(match.group(1)) or {})
+    if not isinstance(value, dict):
+        raise SystemExit(f"control file frontmatter is not a mapping: {path}")
+    return value
 
 
 def normalize_yaml(value: Any) -> Any:

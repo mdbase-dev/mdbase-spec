@@ -565,5 +565,5 @@ groups:
         expect:
           valid: false
           diagnostics:
-            - code: contract_conflict
+            - code: runtime_contract_conflict
               id: duplicate.event

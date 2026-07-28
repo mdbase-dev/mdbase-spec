@@ -13,8 +13,10 @@ tooling and downstream package discussions.
 | `current-v0.2/mdbase.yaml` | representative current generated config |
 | `current-v0.2/_types/task.md` | representative old custom-field type |
 | `v0.3/mdbase.yaml` | v0.3 config shape |
+| `v0.3/_contracts/tasknotes.task.md` | exact TaskNotes data contract |
 | `v0.3/_types/meta.md` | v0.3 type wrapper metadata |
 | `v0.3/_types/task.md` | migrated v0.3 task type |
+| `v0.3/mdbase-pack.yaml` | transactional contract-and-type installation manifest |
 | `migration-report.json` | machine-readable explanation of the mapping |
 
 ## Important Moves
@@ -25,13 +27,14 @@ tooling and downstream package discussions.
   `collection.read_defaults`.
 - `generated` timestamps move to `lifecycle`.
 - `type: link` fields become string shapes plus `collection.links`.
-- TaskNotes semantic roles move from per-field `tn_role` to
-  `x-tasknotes.field_roles`.
+- TaskNotes semantic roles move from per-field `tn_role` to the type's
+  `implements[].fields` map.
 - Reminder variants use JSON Schema `oneOf` and `const`.
-- Archive semantics live in `x-tasknotes.archive`.
+- TaskNotes binding semantics validate against the contract's
+  `binding_schema`.
 
 ## Review Use
 
 This fixture should be used to test migration tooling before touching the
-TaskNotes generator. A future migrator should be able to produce the v0.3 type
-file plus a report very close to `migration-report.json`.
+TaskNotes generator. A future migrator should be able to produce the v0.3
+contract and type files plus a report very close to `migration-report.json`.

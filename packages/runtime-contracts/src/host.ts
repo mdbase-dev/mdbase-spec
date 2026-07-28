@@ -305,7 +305,7 @@ export class InMemoryRuntimeHost implements RuntimeHost {
       );
       const key = `${contract.type}:${contract.id}`;
       if (ids.has(key)) {
-        throw new RuntimeHostError("contract_conflict", `Provider ${descriptor.id} repeats ${key}.`);
+        throw new RuntimeHostError("runtime_contract_conflict", `Provider ${descriptor.id} repeats ${key}.`);
       }
       ids.add(key);
       if (
@@ -316,10 +316,10 @@ export class InMemoryRuntimeHost implements RuntimeHost {
         throw new RuntimeHostError("provider_contract_mismatch", `${contract.id} names provider ${String(contract.provider)}.`);
       }
       if (contract.type === "action" && this.actionOwners.has(contract.id)) {
-        throw new RuntimeHostError("contract_conflict", `Action ${contract.id} is already registered.`);
+        throw new RuntimeHostError("runtime_contract_conflict", `Action ${contract.id} is already registered.`);
       }
       if (contract.type === "event" && this.eventOwners.has(contract.id)) {
-        throw new RuntimeHostError("contract_conflict", `Event ${contract.id} is already registered.`);
+        throw new RuntimeHostError("runtime_contract_conflict", `Event ${contract.id} is already registered.`);
       }
     }
     assertAdvertisedContracts(descriptor, contracts, "actions", "action");
@@ -381,7 +381,7 @@ export class InMemoryRuntimeHost implements RuntimeHost {
       event.contract_version !== contract.version ||
       (event.source.provider !== undefined && event.source.provider !== providerId)
     ) {
-      this.rejectEvent("contract_version_mismatch", `Event ${event.type} does not match its registered contract.`, providerId, event.type);
+      this.rejectEvent("runtime_contract_version_mismatch", `Event ${event.type} does not match its registered contract.`, providerId, event.type);
       return;
     }
     if (this.recentEventIds.has(event.id)) return;

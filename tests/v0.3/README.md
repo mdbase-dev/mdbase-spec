@@ -4,19 +4,23 @@ This directory is the parallel v0.3 conformance suite. It does not replace the
 existing `tests/level-*` v0.2.x suite.
 
 v0.3 conformance claims use the atomic profiles defined by the specification.
-The tests below are grouped into seven fixture sets for the rollout plan:
+The tests below are grouped into ten fixture sets for the rollout plan:
 
 1. `schema_artifacts`
 2. `migration`
 3. `core_collection`
-4. `lifecycle`
-5. `cel`
-6. `views`
-7. `runtime_contracts`
+4. `data_contracts`
+5. `lifecycle`
+6. `type_packs`
+7. `cel`
+8. `views`
+9. `runtime_contracts`
+10. `workflow_execution`
 
-The suite covers JSON Schema artifacts, type wrappers, collection semantics,
-CEL host bindings, saved views, lifecycle operations, runtime contract
-registries, workflow preflight, and execution cases for available adapters.
+The suite covers JSON Schema artifacts, type wrappers, first-class data
+contracts and projections, collection semantics, CEL host bindings, saved
+views, lifecycle operations, runtime contract registries, workflow preflight,
+and execution cases for available adapters.
 Compatible v0.2 fixtures remain useful for frontmatter parsing, missing/null
 semantics, links, operation safety, and watch ordering. Tests tied to the
 earlier custom field grammar are migrated into the v0.3 fixture sets.
@@ -79,6 +83,8 @@ Future v0.3 adapters should support these operations:
 - `load_config`
 - `load_types`
 - `get_types`
+- `get_data_contracts`
+- `get_contract_view`
 - `read`
 - `validate`
 - `query`
@@ -94,6 +100,7 @@ Future v0.3 adapters should support these operations:
 - `runtime_validate_action_input`
 - `runtime_validate_action_output`
 - `migrate_type`
+- `install_type_pack`
 
 The repository also includes `scripts/check_v03_tests.py`, which validates the
 suite structure and executes local artifact checks that do not require a full

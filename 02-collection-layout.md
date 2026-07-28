@@ -23,6 +23,8 @@ collection/
     workflow.md
     action.md
     event.md
+  _contracts/
+    example.task.md
   actions/
     mdbase.record.patch.md
   events/
@@ -48,6 +50,7 @@ The following paths are reserved by default:
 
 - `mdbase.yaml`
 - the configured types folder, default `_types/`
+- the configured contracts folder, default `_contracts/`
 - `.mdbase/` for derived implementation state
 - nested collection roots
 
@@ -70,6 +73,7 @@ Tools MUST:
 - use forward slash paths in collection APIs
 - skip excluded paths
 - skip the configured types folder
+- skip the configured contracts folder
 - skip `.mdbase/`
 - stop scanning at nested collection roots
 - ignore non-record extensions unless configured otherwise
@@ -86,6 +90,18 @@ frontmatter declares `kind: mdbase.type` is a candidate type definition.
 
 Tools MAY warn for files under the types folder that are not valid type files.
 They MUST NOT treat type files as data records.
+
+## Data Contract Discovery
+
+The configured `contracts_folder` defaults to `_contracts`.
+
+Every Markdown file directly or recursively under the contracts folder whose
+frontmatter declares `kind: mdbase.contract` is a candidate data contract.
+Contract loading, exact-version identity, and implementation validation are
+defined in Chapter 05A.
+
+Tools MAY warn for files under the contracts folder that are not valid contract
+files. They MUST NOT treat data contract files as records.
 
 ## Runtime Record Discovery
 

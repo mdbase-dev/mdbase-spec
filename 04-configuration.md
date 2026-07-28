@@ -18,6 +18,7 @@ spec_version: "0.3.0"
 
 settings:
   types_folder: _types
+  contracts_folder: _contracts
   record_extensions: [md]
   validation: error
   explicit_type_keys: [type, types]
@@ -43,6 +44,7 @@ Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `settings.types_folder` | string | `_types` | folder containing type files |
+| `settings.contracts_folder` | string | `_contracts` | folder containing data contract files |
 | `settings.record_extensions` | list of strings | `[md]` | record file extensions without dot |
 | `settings.validation` | string | `error` | default validation level: `off`, `warn`, or `error` |
 | `settings.explicit_type_keys` | list of strings | `[type, types]` | frontmatter keys used for explicit type declarations |
@@ -52,6 +54,9 @@ Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
 
 `settings.explicit_type_keys` replaces the default key list. An empty list makes
 all type membership inferred.
+
+The types and contracts folders MUST be different normalized paths. Both are
+reserved control-file folders and are excluded from ordinary record discovery.
 
 Unknown config keys MUST produce a warning while normal config loading
 continues. An explicit strict-config mode MAY reject them.

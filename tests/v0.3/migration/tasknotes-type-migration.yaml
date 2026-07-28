@@ -30,7 +30,7 @@ groups:
           report_contains:
             mappings:
               - from: "fields.title"
-                to: ["schema.value.properties.title", "x-tasknotes.field_roles.title"]
+                to: ["schema.value.properties.title", "implements.0.fields.title"]
               - from: "fields.status.values"
                 to: "schema.value.properties.status.enum"
 
@@ -99,14 +99,14 @@ groups:
         expect:
           valid: true
 
-      - name: "TaskNotes semantic metadata stays outside JSON Schema properties"
+      - name: "TaskNotes contract implementation stays outside JSON Schema properties"
         operation: inspect_yaml
         input:
           path: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
         expect:
           has:
-            - "/x-tasknotes/field_roles/status"
-            - "/x-tasknotes/archive/archived_tag"
+            - "/implements/0/fields/status"
+            - "/implements/0/binding/archive/archived_tag"
           not_has:
             - "/schema/value/properties/status/tn_role"
             - "/schema/value/properties/status/tn_completed_values"

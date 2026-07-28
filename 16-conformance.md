@@ -8,7 +8,7 @@ queries, writes, runtime preflight, workflow execution, and watching.
 
 | Profile | Purpose |
 | --- | --- |
-| Core Read | discover collections, parse records, load type files, and validate JSON Schema |
+| Core Read | discover collections, parse records, load types and data contracts, and validate JSON Schema |
 | Collection Semantics | apply defaults, uniqueness, path policy, multi-type composition, and collection diagnostics |
 | CEL | compile and evaluate the shared mdbase CEL language and host contract |
 | CEL Match | evaluate `match.expr` against raw candidate records |
@@ -88,8 +88,12 @@ The v0.3 core codes include `unsupported_profile`, `type_conflict`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
 `lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
 `context_not_found`, `context_required`, `context_type_mismatch`,
-`view_not_found`, `invalid_view`, and `unsupported_presentation`. Runtime profile
-0.1 additionally defines `contract_conflict`, `contract_version_mismatch`,
+`view_not_found`, `invalid_view`, `unsupported_presentation`,
+`invalid_data_contract`, `data_contract_not_found`,
+`data_contract_conflict`, `data_contract_version_mismatch`,
+`data_contract_binding_invalid`, `data_contract_field_invalid`, and
+`data_contract_record_invalid`. Runtime profile 0.1 additionally defines
+`runtime_contract_conflict`, `runtime_contract_version_mismatch`,
 `event_provider_mismatch`, `provider_version_mismatch`, `capability_denied`,
 `policy_not_selected`, `executor_not_selected`, and
 `idempotency_unavailable`, `event_cursor_expired`, `stale_lease`,
@@ -103,6 +107,10 @@ Core Read implementations MUST:
 - identify a collection by `mdbase.yaml`
 - scan records using collection-relative forward-slash paths
 - load and validate v0.3 type files
+- load exact-version data contracts and validate type `implements` entries
+- expose deterministic contract and implementation digests
+- project and validate contract views when a record is accessed through an
+  implementation
 - validate embedded JSON Schema against the v0.3 profile
 - select explicit types and evaluate structured inferred match rules
 - validate raw frontmatter independently against every matched schema

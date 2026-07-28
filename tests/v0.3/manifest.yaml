@@ -26,6 +26,13 @@ claim_profiles:
       - json_schema_annotations
       - json_schema_formats
       - local_schema_ref
+      - data_contract_discovery
+      - data_contract_schema_validation
+      - data_contract_implementation_validation
+      - data_contract_projection
+      - data_contract_digest
+      - data_contract_implementation_digest
+      - data_contract_conflict
       - explicit_and_basic_matching
       - raw_schema_validation
       - machine_readable_diagnostics
@@ -75,7 +82,11 @@ claim_profiles:
   - id: core_write
     status: draft
     requires: [collection_semantics]
-    requirements: []
+    requirements:
+      - transactional_type_pack_preflight
+      - exact_type_pack_diff
+      - idempotent_type_pack_install
+      - type_pack_atomicity
   - id: lifecycle
     status: draft
     requires: [core_write, cel]
@@ -135,6 +146,16 @@ fixture_sets:
     coverage_targets: [core_read, collection_semantics, links, core_write]
     files:
       - core/core-collection.yaml
+  - id: data_contracts
+    description: Data contracts, type implementations, projections, stable digests, and conflicts.
+    coverage_targets: [core_read]
+    files:
+      - data-contracts/data-contracts.yaml
+  - id: type_packs
+    description: Complete type packs validate, report exact diffs, install atomically, and reinstall idempotently.
+    coverage_targets: [core_write]
+    files:
+      - type-packs/type-packs.yaml
   - id: lifecycle
     description: on_create/on_update managed field behavior replacing generated fields.
     coverage_targets: [lifecycle]

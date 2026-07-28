@@ -109,8 +109,8 @@ not automatic silent conversion. Tools should:
 - offer dry-run migration reports before writes;
 - rewrite generated type files only when generated-file detection or explicit
   user approval is present;
-- preserve unknown domain metadata as `x-*`; named app sections should wait for
-  a future extension registry.
+- preserve unknown private domain metadata as `x-*`; portable interfaces use
+  first-class data contracts and type-local `implements` entries.
 
 ## Site Promotion Notes
 

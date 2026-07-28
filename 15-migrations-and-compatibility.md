@@ -168,21 +168,29 @@ Generated IDs and timestamps usually become lifecycle.
 Cross-record behavior, agent work, approval flows, external APIs, and scheduled
 checks become workflows and action/event contracts.
 
-## Domain Annotations
+## Data Contract Implementations
 
-Application-specific field annotations migrate to namespaced sections.
+Portable application interfaces migrate to a local data contract plus a
+type-local `implements` entry.
 
 Example:
 
 ```yaml
-x-example-app:
-  fields:
-    status:
-      role: status
+implements:
+  - contract: example.task
+    version: 1.0.0
+    fields:
+      status: status
+    binding:
       completed_values: [done, cancelled]
 ```
 
-They SHOULD NOT become JSON Schema custom keywords in portable v0.3 files.
+The migration bundle MUST include the exact `mdbase.contract` artifact required
+by the implementation. Existing convention-based `x-*` objects do not become
+contracts merely because they contain keys named `contract` or `version`.
+
+Private annotations with no portable contract meaning remain under a
+namespaced `x-*` section. They SHOULD NOT become JSON Schema custom keywords.
 
 ## Version Detection
 

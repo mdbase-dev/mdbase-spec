@@ -32,6 +32,10 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             "type": "string",
             "minLength": 1
           },
+          "contracts_folder": {
+            "type": "string",
+            "minLength": 1
+          },
           "record_extensions": {
             "type": "array",
             "minItems": 1,
@@ -673,6 +677,9 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       "body": {
         "type": "string"
       },
+      "document": {
+        "type": "string"
+      },
       "file": {
         "type": "object",
         "required": [
@@ -877,6 +884,9 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       },
       "migrations": {
         "$ref": "#/$defs/migrations"
+      },
+      "implements": {
+        "$ref": "#/$defs/implementations"
       }
     },
     "patternProperties": {
@@ -1441,6 +1451,57 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           "additionalProperties": false
         }
       },
+      "implementations": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/implementation"
+        }
+      },
+      "implementation": {
+        "type": "object",
+        "required": [
+          "contract",
+          "version",
+          "fields"
+        ],
+        "properties": {
+          "contract": {
+            "$ref": "#/$defs/contractId"
+          },
+          "version": {
+            "$ref": "#/$defs/semanticVersion"
+          },
+          "fields": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/$defs/fieldPath"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/fieldPath"
+            }
+          },
+          "binding": {
+            "type": "object"
+          }
+        },
+        "patternProperties": {
+          "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+            "$ref": "#/$defs/domainExtension"
+          }
+        },
+        "additionalProperties": false
+      },
+      "contractId": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      },
+      "semanticVersion": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+      },
       "expression": {
         "type": "object",
         "required": [
@@ -1466,6 +1527,187 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           "boolean",
           "null"
         ]
+      }
+    }
+  },
+  "dataContract": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mdbase.dev/schemas/v0.3/data-contract.schema.json",
+    "title": "mdbase v0.3 data contract frontmatter",
+    "type": "object",
+    "required": [
+      "kind",
+      "id",
+      "version",
+      "schema"
+    ],
+    "properties": {
+      "kind": {
+        "const": "mdbase.contract"
+      },
+      "id": {
+        "$ref": "#/$defs/contractId"
+      },
+      "version": {
+        "$ref": "#/$defs/semanticVersion"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string"
+      },
+      "schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "binding_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      }
+    },
+    "patternProperties": {
+      "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": true
+    },
+    "additionalProperties": false,
+    "$defs": {
+      "contractId": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      },
+      "semanticVersion": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+      },
+      "schemaWrapper": {
+        "type": "object",
+        "required": [
+          "dialect"
+        ],
+        "properties": {
+          "dialect": {
+            "const": "json-schema-2020-12"
+          },
+          "value": {
+            "type": "object"
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": true,
+              "ref": false
+            }
+          },
+          {
+            "required": [
+              "ref"
+            ],
+            "properties": {
+              "ref": true,
+              "value": false
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "typePack": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://mdbase.dev/schemas/v0.3/type-pack.schema.json",
+    "title": "mdbase v0.3 type pack manifest",
+    "type": "object",
+    "required": [
+      "kind",
+      "id",
+      "version",
+      "resources"
+    ],
+    "properties": {
+      "kind": {
+        "const": "mdbase.type-pack"
+      },
+      "id": {
+        "$ref": "#/$defs/packId"
+      },
+      "version": {
+        "$ref": "#/$defs/semanticVersion"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string"
+      },
+      "resources": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "$ref": "#/$defs/resource"
+        }
+      }
+    },
+    "patternProperties": {
+      "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": true
+    },
+    "additionalProperties": false,
+    "$defs": {
+      "packId": {
+        "type": "string",
+        "minLength": 3,
+        "maxLength": 128,
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      },
+      "semanticVersion": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+      },
+      "safeRelativePath": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+      },
+      "digest": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "resource": {
+        "type": "object",
+        "required": [
+          "kind",
+          "source",
+          "target",
+          "digest"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "contract",
+              "type",
+              "schema"
+            ]
+          },
+          "source": {
+            "$ref": "#/$defs/safeRelativePath"
+          },
+          "target": {
+            "$ref": "#/$defs/safeRelativePath"
+          },
+          "digest": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "additionalProperties": false
       }
     }
   },

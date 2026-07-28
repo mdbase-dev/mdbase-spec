@@ -55,7 +55,7 @@ test("validates event envelopes and evaluated action inputs", async () => {
     validator.validateEventEnvelope(registry, {
       ...eventEnvelope,
       contract_version: 2
-    }).diagnostics.some((diagnostic) => diagnostic.code === "contract_version_mismatch"),
+    }).diagnostics.some((diagnostic) => diagnostic.code === "runtime_contract_version_mismatch"),
     true
   );
   assert.equal(
@@ -108,10 +108,10 @@ test("coalesces identical contracts and rejects conflicting copies", async () =>
   assert.ok(action);
 
   const coalesced = validator.composeRegistry(loaded, [{ ...action }]);
-  assert.equal(coalesced.diagnostics.some((diagnostic) => diagnostic.code === "contract_conflict"), false);
+  assert.equal(coalesced.diagnostics.some((diagnostic) => diagnostic.code === "runtime_contract_conflict"), false);
 
   const conflicted = validator.composeRegistry(loaded, [{ ...action, version: 2 }]);
-  assert.equal(conflicted.diagnostics.some((diagnostic) => diagnostic.code === "contract_conflict"), true);
+  assert.equal(conflicted.diagnostics.some((diagnostic) => diagnostic.code === "runtime_contract_conflict"), true);
 });
 
 test("checks provider requirements against provider implementation versions", async () => {

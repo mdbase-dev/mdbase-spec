@@ -8,6 +8,7 @@ A type file connects three parts of the mdbase model:
 - a JSON Schema for validating their persisted frontmatter
 - collection behavior such as defaults, links, lifecycle assignments, and path
   policy
+- portable data-contract implementations
 
 The YAML frontmatter is the machine-readable definition. The Markdown body can
 document the type for people and tools.
@@ -54,6 +55,8 @@ During collection load, an implementation:
 3. canonicalizes type names for lookup and detects name conflicts
 4. resolves the embedded or referenced JSON Schema
 5. validates and compiles that schema against the v0.3 JSON Schema profile
+6. resolves and validates every `implements` entry against the local data
+   contract registry
 
 Each valid definition then enters the collection's type registry. Diagnostics
 for an invalid definition identify the type-file path and the failing section.
@@ -144,6 +147,7 @@ The following top-level sections are defined by v0.3:
 | `lifecycle` | assign managed values during mutations |
 | `runtime` | attach runtime annotations to the type |
 | `migrations` | declare explicit type-version migration steps |
+| `implements` | declare exact, schema-validated data contract implementations |
 
 Portable type-file validation accepts the core sections and `x-*` extension
 sections. Domain and provider metadata belongs under an extension name:
@@ -151,13 +155,22 @@ sections. Domain and provider metadata belongs under an extension name:
 ```yaml
 x-local:
   owner: research-team
-
-x-example-app:
-  contract: example.task
 ```
 
 This naming rule lets the type-file schema diagnose misspelled core keys such as
 `collecton`.
+
+Portable interoperability metadata does not belong under `x-*`. It uses the
+first-class `implements` section defined in Chapter 05A:
+
+```yaml
+implements:
+  - contract: example.task
+    version: 1.0.0
+    fields:
+      title: title
+      status: status
+```
 
 ## Meta Type
 

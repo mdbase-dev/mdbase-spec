@@ -1,0 +1,76 @@
+name: "v0.3 transactional type-pack conformance"
+spec_version: "0.3.0"
+fixture_set: type_packs
+category: type_packs
+spec_ref: "v0.3/05A, v0.3/16"
+
+groups:
+  - name: "complete installation and idempotency"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+    tests:
+      - id: type-pack-install-idempotent
+        name: "a complete pack installs as one exact diff and identical reinstall is unchanged"
+        operation: install_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+          repeat: 2
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              actions: [create, create]
+            - valid: true
+              actions: [unchanged, unchanged]
+          implementations: 1
+        covers:
+          - core_write.transactional_type_pack_preflight
+          - core_write.exact_type_pack_diff
+          - core_write.idempotent_type_pack_install
+
+  - name: "preflight failure is atomic"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+    tests:
+      - id: type-pack-digest-failure-atomic
+        name: "a digest mismatch writes no live target"
+        operation: install_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+          corrupt_digest: true
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+          targets_exist: [false, false]
+        covers:
+          - core_write.type_pack_atomicity
+
+  - name: "target conflicts are atomic"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      files:
+        _contracts/tasknotes.task.md: |
+          Existing unrelated bytes.
+    tests:
+      - id: type-pack-target-conflict-atomic
+        name: "a differing target rejects the whole pack without creating later resources"
+        operation: install_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: type_pack_conflict
+          targets_exist: [true, false]
+        covers:
+          - core_write.type_pack_atomicity
