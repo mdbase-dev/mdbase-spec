@@ -7,7 +7,7 @@ resources:
   - kind: contract
     source: _contracts/tasknotes.task.md
     target: _contracts/tasknotes.task.md
-    digest: sha256:7e6b8ddb30982b88c71d5e14936f363b44185733082048487c0adcb6c1bc6787
+    digest: sha256:22a1e45daf5d78e5f6ee8c4c678b37a63d76c8190cfbf8e3cecc84481e5076f3
   - kind: type
     source: _types/task.md
     target: _types/task.md

@@ -68,6 +68,7 @@ CONFORMANCE_PROFILES = {
     "links",
     "core_write",
     "lifecycle",
+    "event_action_interop/0.1",
     "runtime_contracts/0.1",
     "workflow/0.1",
     "watch",
@@ -404,14 +405,16 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         return
 
     if operation == "data_contract_digest":
-        contract = load_markdown_frontmatter(input_data["contract"])
-        actual = data_contract_digest(contract)
+        contract_path = resolve(input_data["contract"])
+        contract = load_markdown_frontmatter(contract_path)
+        actual = data_contract_digest(contract, contract_path)
         if expect.get("digest") != actual:
             raise AssertionError(f"expected digest {expect.get('digest')!r}, got {actual!r}")
         return
 
     if operation == "data_contract_implementation_digest":
-        contract = load_markdown_frontmatter(input_data["contract"])
+        contract_path = resolve(input_data["contract"])
+        contract = load_markdown_frontmatter(contract_path)
         type_file = load_markdown_frontmatter(input_data["type"])
         matching = [
             entry
@@ -421,7 +424,9 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         ]
         if len(matching) != 1:
             raise AssertionError("type must have one exact implementation")
-        actual = data_contract_implementation_digest(contract, type_file, matching[0])
+        actual = data_contract_implementation_digest(
+            contract, type_file, matching[0], contract_path
+        )
         if expect.get("digest") != actual:
             raise AssertionError(f"expected digest {expect.get('digest')!r}, got {actual!r}")
         return
@@ -432,7 +437,7 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         for contract_path in expand_paths(input_data.get("paths", [])):
             contract = load_markdown_frontmatter(contract_path)
             key = (contract.get("id"), contract.get("version"))
-            digest = data_contract_digest(contract)
+            digest = data_contract_digest(contract, contract_path)
             existing = registry.get(key)
             if existing is not None and existing != digest:
                 failures.append(f"data contract conflict for {key[0]}@{key[1]}")
@@ -622,7 +627,8 @@ def run_data_contract_implementation_test(
     input_data: dict[str, Any], expect: dict[str, Any]
 ) -> None:
     failures: list[str] = []
-    contract = load_markdown_frontmatter(input_data["contract"])
+    contract_path = resolve(input_data["contract"])
+    contract = load_markdown_frontmatter(contract_path)
     type_file = load_markdown_frontmatter(input_data["type"])
 
     contract_meta = Draft202012Validator(load_json("schemas/v0.3/data-contract.schema.json"))
@@ -633,9 +639,13 @@ def run_data_contract_implementation_test(
         assert_expected_validation_result(failures, expect)
         return
 
-    contract_schema = get_pointer(contract, "/schema/value")
+    contract_schema = resolve_schema_wrapper(contract["record_schema"], contract_path)
     Draft202012Validator.check_schema(contract_schema)
-    binding_schema = contract.get("binding_schema", {}).get("value")
+    binding_schema = (
+        resolve_schema_wrapper(contract["binding_schema"], contract_path)
+        if "binding_schema" in contract
+        else None
+    )
     if binding_schema is not None:
         Draft202012Validator.check_schema(binding_schema)
 
@@ -699,26 +709,20 @@ def run_data_contract_implementation_test(
     assert_expected_validation_result(failures, expect)
 
 
-def data_contract_digest(contract: dict[str, Any]) -> str:
+def data_contract_digest(
+    contract: dict[str, Any], contract_path: Path | None = None
+) -> str:
     payload = {
         key: contract[key]
-        for key in ("kind", "id", "version")
+        for key in ("kind", "contract_type", "id", "version")
         if key in contract
     }
-    if "schema" in contract:
-        schema = contract["schema"]
-        payload["schema"] = (
-            schema["value"]
-            if isinstance(schema, dict) and "value" in schema
-            else schema
-        )
-    if "binding_schema" in contract:
-        binding_schema = contract["binding_schema"]
-        payload["binding_schema"] = (
-            binding_schema["value"]
-            if isinstance(binding_schema, dict) and "value" in binding_schema
-            else binding_schema
-        )
+    contract_type = contract.get("contract_type")
+    for field in contract_schema_fields(contract_type):
+        if field in contract:
+            payload[field] = resolve_schema_wrapper(contract[field], contract_path)
+    if contract_type == "action" and "behavior" in contract:
+        payload["behavior"] = contract["behavior"]
     canonical = json.dumps(
         payload,
         ensure_ascii=False,
@@ -733,6 +737,7 @@ def data_contract_implementation_digest(
     contract: dict[str, Any],
     type_file: dict[str, Any],
     implementation: dict[str, Any],
+    contract_path: Path | None = None,
 ) -> str:
     type_semantics = {
         key: type_file[key]
@@ -740,7 +745,7 @@ def data_contract_implementation_digest(
         if key in type_file
     }
     payload = {
-        "contract_digest": data_contract_digest(contract),
+        "contract_digest": data_contract_digest(contract, contract_path),
         "type": type_semantics,
         "implementation": implementation,
     }
@@ -752,6 +757,38 @@ def data_contract_implementation_digest(
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def contract_schema_fields(contract_type: Any) -> tuple[str, ...]:
+    if contract_type == "record":
+        return ("record_schema", "binding_schema")
+    if contract_type == "event":
+        return ("data_schema", "source_schema")
+    if contract_type == "action":
+        return ("input_schema", "output_schema", "error_schema", "provider_schema")
+    return ()
+
+
+def resolve_schema_wrapper(wrapper: Any, source_path: Path | None) -> Any:
+    if not isinstance(wrapper, dict):
+        return wrapper
+    if "value" in wrapper:
+        return wrapper["value"]
+    reference = wrapper.get("ref")
+    if not isinstance(reference, str) or source_path is None:
+        return wrapper
+    path_part, separator, fragment = reference.partition("#")
+    if not path_part:
+        raise AssertionError("schema wrapper references must name a local file")
+    target = (source_path.parent / path_part).resolve()
+    try:
+        target.relative_to(REPO_ROOT.resolve())
+    except ValueError as error:
+        raise AssertionError(f"schema reference escapes the repository: {reference}") from error
+    schema = load_json(target)
+    if separator and fragment:
+        return get_pointer(schema, fragment)
+    return schema
 
 
 def parse_field_reference(field_reference: str) -> list[tuple[str, bool]]:

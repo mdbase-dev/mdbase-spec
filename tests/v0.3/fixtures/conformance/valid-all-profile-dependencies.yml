@@ -6,6 +6,7 @@ implementation:
   version: 0.0.0-test
 spec_version: 0.3.0
 runtime_profile_version: 0.1.0
+interop_profile_version: "0.1"
 profiles:
   - core_read
   - collection_semantics
@@ -15,6 +16,7 @@ profiles:
   - links
   - core_write
   - lifecycle
+  - event_action_interop/0.1
   - runtime_contracts/0.1
   - workflow/0.1
   - watch

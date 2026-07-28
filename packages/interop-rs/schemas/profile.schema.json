@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/interop/v0.1/profile.schema.json",
+  "title": "mdbase event and action interoperability profile 0.1",
+  "oneOf": [
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/actionRequest" },
+    { "$ref": "#/$defs/actionInvocation" },
+    { "$ref": "#/$defs/actionOutcome" },
+    { "$ref": "#/$defs/actionCancellation" },
+    { "$ref": "#/$defs/eventSourceDeclaration" },
+    { "$ref": "#/$defs/actionProviderDeclaration" },
+    { "$ref": "#/$defs/conformanceClaim" }
+  ],
+  "$defs": {
+    "contractId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "semanticVersionRequirement": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "portableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"
+    },
+    "exactContract": {
+      "type": "object",
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contractId" },
+        "version": { "$ref": "#/$defs/semanticVersion" },
+        "digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "contractRequirement": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contractId" },
+        "version": { "$ref": "#/$defs/semanticVersionRequirement" },
+        "digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    },
+    "implementationIdentity": {
+      "type": "object",
+      "required": ["application", "implementation", "version"],
+      "properties": {
+        "application": { "$ref": "#/$defs/portableId" },
+        "implementation": { "$ref": "#/$defs/portableId" },
+        "version": { "$ref": "#/$defs/semanticVersion" },
+        "instance_id": { "$ref": "#/$defs/portableId" }
+      },
+      "additionalProperties": false
+    },
+    "transportCapabilities": {
+      "type": "object",
+      "required": ["delivery", "ordering", "cancellation", "deadlines"],
+      "properties": {
+        "delivery": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["ephemeral", "at_least_once", "durable_cursor", "offline_queue"]
+          }
+        },
+        "ordering": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": ["none", "source", "subject"]
+          }
+        },
+        "cancellation": { "type": "boolean" },
+        "deadlines": { "type": "boolean" },
+        "provider_discovery": { "type": "boolean" },
+        "max_payload_bytes": { "type": "integer", "minimum": 1 },
+        "outcome_retention_seconds": { "type": "integer", "minimum": 0 },
+        "request_deduplication": { "type": "boolean" },
+        "cross_process_identity": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "extensionValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "integer" },
+        { "type": "number" },
+        { "type": "string" }
+      ]
+    },
+    "event": {
+      "title": "mdbase CloudEvents event envelope",
+      "type": "object",
+      "required": [
+        "specversion",
+        "id",
+        "source",
+        "type",
+        "time",
+        "datacontenttype",
+        "dataschema",
+        "data",
+        "mdbaseprofile",
+        "mdbasecontractversion",
+        "mdbasecontractdigest",
+        "mdbaseapplication",
+        "mdbaseimplementation",
+        "mdbaseimplementationversion"
+      ],
+      "properties": {
+        "specversion": { "const": "1.0" },
+        "id": { "$ref": "#/$defs/portableId" },
+        "source": { "type": "string", "format": "uri-reference", "minLength": 1 },
+        "type": { "$ref": "#/$defs/contractId" },
+        "time": { "type": "string", "format": "date-time" },
+        "subject": { "type": "string", "format": "uri-reference", "minLength": 1 },
+        "datacontenttype": { "const": "application/json" },
+        "dataschema": { "type": "string", "format": "uri", "minLength": 1 },
+        "data": true,
+        "mdbaseprofile": { "const": "0.1" },
+        "mdbasecontractversion": { "$ref": "#/$defs/semanticVersion" },
+        "mdbasecontractdigest": { "$ref": "#/$defs/digest" },
+        "mdbaseapplication": { "$ref": "#/$defs/portableId" },
+        "mdbaseimplementation": { "$ref": "#/$defs/portableId" },
+        "mdbaseimplementationversion": { "$ref": "#/$defs/semanticVersion" },
+        "mdbaseinstanceid": { "$ref": "#/$defs/portableId" },
+        "correlationid": { "$ref": "#/$defs/portableId" },
+        "causationid": { "$ref": "#/$defs/portableId" }
+      },
+      "propertyNames": { "pattern": "^[a-z0-9]+$" },
+      "additionalProperties": { "$ref": "#/$defs/extensionValue" }
+    },
+    "actionRequest": {
+      "title": "mdbase action request",
+      "type": "object",
+      "required": [
+        "kind",
+        "profile_version",
+        "request_id",
+        "contract",
+        "caller",
+        "created_at",
+        "input"
+      ],
+      "properties": {
+        "kind": { "const": "mdbase.action.request" },
+        "profile_version": { "const": "0.1" },
+        "request_id": { "$ref": "#/$defs/portableId" },
+        "contract": { "$ref": "#/$defs/contractRequirement" },
+        "caller": { "$ref": "#/$defs/implementationIdentity" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "correlation_id": { "$ref": "#/$defs/portableId" },
+        "causation_id": { "$ref": "#/$defs/portableId" },
+        "subject": { "type": "string", "format": "uri-reference", "minLength": 1 },
+        "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "deadline": { "type": "string", "format": "date-time" },
+        "requested_provider": {
+          "type": "object",
+          "properties": {
+            "application": { "$ref": "#/$defs/portableId" },
+            "implementation": { "$ref": "#/$defs/portableId" },
+            "instance_id": { "$ref": "#/$defs/portableId" }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "authorization_context": {
+          "type": "string",
+          "format": "uri-reference",
+          "minLength": 1
+        },
+        "input": true
+      },
+      "additionalProperties": false
+    },
+    "actionInvocation": {
+      "title": "mdbase admitted action invocation",
+      "type": "object",
+      "required": [
+        "kind",
+        "profile_version",
+        "invocation_id",
+        "attempt_id",
+        "request_id",
+        "contract",
+        "caller",
+        "provider",
+        "provider_declaration_digest",
+        "handler_id",
+        "admitted_at",
+        "input"
+      ],
+      "properties": {
+        "kind": { "const": "mdbase.action.invocation" },
+        "profile_version": { "const": "0.1" },
+        "invocation_id": { "$ref": "#/$defs/portableId" },
+        "attempt_id": { "$ref": "#/$defs/portableId" },
+        "request_id": { "$ref": "#/$defs/portableId" },
+        "contract": { "$ref": "#/$defs/exactContract" },
+        "caller": { "$ref": "#/$defs/implementationIdentity" },
+        "provider": { "$ref": "#/$defs/implementationIdentity" },
+        "provider_declaration_digest": { "$ref": "#/$defs/digest" },
+        "handler_id": { "$ref": "#/$defs/portableId" },
+        "admitted_at": { "type": "string", "format": "date-time" },
+        "correlation_id": { "$ref": "#/$defs/portableId" },
+        "causation_id": { "$ref": "#/$defs/portableId" },
+        "subject": { "type": "string", "format": "uri-reference", "minLength": 1 },
+        "idempotency_key": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "deadline": { "type": "string", "format": "date-time" },
+        "authorization_context": {
+          "type": "string",
+          "format": "uri-reference",
+          "minLength": 1
+        },
+        "input": true
+      },
+      "additionalProperties": false
+    },
+    "portableError": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "unknown_contract",
+            "unsupported_contract_version",
+            "contract_digest_conflict",
+            "invalid_event_data",
+            "invalid_action_input",
+            "invalid_action_output",
+            "no_provider",
+            "ambiguous_provider",
+            "requested_provider_unavailable",
+            "unauthorized",
+            "capability_denied",
+            "request_rejected",
+            "deadline_exceeded",
+            "cancellation_unsupported",
+            "cancelled",
+            "handler_failure",
+            "outcome_indeterminate",
+            "transport_unavailable",
+            "unsupported_transport_capability"
+          ]
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "details": true,
+        "retryable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "actionOutcome": {
+      "title": "mdbase action outcome",
+      "type": "object",
+      "required": [
+        "kind",
+        "profile_version",
+        "outcome_id",
+        "request_id",
+        "invocation_id",
+        "attempt_id",
+        "contract",
+        "provider",
+        "provider_declaration_digest",
+        "status",
+        "completed_at"
+      ],
+      "properties": {
+        "kind": { "const": "mdbase.action.outcome" },
+        "profile_version": { "const": "0.1" },
+        "outcome_id": { "$ref": "#/$defs/portableId" },
+        "request_id": { "$ref": "#/$defs/portableId" },
+        "invocation_id": { "$ref": "#/$defs/portableId" },
+        "attempt_id": { "$ref": "#/$defs/portableId" },
+        "contract": { "$ref": "#/$defs/exactContract" },
+        "provider": { "$ref": "#/$defs/implementationIdentity" },
+        "provider_declaration_digest": { "$ref": "#/$defs/digest" },
+        "status": {
+          "enum": ["succeeded", "rejected", "failed", "cancelled", "outcome_indeterminate"]
+        },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "output": true,
+        "error": { "$ref": "#/$defs/portableError" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "succeeded" } },
+            "required": ["status"]
+          },
+          "then": {
+            "required": ["output"],
+            "not": { "required": ["error"] }
+          },
+          "else": {
+            "required": ["error"],
+            "not": { "required": ["output"] }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "actionCancellation": {
+      "title": "mdbase action cancellation request",
+      "type": "object",
+      "required": ["kind", "profile_version", "cancellation_id", "request_id", "caller", "requested_at"],
+      "properties": {
+        "kind": { "const": "mdbase.action.cancel" },
+        "profile_version": { "const": "0.1" },
+        "cancellation_id": { "$ref": "#/$defs/portableId" },
+        "request_id": { "$ref": "#/$defs/portableId" },
+        "caller": { "$ref": "#/$defs/implementationIdentity" },
+        "requested_at": { "type": "string", "format": "date-time" },
+        "reason": { "type": "string", "maxLength": 1024 }
+      },
+      "additionalProperties": false
+    },
+    "eventSourceDeclaration": {
+      "title": "mdbase event-source declaration",
+      "type": "object",
+      "required": [
+        "kind",
+        "profile_version",
+        "declaration_id",
+        "declaration_digest",
+        "source",
+        "contracts"
+      ],
+      "properties": {
+        "kind": { "const": "mdbase.event-source" },
+        "profile_version": { "const": "0.1" },
+        "declaration_id": { "$ref": "#/$defs/portableId" },
+        "declaration_digest": { "$ref": "#/$defs/digest" },
+        "source": { "$ref": "#/$defs/implementationIdentity" },
+        "contracts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["requirement", "resolved"],
+            "properties": {
+              "requirement": { "$ref": "#/$defs/contractRequirement" },
+              "resolved": { "$ref": "#/$defs/exactContract" },
+              "binding": true,
+              "ordering": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "enum": ["none", "source", "subject"] }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "actionProviderDeclaration": {
+      "title": "mdbase action-provider declaration",
+      "type": "object",
+      "required": [
+        "kind",
+        "profile_version",
+        "declaration_id",
+        "declaration_digest",
+        "provider",
+        "handlers"
+      ],
+      "properties": {
+        "kind": { "const": "mdbase.action-provider" },
+        "profile_version": { "const": "0.1" },
+        "declaration_id": { "$ref": "#/$defs/portableId" },
+        "declaration_digest": { "$ref": "#/$defs/digest" },
+        "provider": { "$ref": "#/$defs/implementationIdentity" },
+        "handlers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["handler_id", "requirement", "resolved"],
+            "properties": {
+              "handler_id": { "$ref": "#/$defs/portableId" },
+              "requirement": { "$ref": "#/$defs/contractRequirement" },
+              "resolved": { "$ref": "#/$defs/exactContract" },
+              "binding": true,
+              "idempotency": {
+                "type": "object",
+                "required": ["mode"],
+                "properties": {
+                  "mode": { "enum": ["none", "request"] },
+                  "retention_seconds": { "type": "integer", "minimum": 1 }
+                },
+                "additionalProperties": false
+              },
+              "cancellation": { "enum": ["none", "cooperative"] },
+              "max_concurrency": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "conformanceClaim": {
+      "title": "mdbase interoperability conformance claim",
+      "type": "object",
+      "required": ["kind", "profile_version", "implementation", "roles", "transport"],
+      "properties": {
+        "kind": { "const": "mdbase.interop.conformance" },
+        "profile_version": { "const": "0.1" },
+        "implementation": { "$ref": "#/$defs/implementationIdentity" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["event_source", "event_consumer", "action_caller", "action_provider", "bridge"]
+          }
+        },
+        "transport": { "$ref": "#/$defs/transportCapabilities" },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["scenario", "result"],
+            "properties": {
+              "scenario": { "type": "string", "minLength": 1 },
+              "result": { "const": "pass" },
+              "uri": { "type": "string", "format": "uri-reference" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

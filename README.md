@@ -26,7 +26,9 @@ The current specification is **v0.3.0**.
 - ordinary Markdown view records for saved queries and advisory presentation
 - consistent create, read, update, delete, rename, and batch operations
 - lifecycle policies for IDs, timestamps, slugs, and managed values
-- optional runtime contracts for events, actions, capabilities, and workflows
+- first-class record, event, and action contracts with one identity and digest model
+- optional CloudEvents-based application interoperability
+- optional durable runtime execution for workflows, timers, and recovery
 - conformance profiles that show which features each tool supports
 
 ## A Collection At A Glance
@@ -107,12 +109,14 @@ order_by:
 | Goal | Start here |
 | --- | --- |
 | Understand the model | [Overview](./00-overview.md) and [Concepts](./01-concepts.md) |
-| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [Data Contracts](./05-data-contracts.md) |
+| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [First-Class Contracts](./05-data-contracts.md) |
 | Validate, query, or save views over records | [JSON Schema Profile](./06-json-schema-profile.md), [CEL Profile](./10-cel-profile.md), and [Querying](./11-querying.md) |
 | Add links or managed fields | [Links](./08-links.md) and [Lifecycle](./09-lifecycle.md) |
-| Define automation | [Runtime Contracts](./13-runtime-contracts.md) and [Workflows](./14-workflows.md) |
+| Connect applications | [Event and Action Interoperability](./interop/0.1.md) |
+| Define durable automation | [Runtime Contracts](./13-runtime-contracts.md) and [Workflows](./14-workflows.md) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./15-migrations-and-compatibility.md) |
-| Build a conforming tool | [Conformance](./16-conformance.md), [data contracts](./05-data-contracts.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
+| Exchange typed events and actions | [Event/action interoperability profile 0.1](./interop/0.1.md) and [canonical interoperability schemas](./schemas/interop/v0.1/) |
+| Build a conforming tool | [Conformance](./16-conformance.md), [first-class contracts](./05-data-contracts.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
 
 ## Implementations
 

@@ -91,9 +91,23 @@ claim_profiles:
     status: draft
     requires: [core_write, cel]
     requirements: []
-  - id: runtime_contracts/0.1
+  - id: event_action_interop/0.1
     status: draft
     requires: []
+    requirements:
+      - first_class_event_and_action_contracts
+      - cloudevents_event_envelope
+      - event_multicast_and_version_resolution
+      - action_request_admission_and_outcome
+      - exact_contract_and_provider_evidence
+      - explicit_provider_ambiguity
+      - boundary_validation
+      - independent_authorization
+      - duplicate_and_indeterminate_semantics
+      - cancellation_and_unload
+  - id: runtime_contracts/0.1
+    status: draft
+    requires: [event_action_interop/0.1]
     requirements:
       - deterministic_registry
       - strict_contract_validation
@@ -176,6 +190,11 @@ fixture_sets:
     coverage_targets: [runtime_contracts/0.1]
     files:
       - runtime-contracts/runtime-contracts.yaml
+  - id: event_action_interop
+    description: CloudEvents multicast, action admission, exact provider selection, validation, authorization, duplicates, cancellation, and unload.
+    coverage_targets: [event_action_interop/0.1]
+    files:
+      - event-action-interop/event-action-interop.yaml
   - id: workflow_execution
     description: durable workflow admission, execution, recovery, cancellation, journals, and timers.
     coverage_targets: [workflow/0.1]

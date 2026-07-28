@@ -1,11 +1,12 @@
 ---
 kind: mdbase.contract
+contract_type: record
 id: tasknotes.task
 version: 0.2.0
 name: TaskNotes task
 description: Portable task fields and binding semantics used by TaskNotes.
 
-schema:
+record_schema:
   dialect: json-schema-2020-12
   value:
     $schema: "https://json-schema.org/draft/2020-12/schema"

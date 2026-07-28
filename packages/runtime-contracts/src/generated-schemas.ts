@@ -175,6 +175,9 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       "runtime_profile_version": {
         "const": "0.1.0"
       },
+      "interop_profile_version": {
+        "const": "0.1"
+      },
       "profiles": {
         "type": "array",
         "minItems": 1,
@@ -452,6 +455,22 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           "properties": {
             "profiles": {
               "contains": {
+                "const": "event_action_interop/0.1"
+              }
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "interop_profile_version"
+          ]
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "profiles": {
+              "contains": {
                 "const": "runtime_contracts/0.1"
               }
             }
@@ -459,8 +478,16 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
         },
         "then": {
           "required": [
-            "runtime_profile_version"
-          ]
+            "runtime_profile_version",
+            "interop_profile_version"
+          ],
+          "properties": {
+            "profiles": {
+              "contains": {
+                "const": "event_action_interop/0.1"
+              }
+            }
+          }
         }
       },
       {
@@ -531,6 +558,7 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
           "links",
           "core_write",
           "lifecycle",
+          "event_action_interop/0.1",
           "runtime_contracts/0.1",
           "workflow/0.1",
           "watch"
@@ -1555,17 +1583,24 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
   "dataContract": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://mdbase.dev/schemas/v0.3/data-contract.schema.json",
-    "title": "mdbase v0.3 data contract frontmatter",
+    "title": "mdbase v0.3 contract frontmatter",
     "type": "object",
     "required": [
       "kind",
+      "contract_type",
       "id",
-      "version",
-      "schema"
+      "version"
     ],
     "properties": {
       "kind": {
         "const": "mdbase.contract"
+      },
+      "contract_type": {
+        "enum": [
+          "record",
+          "event",
+          "action"
+        ]
       },
       "id": {
         "$ref": "#/$defs/contractId"
@@ -1580,16 +1615,192 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
       "description": {
         "type": "string"
       },
-      "schema": {
+      "record_schema": {
         "$ref": "#/$defs/schemaWrapper"
       },
       "binding_schema": {
         "$ref": "#/$defs/schemaWrapper"
+      },
+      "data_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "source_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "input_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "output_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "error_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "provider_schema": {
+        "$ref": "#/$defs/schemaWrapper"
+      },
+      "behavior": {
+        "$ref": "#/$defs/actionBehavior"
       }
     },
     "patternProperties": {
       "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": true
     },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "contract_type": {
+              "const": "record"
+            }
+          },
+          "required": [
+            "contract_type"
+          ]
+        },
+        "then": {
+          "required": [
+            "record_schema"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "data_schema"
+                ]
+              },
+              {
+                "required": [
+                  "source_schema"
+                ]
+              },
+              {
+                "required": [
+                  "input_schema"
+                ]
+              },
+              {
+                "required": [
+                  "output_schema"
+                ]
+              },
+              {
+                "required": [
+                  "error_schema"
+                ]
+              },
+              {
+                "required": [
+                  "provider_schema"
+                ]
+              },
+              {
+                "required": [
+                  "behavior"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "contract_type": {
+              "const": "event"
+            }
+          },
+          "required": [
+            "contract_type"
+          ]
+        },
+        "then": {
+          "required": [
+            "data_schema"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "record_schema"
+                ]
+              },
+              {
+                "required": [
+                  "binding_schema"
+                ]
+              },
+              {
+                "required": [
+                  "input_schema"
+                ]
+              },
+              {
+                "required": [
+                  "output_schema"
+                ]
+              },
+              {
+                "required": [
+                  "error_schema"
+                ]
+              },
+              {
+                "required": [
+                  "provider_schema"
+                ]
+              },
+              {
+                "required": [
+                  "behavior"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "contract_type": {
+              "const": "action"
+            }
+          },
+          "required": [
+            "contract_type"
+          ]
+        },
+        "then": {
+          "required": [
+            "input_schema"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "record_schema"
+                ]
+              },
+              {
+                "required": [
+                  "binding_schema"
+                ]
+              },
+              {
+                "required": [
+                  "data_schema"
+                ]
+              },
+              {
+                "required": [
+                  "source_schema"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ],
     "additionalProperties": false,
     "$defs": {
       "contractId": {
@@ -1639,6 +1850,25 @@ export const GENERATED_CANONICAL_SCHEMAS: Record<string, Record<string, unknown>
             }
           }
         ],
+        "additionalProperties": false
+      },
+      "actionBehavior": {
+        "type": "object",
+        "properties": {
+          "idempotency": {
+            "enum": [
+              "none",
+              "optional",
+              "required"
+            ]
+          },
+          "cancellation": {
+            "enum": [
+              "none",
+              "cooperative"
+            ]
+          }
+        },
         "additionalProperties": false
       }
     }
