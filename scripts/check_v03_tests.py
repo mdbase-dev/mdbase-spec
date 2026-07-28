@@ -656,7 +656,10 @@ def run_data_contract_implementation_test(
     fields = implementation.get("fields") or {}
     required = contract_schema.get("required") or []
     for field_name in required:
-        if field_name not in fields:
+        if not any(
+            field_reference_targets_top_level(contract_field, field_name)
+            for contract_field in fields
+        ):
             failures.append(f"required contract field is not mapped: {field_name}")
 
     for contract_field, record_field in fields.items():
@@ -683,15 +686,11 @@ def run_data_contract_implementation_test(
             record = load_markdown_frontmatter(record_path)
         else:
             record = load_yaml(record_path)
-        view = {
-            contract_field: record[record_field]
-            for contract_field, record_field in fields.items()
-            if "." not in contract_field
-            and "[]" not in contract_field
-            and "." not in record_field
-            and "[]" not in record_field
-            and record_field in record
-        }
+        view: dict[str, Any] = {}
+        for contract_field, record_field in fields.items():
+            found, value = get_field_reference(record, record_field)
+            if found:
+                set_field_reference(view, contract_field, value)
         failures.extend(
             f"record: {error.message}"
             for error in Draft202012Validator(contract_schema).iter_errors(view)
@@ -755,16 +754,88 @@ def data_contract_implementation_digest(
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
 
 
-def schema_declares_field(schema: dict[str, Any], field_path: str) -> bool:
+def parse_field_reference(field_reference: str) -> list[tuple[str, bool]]:
+    if field_reference.startswith("/"):
+        return [
+            (part.replace("~1", "/").replace("~0", "~"), False)
+            for part in field_reference[1:].split("/")
+        ]
+    return [
+        (part[:-2], True) if part.endswith("[]") else (part, False)
+        for part in field_reference.split(".")
+    ]
+
+
+def field_reference_targets_top_level(field_reference: str, field_name: str) -> bool:
+    return parse_field_reference(field_reference) == [(field_name, False)]
+
+
+def schema_declares_field(schema: dict[str, Any], field_reference: str) -> bool:
     current: Any = schema
-    for part in field_path.replace("[]", "").split("."):
+    pointer = field_reference.startswith("/")
+    for part, expands_array in parse_field_reference(field_reference):
+        if pointer and isinstance(current, dict) and current.get("type") == "array":
+            if not part.isdigit() or "items" not in current:
+                return False
+            current = current["items"]
+            continue
         properties = current.get("properties") if isinstance(current, dict) else None
         if not isinstance(properties, dict) or part not in properties:
             return False
         current = properties[part]
-        if "[]" in field_path and isinstance(current, dict) and "items" in current:
+        if expands_array:
+            if not isinstance(current, dict) or "items" not in current:
+                return False
             current = current["items"]
     return True
+
+
+def get_field_reference(source: Any, field_reference: str) -> tuple[bool, Any]:
+    current = source
+    for part, expands_array in parse_field_reference(field_reference):
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        elif (
+            field_reference.startswith("/")
+            and isinstance(current, list)
+            and part.isdigit()
+            and int(part) < len(current)
+        ):
+            current = current[int(part)]
+        else:
+            return False, None
+        if expands_array and not isinstance(current, list):
+            return False, None
+    return True, current
+
+
+def set_field_reference(
+    target: dict[str, Any], field_reference: str, value: Any
+) -> None:
+    segments = parse_field_reference(field_reference)
+    if any(expands_array for _, expands_array in segments):
+        raise ValueError(f"cannot assign through array selector: {field_reference}")
+    current: Any = target
+    for index, (part, _) in enumerate(segments):
+        last = index == len(segments) - 1
+        if isinstance(current, dict):
+            if last:
+                current[part] = value
+                return
+            current = current.setdefault(part, {})
+            continue
+        if (
+            field_reference.startswith("/")
+            and isinstance(current, list)
+            and part.isdigit()
+            and int(part) < len(current)
+        ):
+            if last:
+                current[int(part)] = value
+                return
+            current = current[int(part)]
+            continue
+        raise ValueError(f"cannot assign field reference: {field_reference}")
 
 
 def assert_expected_validation_result(failures: list[str], expect: dict[str, Any]) -> None:

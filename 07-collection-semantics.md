@@ -23,6 +23,35 @@ collection:
       validate_exists: true
 ```
 
+## Field References
+
+Every collection-semantic selector uses one field-reference syntax. A field
+reference is either:
+
+- the existing mdbase field-path form, such as `title`, `metadata.owner`, or
+  `blocks[]`
+- a non-root [RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901),
+  such as `/@type`, `/metadata/owner`, or `/schema/$id`
+
+Field paths remain supported for compatibility and for the `[]` array-item
+selector. JSON Pointer is the exact, standards-based form for every JSON object
+key, including keys that contain `.`, `/`, `~`, `@`, or `$`. Pointer tokens
+escape `~` as `~0` and `/` as `~1`; for example `/a~1b` selects the key `a/b`.
+The URI-fragment form beginning with `#` is not accepted.
+
+The empty JSON Pointer denotes the whole document in RFC 6901, but it is not a
+valid mdbase field reference. Collection semantics always address a field
+inside the frontmatter object.
+
+JSON Pointer resolves one exact value. Array tokens are zero-based indices.
+`[]` expansion belongs only to the field-path form. An operation that accepts a
+link collection applies its link rule to every item when the resolved value is
+an array.
+
+Lifecycle `set` creates missing intermediate objects. It MUST fail rather than
+replace a non-object intermediate value. Assignment through an array index is
+valid only when that array and index already exist.
+
 ## Matching Decision Process
 
 Matching uses the collection-relative record path, raw persisted frontmatter,
@@ -59,7 +88,7 @@ All members present in one `match` object combine with AND:
 ```yaml
 match:
   path_glob: "tasks/**/*.md"
-  fields_present: [title]
+  fields_present: [title, "/@type"]
   where:
     status:
       neq: done
@@ -163,10 +192,14 @@ collection:
     blocks[]:
       target_type: task
       validate_exists: false
+    "/relations":
+      target_type: task
+      validate_exists: true
 ```
 
 `blocks[]` applies the rule to every item in the `blocks` array. Chapter 08
-defines link parsing and resolution.
+defines link parsing and resolution. `/relations` applies the same item-wise
+rule when the exactly selected value is an array.
 
 ## Cross-File Uniqueness
 

@@ -65,7 +65,26 @@
     },
     "jsonPointer": {
       "type": "string",
+      "format": "json-pointer",
       "pattern": "^(/([^/~]|~0|~1)*)*$"
+    },
+    "fieldReference": {
+      "description": "A legacy mdbase field path or a non-root RFC 6901 JSON Pointer.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/fieldPath"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/jsonPointer"
+            },
+            {
+              "minLength": 1
+            }
+          ]
+        }
+      ]
     },
     "jsonSchema": {
       "type": "object",
@@ -126,7 +145,7 @@
           "type": "array",
           "minItems": 1,
           "items": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "uniqueItems": true
         },
@@ -142,6 +161,9 @@
     "matchWhere": {
       "type": "object",
       "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/fieldReference"
+      },
       "additionalProperties": {
         "$ref": "#/$defs/matchPredicate"
       }
@@ -230,16 +252,16 @@
       "type": "object",
       "properties": {
         "name_field": {
-          "$ref": "#/$defs/fieldPath"
+          "$ref": "#/$defs/fieldReference"
         },
         "description_field": {
-          "$ref": "#/$defs/fieldPath"
+          "$ref": "#/$defs/fieldReference"
         },
         "icon": {
           "type": "string"
         },
         "color_field": {
-          "$ref": "#/$defs/fieldPath"
+          "$ref": "#/$defs/fieldReference"
         }
       },
       "additionalProperties": false
@@ -248,7 +270,7 @@
       "type": "object",
       "minProperties": 1,
       "propertyNames": {
-        "$ref": "#/$defs/fieldPath"
+        "$ref": "#/$defs/fieldReference"
       },
       "additionalProperties": {
         "$ref": "#/$defs/linkRule"
@@ -292,7 +314,7 @@
         "required": ["field"],
         "properties": {
           "field": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "scope": {
             "enum": ["collection", "type", "path_glob"]
@@ -407,7 +429,7 @@
           "type": "object",
           "minProperties": 1,
           "propertyNames": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "additionalProperties": {
             "$ref": "#/$defs/lifecycleValue"
@@ -463,7 +485,7 @@
           "required": ["slugify"],
           "properties": {
             "slugify": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             }
           },
           "additionalProperties": false
@@ -473,7 +495,7 @@
           "required": ["copy"],
           "properties": {
             "copy": {
-              "$ref": "#/$defs/fieldPath"
+              "$ref": "#/$defs/fieldReference"
             }
           },
           "additionalProperties": false
@@ -568,10 +590,10 @@
         "fields": {
           "type": "object",
           "propertyNames": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           },
           "additionalProperties": {
-            "$ref": "#/$defs/fieldPath"
+            "$ref": "#/$defs/fieldReference"
           }
         },
         "binding": {

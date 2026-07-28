@@ -88,6 +88,24 @@ groups:
                 title: { type: string }
                 reviewStatus: { enum: [pending, approved] }
           ---
+        jsonld-contact.md: |
+          ---
+          kind: mdbase.type
+          name: jsonld_contact
+          version: 1
+          match:
+            fields_present: ["/@type"]
+            where:
+              "/@type": Contact
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: ["@type", name]
+              properties:
+                "@type": { const: Contact }
+                name: { type: string }
+          ---
         referenced.schema.json: |
           {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -277,6 +295,11 @@ groups:
         notes/review.md: |
           ---
           title: Needs independent review validation
+          ---
+        contacts/ada.md: |
+          ---
+          "@type": Contact
+          name: Ada Lovelace
           ---
         refs/valid.md: |
           ---
@@ -595,6 +618,14 @@ groups:
         expect:
           valid: true
           types: [publishable]
+
+      - name: "JSON Pointer addresses JSON-LD keys in inferred match rules"
+        operation: get_types
+        input:
+          path: "contacts/ada.md"
+        expect:
+          valid: true
+          types: [jsonld_contact]
 
       - name: "explicit type declaration skips inferred match rules"
         id: core.explicit_matching

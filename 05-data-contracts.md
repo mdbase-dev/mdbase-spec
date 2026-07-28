@@ -121,6 +121,7 @@ implements:
       title: title
       status: workflow_state
       due: due_date
+      "/@type": "/card/@type"
     binding:
       completed_values: [done, cancelled]
 ```
@@ -131,18 +132,22 @@ Each implementation contains:
 | --- | --- |
 | `contract` | exact contract ID |
 | `version` | exact contract semantic version |
-| `fields` | contract field path to record field path mapping |
+| `fields` | contract field reference to record field reference mapping |
 | `binding` | optional configuration validated by the contract's `binding_schema` |
 
-Both sides of `fields` use the field-path syntax from Chapter 07. The left side
-addresses the normalized contract view. The right side addresses effective
-record frontmatter. Mapping is direct: core does not rename values, coerce
-values, run expressions, or apply hidden transforms.
+Both sides of `fields` use the field-reference syntax from Chapter 07. Existing
+field paths remain valid. RFC 6901 JSON Pointer is the exact form for keys that
+field paths cannot represent, so `/@type` addresses an `@type` property and
+`/a~1b` addresses an `a/b` property. The left side addresses the normalized
+contract view. The right side addresses effective record frontmatter. Mapping
+is direct: core does not rename values, coerce values, run expressions, or
+apply hidden transforms.
 
 A type MUST NOT contain two implementations of the same contract ID and
 version. Field mappings MUST address fields declared by the resolved contract
 schema and the resolved type schema. Every unconditional top-level field named
-by the contract schema's `required` array MUST be mapped.
+by the contract schema's `required` array MUST be mapped, either by the matching
+one-segment field path or by the matching one-token JSON Pointer.
 
 When a contract has a `binding_schema`, the implementation's `binding` value, or
 an empty object when omitted, MUST validate against it. When a contract has no
@@ -154,7 +159,7 @@ contract-discovery, conformance, or authorization meaning.
 ## Contract Views And Record Validation
 
 To construct a contract view, a tool starts with a record's effective
-frontmatter and copies every mapped value to its contract field path. Missing
+frontmatter and copies every mapped value to its contract field reference. Missing
 optional values remain missing. The resulting object is validated against the
 contract's `schema`.
 
