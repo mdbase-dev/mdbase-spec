@@ -75,8 +75,12 @@ It installs atomically and contains:
 | `mdbase.runtime.diagnostic` | `runtime_diagnostic` | machine-readable runtime issue |
 | `mdbase.runtime.dead-letter` | `runtime_dead_letter` | retained unprocessable evidence |
 
-It also contains inspectable event/action artifacts for
-`mdbase.runtime.timer.fired` and `mdbase.runtime.run.cancel`.
+It also contains inspectable event/action artifacts for the four canonical
+record-change events (`mdbase.record.created`, `mdbase.record.modified`,
+`mdbase.record.deleted`, and `mdbase.record.renamed`),
+`mdbase.runtime.timer.fired`, and `mdbase.runtime.run.cancel`. The event data
+schemas make a contract definition portable across every source and consuming
+application; a source declaration says only who publishes an exact artifact.
 
 These artifacts are a standard library, not privileged built-ins. A host may
 bundle the pack for offline use without copying it into each collection.

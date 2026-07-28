@@ -1,38 +1,55 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "mdbase runtime timer-fired event data",
+  "title": "mdbase record-renamed event data",
   "type": "object",
   "required": [
-    "timer_id",
-    "generation",
-    "scheduled_for",
-    "fired_at",
-    "late_by_ms",
-    "data"
+    "from",
+    "to",
+    "before",
+    "after",
+    "previous_revision",
+    "revision",
+    "previous_types",
+    "types"
   ],
   "properties": {
-    "timer_id": {
+    "from": {
       "type": "string",
-      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+      "minLength": 1
     },
-    "generation": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "scheduled_for": {
+    "to": {
       "type": "string",
-      "format": "date-time"
+      "minLength": 1
     },
-    "fired_at": {
+    "before": {
+      "type": "object"
+    },
+    "after": {
+      "type": "object"
+    },
+    "previous_revision": {
       "type": "string",
-      "format": "date-time"
+      "minLength": 1
     },
-    "late_by_ms": {
-      "type": "integer",
-      "minimum": 0
+    "revision": {
+      "type": "string",
+      "minLength": 1
     },
-    "data": {
-      "description": "Opaque application data supplied when the timer was scheduled."
+    "previous_types": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+      }
+    },
+    "types": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+      }
     }
   },
   "patternProperties": {
@@ -174,5 +191,5 @@
       "additionalProperties": false
     }
   },
-  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.timer.fired/1.0.0.schema.json"
+  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.record.renamed/1.0.0.schema.json"
 }
