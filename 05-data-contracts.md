@@ -288,6 +288,11 @@ resources:
 
 Resource digests are SHA-256 over the exact resource bytes. Source and target
 paths are relative, forward-slash paths without traversal.
+A directory, archive, repository, or package that distributes a pack MUST
+preserve those bytes exactly, including line endings. Rewriting a text resource
+from LF to CRLF therefore creates a different resource and MUST fail digest
+verification. This repository fixes text checkouts to LF so its example pack
+has identical bytes on every supported platform.
 
 Type packs are installation units, not record types and not permission grants.
 A pack may include several contracts, several implementing or auxiliary types,
