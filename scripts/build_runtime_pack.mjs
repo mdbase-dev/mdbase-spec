@@ -465,15 +465,21 @@ const portableContracts = [
     id: "mdbase.runtime.timer.fired",
     contractType: "event",
     name: "Runtime timer fired",
-    description: "Published when the current generation of a durable timer fires.",
+    description:
+      "Published with scheduling evidence and opaque application data when the current generation of a durable timer fires.",
     schemaField: "data_schema",
     schema: recordSchema(
       "mdbase runtime timer-fired event data",
-      ["timer_id", "generation", "scheduled_for"],
+      ["timer_id", "generation", "scheduled_for", "fired_at", "late_by_ms", "data"],
       {
         timer_id: identifier,
         generation: { type: "integer", minimum: 1 },
         scheduled_for: dateTime,
+        fired_at: dateTime,
+        late_by_ms: { type: "integer", minimum: 0 },
+        data: {
+          description: "Opaque application data supplied when the timer was scheduled.",
+        },
       },
     ),
   },

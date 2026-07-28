@@ -127,11 +127,11 @@ resources:
   - kind: schema
     source: schemas/mdbase.runtime.timer.fired/1.0.0.schema.json
     target: schemas/mdbase.runtime.timer.fired/1.0.0.schema.json
-    digest: sha256:10512a03c1ee9db3c52cf45ab8dd862672d2d0a66108218e878ce2e0de2f1682
+    digest: sha256:986cdde8c88a6ff363062d056101141c436271608e565d2a02f250cd74853f74
   - kind: contract
     source: _contracts/mdbase.runtime.timer.fired/1.0.0.md
     target: _contracts/mdbase.runtime.timer.fired/1.0.0.md
-    digest: sha256:730231fac07ad13dfaff74ff5ee25e26a75f48dd629a4ef8c4d52ffe6b62fb4b
+    digest: sha256:9381a2c6778a3268758ac235e3c3b66991a769fa8e19f7303d4404b1e7e62bc6
   - kind: schema
     source: schemas/mdbase.runtime.run.cancel/1.0.0.output.schema.json
     target: schemas/mdbase.runtime.run.cancel/1.0.0.output.schema.json

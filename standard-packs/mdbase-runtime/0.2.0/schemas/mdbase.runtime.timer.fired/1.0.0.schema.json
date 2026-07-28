@@ -5,7 +5,10 @@
   "required": [
     "timer_id",
     "generation",
-    "scheduled_for"
+    "scheduled_for",
+    "fired_at",
+    "late_by_ms",
+    "data"
   ],
   "properties": {
     "timer_id": {
@@ -19,6 +22,17 @@
     "scheduled_for": {
       "type": "string",
       "format": "date-time"
+    },
+    "fired_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "late_by_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "data": {
+      "description": "Opaque application data supplied when the timer was scheduled."
     }
   },
   "patternProperties": {
