@@ -81,19 +81,27 @@ jobs:
           npm --prefix packages/runtime-executor test
 
   interoperability-testbed:
-    name: interoperability testbed (${{ matrix.os }})
+    name: interoperability testbed (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            node: 22
+          - os: macos-latest
+            node: 22
+          - os: windows-latest
+            node: 22
+          - os: ubuntu-latest
+            node: 24
     steps:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: |
             packages/interop/package-lock.json
