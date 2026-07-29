@@ -175,10 +175,12 @@ read defaults, links, uniqueness, and path policy.
 Types can implement exact, versioned data contracts stored under
 `_contracts/`. A contract uses JSON Schema for its normalized record interface
 and optional binding. The type's `implements` entry maps contract fields to
-record fields.
+record fields. Record contracts normally describe compact application
+semantics rather than storage layouts or external wire formats.
 
-Several types can implement one contract, and several applications can consume
-the same type. Discovery returns the complete implementation set; it never
+Several types can implement one contract, one type can implement several
+contracts, and several applications can consume the same contract view.
+Discovery returns the complete implementation set; it never
 silently picks a provider. Data contracts are passive interoperability and do
 not grant access.
 
