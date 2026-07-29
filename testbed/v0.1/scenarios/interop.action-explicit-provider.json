@@ -1,0 +1,65 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.action-explicit-provider",
+  "name": "An explicit selector resolves provider ambiguity",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.action-explicit-provider",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "providers": ["provider-alpha", "provider-beta"],
+    "selected": "provider-beta"
+  },
+  "covers": [
+    "event_action_interop/0.1.explicit_provider_ambiguity",
+    "event_action_interop/0.1.exact_contract_and_provider_evidence"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "provider-alpha",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "provider-beta",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "succeeded",
+        "facts": {
+          "selected": "provider-beta"
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "action.outcome",
+        "outcome": "succeeded",
+        "facts": {
+          "provider": "provider-beta",
+          "provider_alpha_calls": 0,
+          "provider_beta_calls": 1
+        }
+      }
+    ]
+  }
+}

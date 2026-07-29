@@ -1,0 +1,53 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.contract-digest-drift",
+  "name": "Digest drift for one exact contract identity fails atomically",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["event_source", "bridge"],
+  "operation": "interop.contract-digest-drift",
+  "fixtures": ["contract.record-changed"],
+  "parameters": {
+    "mutate": "data_schema.value.properties.record_id.minLength"
+  },
+  "covers": [
+    "event_action_interop/0.1.first_class_event_and_action_contracts",
+    "event_action_interop/0.1.boundary_validation"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "source-alpha",
+        "operation": "event-source.register",
+        "outcome": "succeeded",
+        "facts": {
+          "sources": 1
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "source-beta",
+        "operation": "event-source.register",
+        "outcome": "rejected",
+        "facts": {
+          "code": "contract_digest_conflict"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "registry.inspect",
+        "outcome": "succeeded",
+        "facts": {
+          "atomic": true,
+          "sources": 1
+        }
+      }
+    ]
+  }
+}

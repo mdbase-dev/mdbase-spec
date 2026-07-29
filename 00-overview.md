@@ -289,6 +289,11 @@ testable.
 | [15-migrations-and-compatibility.md](./15-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
 | [16-conformance.md](./16-conformance.md) | Profiles, claims, fixtures, and runners |
 
+The [portable interoperability testbed](/testbed/) runs neutral contract,
+event/action, and durable-runtime scenarios through black-box adapters. Its
+canonical transcripts make cross-language and cross-application behavior
+directly comparable without making one product's internal API normative.
+
 ## Versioning
 
 This specification uses semantic versioning. The current version is **0.3.0**.
@@ -296,8 +301,7 @@ Collections declare their specification version with `spec_version` in
 `mdbase.yaml`. Tools declare the profiles and versions they implement.
 
 The optional runtime-contract and workflow vocabulary has an independent
-profile version. The runtime profile defined by this specification is
-**0.1.0**.
+profile version. The runtime profile defined by this specification is **0.2**.
 
 ## Normative Language
 

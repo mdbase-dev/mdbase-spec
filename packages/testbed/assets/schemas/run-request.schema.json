@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/testbed/v0.1/run-request.schema.json",
+  "title": "mdbase interoperability testbed run request",
+  "type": "object",
+  "required": ["kind", "protocol_version", "scenario", "fixtures"],
+  "properties": {
+    "kind": { "const": "mdbase.testbed.run" },
+    "protocol_version": { "const": "0.1" },
+    "scenario": {
+      "$ref": "scenario.schema.json"
+    },
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": {
+            "enum": ["contract", "type", "record", "workflow", "policy"]
+          },
+          "value": {}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

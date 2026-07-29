@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/testbed/v0.1/fixture-catalog.schema.json",
+  "title": "mdbase interoperability testbed fixture catalog",
+  "type": "object",
+  "required": ["kind", "protocol_version", "fixtures"],
+  "properties": {
+    "kind": { "const": "mdbase.testbed.fixtures" },
+    "protocol_version": { "const": "0.1" },
+    "fixtures": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": {
+            "enum": ["contract", "type", "record", "workflow", "policy"]
+          },
+          "value": {}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,75 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "runtime.application-execution",
+  "name": "An application-owned runtime executes one exact admitted effect",
+  "description": "A product runtime composes its real contracts, admits an exact source/provider plan, authorizes dispatch, and persists one successful run.",
+  "ring": "runtime",
+  "profile": "runtime/0.2",
+  "roles": ["event_source", "action_provider", "runtime", "runtime_store"],
+  "operation": "runtime.application-execution",
+  "fixtures": [],
+  "parameters": {},
+  "covers": [
+    "runtime/0.2.exact_contract_source_and_provider_admission",
+    "runtime/0.2.dispatch_authorization",
+    "runtime/0.2.durable_event_admission"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "application-runtime",
+        "operation": "catalog.compose",
+        "outcome": "succeeded",
+        "facts": {
+          "contracts_verified": true,
+          "executor_selected": true
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "event-source",
+        "operation": "event.publish",
+        "outcome": "succeeded",
+        "facts": {
+          "exact_contract": true
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "application-runtime",
+        "operation": "event.admit",
+        "outcome": "succeeded",
+        "facts": {
+          "runs": 1
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "act",
+        "actor": "action-provider",
+        "operation": "action.dispatch",
+        "outcome": "succeeded",
+        "facts": {
+          "authorization_checked": true,
+          "provider_calls": 1
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "observe",
+        "actor": "runtime-store",
+        "operation": "run.inspect",
+        "outcome": "succeeded",
+        "facts": {
+          "exact_bindings": true,
+          "status": "succeeded"
+        }
+      }
+    ]
+  }
+}

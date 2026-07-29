@@ -64,6 +64,54 @@ The canonical claim schema enforces profile dependencies. Claim verification
 tools SHOULD reject evidence produced for a different implementation artifact
 or specification version and SHOULD report stale evidence.
 
+### Portable Interoperability Testbed
+
+The spec-owned interoperability testbed in `testbed/v0.1/` supplements the
+profile suites with executable, implementation-neutral integration scenarios.
+It has three rings:
+
+| Ring | Boundary under test |
+| --- | --- |
+| Contract | record contracts, type `implements` declarations, projections, and multiple independent consumers |
+| Interop | live event sources/consumers and action callers/providers connected through the interoperability profile |
+| Runtime | durable admission, action attempts, crash recovery, leases, and fencing |
+
+The testbed is deliberately role-based. An application MAY consume the same
+type or contract as any number of other applications. An event is delivered to
+every compatible authorized subscriber. An action still resolves to exactly one
+admitted provider; multiple eligible providers remain an error until a caller
+or policy selects one. The testbed does not turn an application name into a
+contract owner.
+
+Every testbed scenario MUST validate against
+`schemas/testbed/v0.1/scenario.schema.json`, use only fixtures from the validated
+neutral catalog, and include its canonical expected transcript. An adapter MUST
+run behind the `describe`/`run` process boundary defined by testbed protocol
+`0.1`. A runner MUST start a fresh adapter process for each scenario, validate
+the run request and returned transcript, and compare the complete ordered
+transcript entries. Adapters MUST derive entries from behavior observed through
+public or documented implementation boundaries; copying the scenario's
+expected entries is not a conforming adapter.
+
+Transcripts intentionally contain stable facts rather than private state.
+Generated IDs, database keys, wall-clock values, stack traces, scheduling
+jitter, and implementation-specific objects MUST be normalized or omitted
+unless a scenario explicitly makes them observable. Scenario order, actor,
+operation, outcome, and facts are all significant.
+
+Portable testbed evidence validates against
+`schemas/testbed/v0.1/evidence.schema.json` and binds every scenario result to a
+canonical transcript digest. A conformance claim records it with evidence kind
+`testbed_transcript`, the protocol version, scenario IDs, artifact path, and
+evidence digest. `evidence_digest` MUST be the SHA-256 digest of the evidence
+artifact's recursively key-sorted, whitespace-free JSON form, prefixed with
+`sha256:`. Passing the testbed does not replace the complete profile suite: it
+is integration evidence for the normative requirements named by each scenario.
+
+Conformance never grants authority. A testbed adapter may be able to construct
+a compatible payload or declaration while the real host correctly rejects the
+operation as unauthorized.
+
 ## Canonical Diagnostics
 
 Every diagnostic contains:

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/testbed/v0.1/scenario.schema.json",
+  "title": "mdbase interoperability testbed scenario",
+  "type": "object",
+  "required": [
+    "kind",
+    "protocol_version",
+    "id",
+    "name",
+    "ring",
+    "profile",
+    "roles",
+    "operation",
+    "fixtures",
+    "parameters",
+    "covers",
+    "expect"
+  ],
+  "properties": {
+    "kind": { "const": "mdbase.testbed.scenario" },
+    "protocol_version": { "const": "0.1" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "minLength": 1 },
+    "ring": {
+      "enum": ["contract", "interop", "runtime"]
+    },
+    "profile": {
+      "enum": [
+        "core_read",
+        "event_action_interop/0.1",
+        "runtime/0.2"
+      ]
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "contract_store",
+          "record_consumer",
+          "event_source",
+          "event_consumer",
+          "action_caller",
+          "action_provider",
+          "bridge",
+          "runtime",
+          "runtime_store"
+        ]
+      }
+    },
+    "operation": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "fixtures": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "covers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9._/-]+$"
+      }
+    },
+    "expect": {
+      "type": "object",
+      "required": ["entries"],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/transcriptEntry"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "transcriptEntry": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "phase",
+        "actor",
+        "operation",
+        "outcome",
+        "facts"
+      ],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "phase": {
+          "enum": ["arrange", "act", "observe", "recover"]
+        },
+        "actor": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+        },
+        "operation": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+        },
+        "outcome": {
+          "enum": [
+            "succeeded",
+            "rejected",
+            "failed",
+            "indeterminate",
+            "skipped"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

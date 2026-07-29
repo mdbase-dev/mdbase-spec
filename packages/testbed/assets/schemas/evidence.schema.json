@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/testbed/v0.1/evidence.schema.json",
+  "title": "mdbase interoperability testbed evidence",
+  "type": "object",
+  "required": [
+    "kind",
+    "protocol_version",
+    "implementation",
+    "result",
+    "scenarios"
+  ],
+  "properties": {
+    "kind": { "const": "mdbase.testbed.evidence" },
+    "protocol_version": { "const": "0.1" },
+    "implementation": {
+      "$ref": "adapter-description.schema.json#/properties/implementation"
+    },
+    "result": { "enum": ["pass", "fail"] },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "profile", "result", "transcript_digest"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+          },
+          "profile": {
+            "enum": [
+              "core_read",
+              "event_action_interop/0.1",
+              "runtime/0.2"
+            ]
+          },
+          "result": { "enum": ["pass", "fail"] },
+          "transcript_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

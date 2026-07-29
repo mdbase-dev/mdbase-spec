@@ -1,0 +1,27 @@
+kind: mdbase.conformance
+status: verified
+implementation:
+  id: example.core
+  name: Example core implementation
+  version: 1.0.0
+spec_version: 0.3.0-rc.4
+profiles:
+  - core_read
+json_schema:
+  dialect: https://json-schema.org/draft/2020-12/schema
+  keywords: [type, required, properties]
+  formats: [date-time]
+  remote_refs: false
+limits:
+  max_record_bytes: 1048576
+evidence:
+  - kind: testbed_transcript
+    command: mdbase-testbed run --adapter ./example-adapter --evidence evidence.json
+    result: pass
+    verified_at: "2026-07-29T00:00:00Z"
+    artifact: evidence.json
+    environment: Node.js 22 on Linux
+    testbed_protocol_version: "0.1"
+    scenario_ids:
+      - core.shared-contract-consumers
+    evidence_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

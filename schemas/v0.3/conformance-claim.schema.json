@@ -85,14 +85,54 @@
         "type": "object",
         "required": ["kind", "command", "result", "verified_at"],
         "properties": {
-          "kind": { "enum": ["conformance_suite", "test_suite", "package_smoke", "manual_smoke"] },
+          "kind": {
+            "enum": [
+              "conformance_suite",
+              "test_suite",
+              "package_smoke",
+              "manual_smoke",
+              "testbed_transcript"
+            ]
+          },
           "command": { "type": "string", "minLength": 1 },
           "result": { "const": "pass" },
           "verified_at": { "type": "string", "format": "date-time" },
           "artifact": { "type": "string", "minLength": 1 },
-          "environment": { "type": "string", "minLength": 1 }
+          "environment": { "type": "string", "minLength": 1 },
+          "testbed_protocol_version": { "const": "0.1" },
+          "scenario_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+            }
+          },
+          "evidence_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": { "const": "testbed_transcript" }
+              },
+              "required": ["kind"]
+            },
+            "then": {
+              "required": [
+                "artifact",
+                "testbed_protocol_version",
+                "scenario_ids",
+                "evidence_digest"
+              ]
+            }
+          }
+        ]
       }
     }
   },

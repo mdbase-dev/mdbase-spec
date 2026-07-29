@@ -1,0 +1,57 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.action-single-provider",
+  "name": "A single eligible provider is invoked",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.action-single-provider",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "request_id": "req-single-1",
+    "provider": "provider-alpha"
+  },
+  "covers": [
+    "event_action_interop/0.1.action_request_admission_and_outcome",
+    "event_action_interop/0.1.exact_contract_and_provider_evidence"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "provider-alpha",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate",
+          "idempotency": "request"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "succeeded",
+        "facts": {
+          "request_id": "req-single-1"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "action.outcome",
+        "outcome": "succeeded",
+        "facts": {
+          "exact_contract": true,
+          "provider": "provider-alpha",
+          "provider_calls": 1,
+          "request_id": "req-single-1"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.authority-boundary",
+  "name": "Contract compatibility never grants provider authority",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_provider", "bridge"],
+  "operation": "interop.authority-boundary",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "denied_application": "untrusted-provider"
+  },
+  "covers": [
+    "event_action_interop/0.1.independent_authorization"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "untrusted-provider",
+        "operation": "contract.validate",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "untrusted-provider",
+        "operation": "action-provider.register",
+        "outcome": "rejected",
+        "facts": {
+          "code": "unauthorized"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "registry.inspect",
+        "outcome": "succeeded",
+        "facts": {
+          "providers": 0
+        }
+      }
+    ]
+  }
+}

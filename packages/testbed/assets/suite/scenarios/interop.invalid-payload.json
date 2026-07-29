@@ -1,0 +1,63 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.invalid-payload",
+  "name": "Invalid event data is rejected before delivery",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["event_source", "event_consumer", "bridge"],
+  "operation": "interop.invalid-payload",
+  "fixtures": ["contract.record-changed"],
+  "parameters": {
+    "data": {
+      "record_id": "note-1"
+    }
+  },
+  "covers": [
+    "event_action_interop/0.1.boundary_validation"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "source",
+        "operation": "event-source.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.changed"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "consumer",
+        "operation": "event.subscribe",
+        "outcome": "succeeded",
+        "facts": {
+          "version": "^1.0.0"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "source",
+        "operation": "event.publish",
+        "outcome": "rejected",
+        "facts": {
+          "code": "invalid_event_data"
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "observe",
+        "actor": "consumer",
+        "operation": "event.deliver",
+        "outcome": "skipped",
+        "facts": {
+          "deliveries": 0
+        }
+      }
+    ]
+  }
+}

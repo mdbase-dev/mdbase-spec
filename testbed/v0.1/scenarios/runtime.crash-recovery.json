@@ -1,0 +1,73 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "runtime.crash-recovery",
+  "name": "An unknown idempotent dispatch recovers without a duplicate effect",
+  "ring": "runtime",
+  "profile": "runtime/0.2",
+  "roles": ["runtime", "runtime_store", "action_provider"],
+  "operation": "runtime.crash-recovery",
+  "fixtures": [
+    "contract.record-changed",
+    "contract.record-annotate",
+    "workflow.annotate-changed",
+    "policy.allow-record-write"
+  ],
+  "parameters": {
+    "event_id": "evt-crash-1",
+    "failpoint": "after_provider_effect_before_result_commit",
+    "expire_lease": true
+  },
+  "covers": [
+    "runtime/0.2.durable_action_attempts",
+    "runtime/0.2.lease_and_crash_recovery"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "runtime",
+        "operation": "event.admit",
+        "outcome": "succeeded",
+        "facts": {
+          "event_id": "evt-crash-1",
+          "runs": 1
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "worker-alpha",
+        "operation": "action.dispatch",
+        "outcome": "indeterminate",
+        "facts": {
+          "provider_effects": 1
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "recover",
+        "actor": "worker-beta",
+        "operation": "lease.recover",
+        "outcome": "succeeded",
+        "facts": {
+          "same_attempt_id": true,
+          "same_invocation_id": true
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "observe",
+        "actor": "runtime-store",
+        "operation": "run.inspect",
+        "outcome": "succeeded",
+        "facts": {
+          "dispatches": 2,
+          "logical_effects": 1,
+          "status": "succeeded"
+        }
+      }
+    ]
+  }
+}

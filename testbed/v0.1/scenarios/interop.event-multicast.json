@@ -1,0 +1,78 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.event-multicast",
+  "name": "One event is multicast to every compatible consumer",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["event_source", "event_consumer", "bridge"],
+  "operation": "interop.event-multicast",
+  "fixtures": ["contract.record-changed"],
+  "parameters": {
+    "event_id": "evt-shared-1",
+    "consumers": ["consumer-alpha", "consumer-beta"]
+  },
+  "covers": [
+    "event_action_interop/0.1.cloudevents_event_envelope",
+    "event_action_interop/0.1.event_multicast_and_version_resolution"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "source",
+        "operation": "event-source.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.changed",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "consumer-alpha",
+        "operation": "event.subscribe",
+        "outcome": "succeeded",
+        "facts": {
+          "version": "^1.0.0"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "arrange",
+        "actor": "consumer-beta",
+        "operation": "event.subscribe",
+        "outcome": "succeeded",
+        "facts": {
+          "version": ">=1.0.0 <2.0.0"
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "act",
+        "actor": "source",
+        "operation": "event.publish",
+        "outcome": "succeeded",
+        "facts": {
+          "event_id": "evt-shared-1"
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "event.deliver",
+        "outcome": "succeeded",
+        "facts": {
+          "consumers": ["consumer-alpha", "consumer-beta"],
+          "deliveries": 2,
+          "duplicate": false,
+          "exact_contract": true,
+          "specversion": "1.0"
+        }
+      }
+    ]
+  }
+}

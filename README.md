@@ -116,7 +116,7 @@ order_by:
 | Define durable automation | [Durable Runtime Companion](./13-runtime-contracts.md), [Workflow Execution](./14-workflows.md), and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./15-migrations-and-compatibility.md) |
 | Exchange typed events and actions | [Event/action interoperability profile 0.1](./interop/0.1.md) and [canonical interoperability schemas](./schemas/interop/v0.1/) |
-| Build a conforming tool | [Conformance](./16-conformance.md), [first-class contracts](./05-data-contracts.md), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
+| Build a conforming tool | [Conformance](./16-conformance.md), the [portable interoperability testbed](./testbed/v0.1/), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
 
 ## Implementations
 
@@ -157,7 +157,8 @@ implementer material. Legacy fixtures are documented in
 - [`tests/v0.3/`](./tests/v0.3/) contains shared conformance fixtures.
 - [`examples/v0.3/`](./examples/v0.3/) contains example and migration
   collections.
-- [`packages/`](./packages/) contains CEL and runtime support packages.
+- [`packages/`](./packages/) contains CEL, runtime, interoperability, and
+  black-box testbed support packages.
 - [`standard-packs/`](./standard-packs/) contains inspectable, transactional
   standard-library distributions such as the durable runtime pack.
 - [`site/`](./site/) builds the versioned specification reader imported by the
@@ -176,6 +177,7 @@ npm test --prefix packages/runtime-contracts
 cargo test --manifest-path packages/runtime-contracts-rs/Cargo.toml
 npm test --prefix packages/cel-host
 npm test --prefix packages/runtime-executor
+npm test --prefix packages/testbed
 npm run build --prefix site
 ```
 
