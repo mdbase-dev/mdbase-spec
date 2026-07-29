@@ -35,6 +35,35 @@ executable, instance-specific implementations rather than record types.
 Requirements, authorization grants, and transports are not collection
 contract artifacts.
 
+## Designing Record Contracts
+
+A record contract SHOULD describe a compact, application-facing semantic
+interface. Its properties name values that independent consumers can rely on,
+while an implementing type remains free to choose local field names, matching
+rules, additional fields, and presentation.
+
+Record contracts SHOULD:
+
+- keep the unconditionally required surface as small as the shared behavior
+  permits
+- use optional properties for semantics that not every implementing type can
+  provide
+- use `binding_schema` for implementation-specific vocabularies and behavior,
+  such as which local task statuses count as completed
+- be shared by applications that need the same semantics rather than duplicated
+  under application-specific IDs
+
+A record contract SHOULD NOT reproduce an external interchange or storage
+format merely so applications can request that serialization. An importer,
+exporter, or application adapter can translate a semantic record view to
+JSContact, vCard, or another wire format. A wire-format-shaped record contract
+remains valid when the implementing type intentionally stores and exposes that
+exact shape.
+
+Event and action contracts are different: their schemas describe complete
+messages at an interoperability boundary, so a transport-shaped schema is
+usually appropriate.
+
 ## Contract Files
 
 Contract files are Markdown files under the configured contracts folder,
@@ -155,6 +184,12 @@ field paths cannot represent, so `/@type` addresses an `@type` property and
 contract view. The right side addresses effective record frontmatter. Mapping
 is direct: core does not rename values, coerce values, run expressions, or
 apply hidden transforms.
+
+The `binding` object does not transform projected record values. It supplies
+validated semantic policy that a contract-aware application can interpret. For
+example, a task implementation can expose the local status value unchanged
+while declaring several values in `binding.completed_values`. This preserves
+the user's vocabulary and avoids inventing an ambiguous reverse mapping.
 
 A type MUST NOT contain two implementations of the same contract ID and
 version. Field mappings MUST address fields declared by the resolved

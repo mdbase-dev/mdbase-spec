@@ -35,12 +35,14 @@ providers and workflows supply executable behavior.
 
 A data contract is a versioned `mdbase.contract` control file that defines a
 portable record interface and optional implementation binding using JSON Schema
-2020-12.
+2020-12. A record contract normally names shared application semantics; event
+and action contracts describe complete messages.
 
 A type implements a data contract through its top-level `implements` section.
 The contract does not replace the type, select a provider, assign ownership, or
 grant access. Several types can implement one contract, and several
-applications can consume the same implementing type.
+applications can consume the same implementing type. One type can contain
+separate implementations of several contracts.
 
 ## Schema
 

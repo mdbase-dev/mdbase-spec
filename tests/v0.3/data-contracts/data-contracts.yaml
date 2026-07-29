@@ -214,3 +214,114 @@ groups:
         expect:
           view:
             title: Work note
+
+  - name: "one type implementing several contracts"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          types_folder: _types
+          contracts_folder: _contracts
+          explicit_type_keys: [type]
+      contracts:
+        example.note.md: |
+          ---
+          kind: mdbase.contract
+          contract_type: record
+          id: example.note
+          version: 1.0.0
+          record_schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+          ---
+        example.summary.md: |
+          ---
+          kind: mdbase.contract
+          contract_type: record
+          id: example.summary
+          version: 1.0.0
+          record_schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [label]
+              properties:
+                label: { type: string }
+                category: { type: string }
+          ---
+      types:
+        shared-note.md: |
+          ---
+          kind: mdbase.type
+          name: shared_note
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [type, headline]
+              properties:
+                type: { const: shared_note }
+                headline: { type: string }
+                category: { type: string }
+          implements:
+            - contract: example.note
+              version: 1.0.0
+              fields:
+                title: headline
+            - contract: example.summary
+              version: 1.0.0
+              fields:
+                label: headline
+                category: category
+          ---
+      files:
+        shared.md: |
+          ---
+          type: shared_note
+          headline: One record, two interfaces
+          category: reference
+          ---
+    tests:
+      - name: "the type is discoverable through its first contract"
+        operation: get_data_contracts
+        input:
+          contract: example.note
+          version: 1.0.0
+        expect:
+          implementations:
+            - type: shared_note
+
+      - name: "the same type is discoverable through its second contract"
+        operation: get_data_contracts
+        input:
+          contract: example.summary
+          version: 1.0.0
+        expect:
+          implementations:
+            - type: shared_note
+
+      - name: "the first implementation exposes its own normalized view"
+        operation: get_contract_view
+        input:
+          path: shared.md
+          contract: example.note
+          version: 1.0.0
+        expect:
+          view:
+            title: One record, two interfaces
+
+      - name: "the second implementation exposes a different normalized view"
+        operation: get_contract_view
+        input:
+          path: shared.md
+          contract: example.summary
+          version: 1.0.0
+        expect:
+          view:
+            label: One record, two interfaces
+            category: reference

@@ -23,6 +23,28 @@
         }
       }
     },
+    "contract.example-summary": {
+      "kind": "contract",
+      "value": {
+        "kind": "mdbase.contract",
+        "contract_type": "record",
+        "id": "example.summary",
+        "version": "1.0.0",
+        "name": "Portable example summary",
+        "record_schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["label"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "category": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
     "type.shared-note": {
       "kind": "type",
       "value": {
@@ -51,11 +73,49 @@
         ]
       }
     },
+    "type.multi-contract-note": {
+      "kind": "type",
+      "value": {
+        "kind": "mdbase.type",
+        "name": "shared_note",
+        "version": 1,
+        "schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["type", "headline", "category"],
+            "properties": {
+              "type": { "const": "shared_note" },
+              "headline": { "type": "string", "minLength": 1 },
+              "category": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "implements": [
+          {
+            "contract": "example.note",
+            "version": "1.0.0",
+            "fields": {
+              "title": "headline"
+            }
+          },
+          {
+            "contract": "example.summary",
+            "version": "1.0.0",
+            "fields": {
+              "label": "headline",
+              "category": "category"
+            }
+          }
+        ]
+      }
+    },
     "record.shared-note": {
       "kind": "record",
       "value": {
         "type": "shared_note",
-        "headline": "One record, two consumers"
+        "headline": "One record, two consumers",
+        "category": "reference"
       }
     },
     "contract.record-changed": {

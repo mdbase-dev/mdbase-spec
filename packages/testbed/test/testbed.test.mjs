@@ -13,8 +13,8 @@ import {
 test("validates the complete neutral scenario inventory", () => {
   const result = validateTestbed();
   assert.deepEqual(result, {
-    fixtures: 7,
-    scenarios: 15,
+    fixtures: 9,
+    scenarios: 16,
     profiles: [
       "core_read",
       "event_action_interop/0.1",
