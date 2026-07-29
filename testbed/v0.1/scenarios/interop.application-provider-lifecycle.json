@@ -1,0 +1,84 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.application-provider-lifecycle",
+  "name": "An application provider validates, invokes, and unloads cleanly",
+  "description": "A real application-owned action contract is exercised without making its product-specific contract part of the neutral oracle.",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.application-provider-lifecycle",
+  "fixtures": [],
+  "parameters": {},
+  "covers": [
+    "event_action_interop/0.1.action_request_admission_and_outcome",
+    "event_action_interop/0.1.boundary_validation",
+    "event_action_interop/0.1.cancellation_and_unload"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "application",
+        "operation": "contract.describe",
+        "outcome": "succeeded",
+        "facts": {
+          "contract_type": "action",
+          "schema": "json-schema-2020-12"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "application",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "providers": 1
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "succeeded",
+        "facts": {
+          "exact_contract": true,
+          "provider_calls": 1
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "rejected",
+        "facts": {
+          "code": "invalid_action_input"
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "act",
+        "actor": "application",
+        "operation": "client.dispose",
+        "outcome": "succeeded",
+        "facts": {
+          "providers": 0
+        }
+      },
+      {
+        "sequence": 6,
+        "phase": "observe",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "rejected",
+        "facts": {
+          "code": "no_provider"
+        }
+      }
+    ]
+  }
+}

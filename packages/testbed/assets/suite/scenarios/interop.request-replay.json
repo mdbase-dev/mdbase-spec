@@ -1,0 +1,63 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.request-replay",
+  "name": "A declared idempotent request reuses its recorded outcome",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.request-replay",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "request_id": "req-replay-1",
+    "idempotency_key": "run-1:annotate"
+  },
+  "covers": [
+    "event_action_interop/0.1.duplicate_and_indeterminate_semantics"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "provider-alpha",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "idempotency": "request"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "succeeded",
+        "facts": {
+          "request_id": "req-replay-1"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.replay",
+        "outcome": "succeeded",
+        "facts": {
+          "request_id": "req-replay-1"
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "action.outcome",
+        "outcome": "succeeded",
+        "facts": {
+          "handler_calls": 1,
+          "same_outcome": true
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.application-event-multicast",
+  "name": "An application event source reaches two independent consumers",
+  "description": "A real application-owned event contract is multicast without making its product-specific payload part of the neutral oracle.",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["event_source", "event_consumer", "bridge"],
+  "operation": "interop.application-event-multicast",
+  "fixtures": [],
+  "parameters": {},
+  "covers": [
+    "event_action_interop/0.1.cloudevents_event_envelope",
+    "event_action_interop/0.1.event_multicast_and_version_resolution",
+    "event_action_interop/0.1.boundary_validation"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "application",
+        "operation": "contract.describe",
+        "outcome": "succeeded",
+        "facts": {
+          "contract_type": "event",
+          "schema": "json-schema-2020-12"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "application",
+        "operation": "event-source.register",
+        "outcome": "succeeded",
+        "facts": {
+          "sources": 1
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "arrange",
+        "actor": "consumers",
+        "operation": "event.subscribe",
+        "outcome": "succeeded",
+        "facts": {
+          "consumers": 2
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "act",
+        "actor": "application",
+        "operation": "event.publish",
+        "outcome": "succeeded",
+        "facts": {
+          "exact_contract": true,
+          "specversion": "1.0"
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "observe",
+        "actor": "bridge",
+        "operation": "event.deliver",
+        "outcome": "succeeded",
+        "facts": {
+          "deliveries": 2,
+          "distinct_consumers": 2
+        }
+      }
+    ]
+  }
+}

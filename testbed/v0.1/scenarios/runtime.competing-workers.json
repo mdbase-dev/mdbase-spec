@@ -1,0 +1,82 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "runtime.competing-workers",
+  "name": "Competing workers are fenced by one durable lease",
+  "ring": "runtime",
+  "profile": "runtime/0.2",
+  "roles": ["runtime", "runtime_store"],
+  "operation": "runtime.competing-workers",
+  "fixtures": [
+    "contract.record-changed",
+    "contract.record-annotate",
+    "workflow.annotate-changed",
+    "policy.allow-record-write"
+  ],
+  "parameters": {
+    "event_id": "evt-fence-1",
+    "workers": ["worker-alpha", "worker-beta"]
+  },
+  "covers": [
+    "runtime/0.2.idempotency_and_concurrency",
+    "runtime/0.2.lease_and_crash_recovery",
+    "runtime/0.2.run_state_machine"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "runtime",
+        "operation": "event.admit",
+        "outcome": "succeeded",
+        "facts": {
+          "event_id": "evt-fence-1",
+          "runs": 1
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "worker-alpha",
+        "operation": "run.claim",
+        "outcome": "succeeded",
+        "facts": {
+          "claims": 1
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "worker-beta",
+        "operation": "run.claim",
+        "outcome": "skipped",
+        "facts": {
+          "claims": 0
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "recover",
+        "actor": "worker-alpha",
+        "operation": "run.commit",
+        "outcome": "rejected",
+        "facts": {
+          "code": "stale_lease"
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "observe",
+        "actor": "runtime-store",
+        "operation": "run.inspect",
+        "outcome": "succeeded",
+        "facts": {
+          "concurrent_claims": 1,
+          "runs": 1,
+          "winner": "worker-beta"
+        }
+      }
+    ]
+  }
+}

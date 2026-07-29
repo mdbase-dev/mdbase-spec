@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/testbed/v0.1/adapter-description.schema.json",
+  "title": "mdbase interoperability testbed adapter description",
+  "type": "object",
+  "required": [
+    "kind",
+    "protocol_version",
+    "implementation",
+    "profiles",
+    "roles",
+    "scenarios"
+  ],
+  "properties": {
+    "kind": { "const": "mdbase.testbed.adapter" },
+    "protocol_version": { "const": "0.1" },
+    "implementation": {
+      "type": "object",
+      "required": ["id", "name", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:/-]*$"
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "language": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "profiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "core_read",
+          "event_action_interop/0.1",
+          "runtime/0.2"
+        ]
+      }
+    },
+    "roles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "contract_store",
+          "record_consumer",
+          "event_source",
+          "event_consumer",
+          "action_caller",
+          "action_provider",
+          "bridge",
+          "runtime",
+          "runtime_store"
+        ]
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+      }
+    }
+  },
+  "additionalProperties": false
+}

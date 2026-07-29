@@ -1,0 +1,48 @@
+{
+  "name": "@callumalpass/mdbase-testbed",
+  "version": "0.1.0-rc.1",
+  "type": "module",
+  "description": "Black-box conformance runner and neutral scenarios for mdbase contracts, interoperability, and durable runtimes.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdbase-dev/mdbase-spec.git",
+    "directory": "packages/testbed"
+  },
+  "bugs": {
+    "url": "https://github.com/mdbase-dev/mdbase-spec/issues"
+  },
+  "homepage": "https://mdbase.dev/testbed/",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "bin": {
+    "mdbase-testbed": "./src/cli.mjs",
+    "mdbase-testbed-reference": "./dist/reference.mjs"
+  },
+  "files": [
+    "assets",
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build:reference": "esbuild adapters/reference.mjs --bundle --platform=node --format=esm --target=node20 --outfile=dist/reference.mjs",
+    "prepack": "npm run build:reference && npm run sync:assets",
+    "sync:assets": "node scripts/sync-assets.mjs",
+    "test": "npm run build:reference && npm run sync:assets && node --test test/*.test.mjs",
+    "test:reference": "npm run sync:assets && node src/cli.mjs run --adapter reference"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9",
+    "semver": "^7.8.5"
+  }
+}

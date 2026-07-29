@@ -60,6 +60,15 @@ groups:
         expect:
           valid: true
 
+      - name: "conformance claim schema accepts digest-bound testbed evidence"
+        operation: yaml_document_schema_validate
+        input:
+          schema: "schemas/v0.3/conformance-claim.schema.json"
+          paths:
+            - "tests/v0.3/fixtures/conformance/valid-testbed-evidence.yml"
+        expect:
+          valid: true
+
       - name: "conformance claim schema rejects missing profile dependencies"
         operation: yaml_document_schema_validate
         input:
@@ -212,5 +221,33 @@ groups:
           schema: "schemas/v0.3/type-pack.schema.json"
           paths:
             - "standard-packs/mdbase-runtime/0.2.0/mdbase-pack.yaml"
+        expect:
+          valid: true
+
+  - name: "portable interoperability testbed"
+    tests:
+      - name: "all testbed protocol schemas validate against JSON Schema 2020-12"
+        operation: json_schema_meta_validate
+        input:
+          paths:
+            - "schemas/testbed/v0.1/*.schema.json"
+        expect:
+          valid: true
+
+      - name: "the neutral fixture catalog validates"
+        operation: json_document_schema_validate
+        input:
+          schema: "schemas/testbed/v0.1/fixture-catalog.schema.json"
+          paths:
+            - "testbed/v0.1/fixtures/catalog.json"
+        expect:
+          valid: true
+
+      - name: "every portable scenario validates"
+        operation: json_document_schema_validate
+        input:
+          schema: "schemas/testbed/v0.1/scenario.schema.json"
+          paths:
+            - "testbed/v0.1/scenarios/*.json"
         expect:
           valid: true

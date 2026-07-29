@@ -1,0 +1,52 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.action-ambiguous",
+  "name": "Multiple eligible providers are explicitly ambiguous",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.action-ambiguous",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "providers": ["provider-alpha", "provider-beta"]
+  },
+  "covers": [
+    "event_action_interop/0.1.explicit_provider_ambiguity"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "provider-alpha",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "provider-beta",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.record.annotate"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "rejected",
+        "facts": {
+          "code": "ambiguous_provider",
+          "provider_calls": 0
+        }
+      }
+    ]
+  }
+}

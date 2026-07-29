@@ -22,4 +22,6 @@ __pycache__/
 /.ops/
 /packages/interop/node_modules/
 /packages/interop/dist/
+/packages/testbed/node_modules/
+/packages/testbed/dist/
 /packages/interop-rs/target/

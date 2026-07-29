@@ -1,0 +1,88 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "core.shared-contract-consumers",
+  "name": "Two applications consume one type implementation",
+  "description": "One type implements one record contract and two independent consumers observe the same projected contract view.",
+  "ring": "contract",
+  "profile": "core_read",
+  "roles": ["contract_store", "record_consumer"],
+  "operation": "contract.shared-consumers",
+  "fixtures": [
+    "contract.example-note",
+    "type.shared-note",
+    "record.shared-note"
+  ],
+  "parameters": {
+    "consumers": ["consumer-alpha", "consumer-beta"]
+  },
+  "covers": [
+    "core_read.data_contract_discovery",
+    "core_read.data_contract_implementation_validation",
+    "core_read.data_contract_projection"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "contract-store",
+        "operation": "contract.load",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.note",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "arrange",
+        "actor": "contract-store",
+        "operation": "type.load",
+        "outcome": "succeeded",
+        "facts": {
+          "type": "shared_note",
+          "implements": "example.note"
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "act",
+        "actor": "consumer-alpha",
+        "operation": "contract-view.read",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.note",
+          "view": {
+            "title": "One record, two consumers"
+          }
+        }
+      },
+      {
+        "sequence": 4,
+        "phase": "act",
+        "actor": "consumer-beta",
+        "operation": "contract-view.read",
+        "outcome": "succeeded",
+        "facts": {
+          "contract": "example.note",
+          "view": {
+            "title": "One record, two consumers"
+          }
+        }
+      },
+      {
+        "sequence": 5,
+        "phase": "observe",
+        "actor": "testbed",
+        "operation": "contract-view.compare",
+        "outcome": "succeeded",
+        "facts": {
+          "consumers": 2,
+          "same_contract": true,
+          "same_view": true
+        }
+      }
+    ]
+  }
+}

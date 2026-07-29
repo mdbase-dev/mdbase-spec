@@ -1,0 +1,52 @@
+{
+  "kind": "mdbase.testbed.scenario",
+  "protocol_version": "0.1",
+  "id": "interop.provider-disappearance",
+  "name": "Unloading a provider removes it from admission",
+  "ring": "interop",
+  "profile": "event_action_interop/0.1",
+  "roles": ["action_caller", "action_provider", "bridge"],
+  "operation": "interop.provider-disappearance",
+  "fixtures": ["contract.record-annotate"],
+  "parameters": {
+    "provider": "provider-alpha"
+  },
+  "covers": [
+    "event_action_interop/0.1.cancellation_and_unload"
+  ],
+  "expect": {
+    "entries": [
+      {
+        "sequence": 1,
+        "phase": "arrange",
+        "actor": "provider-alpha",
+        "operation": "action-provider.register",
+        "outcome": "succeeded",
+        "facts": {
+          "providers": 1
+        }
+      },
+      {
+        "sequence": 2,
+        "phase": "act",
+        "actor": "provider-alpha",
+        "operation": "client.dispose",
+        "outcome": "succeeded",
+        "facts": {
+          "providers": 0
+        }
+      },
+      {
+        "sequence": 3,
+        "phase": "observe",
+        "actor": "caller",
+        "operation": "action.invoke",
+        "outcome": "rejected",
+        "facts": {
+          "code": "no_provider",
+          "provider_calls": 0
+        }
+      }
+    ]
+  }
+}

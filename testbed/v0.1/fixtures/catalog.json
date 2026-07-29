@@ -1,0 +1,175 @@
+{
+  "kind": "mdbase.testbed.fixtures",
+  "protocol_version": "0.1",
+  "fixtures": {
+    "contract.example-note": {
+      "kind": "contract",
+      "value": {
+        "kind": "mdbase.contract",
+        "contract_type": "record",
+        "id": "example.note",
+        "version": "1.0.0",
+        "name": "Portable example note",
+        "record_schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["title"],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "type.shared-note": {
+      "kind": "type",
+      "value": {
+        "kind": "mdbase.type",
+        "name": "shared_note",
+        "version": 1,
+        "schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["type", "headline"],
+            "properties": {
+              "type": { "const": "shared_note" },
+              "headline": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "implements": [
+          {
+            "contract": "example.note",
+            "version": "1.0.0",
+            "fields": {
+              "title": "headline"
+            }
+          }
+        ]
+      }
+    },
+    "record.shared-note": {
+      "kind": "record",
+      "value": {
+        "type": "shared_note",
+        "headline": "One record, two consumers"
+      }
+    },
+    "contract.record-changed": {
+      "kind": "contract",
+      "value": {
+        "kind": "mdbase.contract",
+        "contract_type": "event",
+        "id": "example.record.changed",
+        "version": "1.0.0",
+        "name": "Example record changed",
+        "data_schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["record_id", "revision"],
+            "additionalProperties": false,
+            "properties": {
+              "record_id": { "type": "string", "minLength": 1 },
+              "revision": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "contract.record-annotate": {
+      "kind": "contract",
+      "value": {
+        "kind": "mdbase.contract",
+        "contract_type": "action",
+        "id": "example.record.annotate",
+        "version": "1.0.0",
+        "name": "Annotate example record",
+        "input_schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["record_id", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "record_id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "output_schema": {
+          "dialect": "json-schema-2020-12",
+          "value": {
+            "type": "object",
+            "required": ["record_id", "applied"],
+            "additionalProperties": false,
+            "properties": {
+              "record_id": { "type": "string", "minLength": 1 },
+              "applied": { "const": true }
+            }
+          }
+        },
+        "behavior": {
+          "idempotency": "required",
+          "cancellation": "cooperative"
+        }
+      }
+    },
+    "workflow.annotate-changed": {
+      "kind": "workflow",
+      "value": {
+        "type": "runtime_workflow",
+        "id": "example.annotate-changed",
+        "version": "1.0.0",
+        "name": "Annotate changed records",
+        "enabled": true,
+        "triggers": [
+          {
+            "id": "changed",
+            "event": {
+              "id": "example.record.changed",
+              "version": "^1.0.0"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "annotate",
+            "action": {
+              "id": "example.record.annotate",
+              "version": "^1.0.0"
+            },
+            "requires": {
+              "capabilities": ["record.write"]
+            },
+            "input": {
+              "record_id": { "$expr": "event.data.record_id" },
+              "label": "observed"
+            }
+          }
+        ]
+      }
+    },
+    "policy.allow-record-write": {
+      "kind": "policy",
+      "value": {
+        "type": "runtime_policy",
+        "id": "example.testbed-policy",
+        "version": "1.0.0",
+        "enabled": true,
+        "executors": {
+          "default": "testbed-runtime"
+        },
+        "grants": [
+          {
+            "capability": "record.write",
+            "mode": "allow"
+          }
+        ]
+      }
+    }
+  }
+}
