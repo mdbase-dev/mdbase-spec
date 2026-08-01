@@ -1,0 +1,94 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - "mdbase-interop-v*"
+      - "mdbase-runtime-v*"
+      - "mdbase-testbed-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install --global npm@11
+
+      - name: Select and validate package
+        id: release
+        run: |
+          case "$GITHUB_REF_NAME" in
+            mdbase-interop-v*)
+              PACKAGE_DIR="packages/interop"
+              TAG_PREFIX="mdbase-interop-v"
+              ;;
+            mdbase-runtime-v*)
+              PACKAGE_DIR="packages/runtime-contracts"
+              TAG_PREFIX="mdbase-runtime-v"
+              ;;
+            mdbase-testbed-v*)
+              PACKAGE_DIR="packages/testbed"
+              TAG_PREFIX="mdbase-testbed-v"
+              ;;
+            *)
+              echo "::error::Unsupported release tag $GITHUB_REF_NAME"
+              exit 1
+              ;;
+          esac
+
+          VERSION="$(node --print "require('./${PACKAGE_DIR}/package.json').version")"
+          PACKAGE_NAME="$(node --print "require('./${PACKAGE_DIR}/package.json').name")"
+          if [ "$GITHUB_REF_NAME" != "${TAG_PREFIX}${VERSION}" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match ${PACKAGE_NAME} version ${TAG_PREFIX}${VERSION}"
+            exit 1
+          fi
+          case "$VERSION" in
+            *-*) DIST_TAG="next" ;;
+            *) DIST_TAG="latest" ;;
+          esac
+          echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build local interoperability dependency
+        if: steps.release.outputs.package_name == '@callumalpass/mdbase-runtime'
+        working-directory: packages/interop
+        run: npm ci && npm run build
+
+      - name: Install and test package
+        working-directory: ${{ steps.release.outputs.package_dir }}
+        run: npm ci && npm test
+
+      - name: Inspect package contents
+        working-directory: ${{ steps.release.outputs.package_dir }}
+        run: npm pack --dry-run
+
+      - name: Confirm version is unpublished
+        env:
+          PACKAGE_NAME: ${{ steps.release.outputs.package_name }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if npm view "$PACKAGE_NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "::error::$PACKAGE_NAME@$VERSION is already published"
+            exit 1
+          fi
+
+      - name: Publish package
+        working-directory: ${{ steps.release.outputs.package_dir }}
+        env:
+          DIST_TAG: ${{ steps.release.outputs.dist_tag }}
+        run: npm publish --access public --tag "$DIST_TAG"
