@@ -101,7 +101,8 @@ Future v0.3 adapters should support these operations:
 - `runtime_validate_action_input`
 - `runtime_validate_action_output`
 - `migrate_type`
-- `install_type_pack`
+- `assess_type_pack`
+- `apply_type_pack`
 
 The repository also includes `scripts/check_v03_tests.py`, which validates the
 suite structure and executes local artifact checks that do not require a full

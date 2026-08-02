@@ -27,8 +27,8 @@ The complete collection contract model has three intentionally small parts:
    interface using JSON Schema 2020-12.
 2. For a `record` contract, a type's `implements` entry maps that interface to
    the type and supplies contract-specific binding data.
-3. An optional `mdbase.type-pack` manifest groups contracts, types, and their
-   referenced schemas for transactional installation.
+3. An optional managed `mdbase.type-pack` groups contracts, types, and their
+   referenced schemas for transactional installation and evolution.
 
 Event sources and action providers make runtime declarations because they are
 executable, instance-specific implementations rather than record types.
@@ -335,14 +335,22 @@ version: 1.0.0
 name: Example task types
 resources:
   - kind: contract
+    mode: managed
     source: contracts/example.task.md
     target: _contracts/example.task.md
     digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
   - kind: type
+    mode: managed
     source: types/task.md
     target: _types/task.md
     digest: sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
 ```
+
+`mode` is required. A `managed` resource remains owned by the pack and may be
+updated or retired by a later pack version only while its live bytes still
+match the installed digest. A `seed` resource is created only when its target
+is absent and becomes user-owned immediately; later pack versions neither
+replace nor delete it.
 
 Resource digests are SHA-256 over the exact resource bytes. Source and target
 paths are relative, forward-slash paths without traversal.
@@ -356,19 +364,100 @@ Type packs are installation units, not record types and not permission grants.
 A pack may include several contracts, several implementing or auxiliary types,
 and local JSON Schemas referenced by those artifacts.
 
-## Transactional Pack Installation
+## Pack Identity And Portable Provenance
 
-A pack-aware installer MUST:
+The pack digest is SHA-256 over RFC 8785 JSON Canonicalization Scheme bytes for
+the complete validated manifest, prefixed with `sha256:`. Because every
+resource digest is part of the manifest, the pack digest identifies the exact
+manifest and exact resource bytes without incorporating their distribution
+location.
+
+Managed pack state is stored in `mdbase.lock.yaml` at the collection root and
+validates against `schemas/v0.3/type-pack-lock.schema.json`. The lock is
+portable collection source, not derived cache state. It records each installed
+pack's exact ID, version, pack digest, stable installer identity, and the kind,
+mode, canonical source, resolved target, and installed digest of every resource. Tools write it
+deterministically and users MAY inspect or version it. Tools MUST NOT infer
+ownership from filenames, application names, or `x-*` metadata.
+
+Full collection snapshots, authority transfers, and unscoped synchronization
+MUST carry `mdbase.lock.yaml` as a `lock` resource when it exists. A scoped
+application projection MAY omit it to avoid disclosing unrelated pack metadata.
+The lock is connector-generated and protocol-bounded; a hosted provider MAY
+count its bytes toward aggregate storage, but MUST NOT reject it against a
+user-authored per-document size quota that the collection owner cannot
+remediate.
+
+An absent lock means no resource is pack-managed, including resources created
+by older one-shot installers. Adopting existing files into managed ownership is
+a separate explicit operation and MUST verify their exact digests.
+
+## Assessment And Transactional Apply
+
+Pack evolution has two public phases: `assess_type_pack` is read-only and
+`apply_type_pack` consumes a reviewed assessment. A caller supplies the desired
+manifest, exact resources, and a stable reverse-domain `installed_by`
+application or tool identity. Optional `target_overrides` map canonical manifest
+targets to collection-specific paths without changing the publisher-owned pack
+identity. Overrides are validated as safe collection paths, are included in the
+assessment digest, and the resolved targets are written to the receipt.
+
+Assessment reports one of `current`, `install`, `upgrade`, `downgrade`,
+`reconfigure`, or `conflict`, the current and desired pack identities, and every resource in a
+stable exact diff. Resource actions are `create`, `update`, `delete`,
+`adopt`, `unchanged`, `preserve`, or `conflict`. `adopt` records an existing
+byte-identical managed resource without rewriting it. `preserve` is used for seed resources
+and for seed resources retired from a newer pack. A conflicting assessment is
+not applicable. The assessment also reports the planned `mdbase.lock.yaml`
+action (`create`, `update`, or `unchanged`) and its resulting digest, so storage
+adapters can persist the complete authority transaction without inferring
+hidden engine writes.
+
+`reconfigure` means the exact same immutable pack is being resolved to different
+collection targets. Managed resources are relocated only when their installed
+bytes are unchanged; modified resources conflict. Seed resources are never
+moved or deleted automatically. A caller may name seed targets in
+`preserve_seed_targets` to record an intentional omission, such as when a user
+maps the contract to an existing type instead of accepting the starter. Unknown
+or non-seed preservation targets MUST be rejected.
+
+When guided setup maps a provided contract to an existing user-owned type, the
+reviewed `contract_setups` choices are part of the same assessment and apply.
+The assessment reports their exact type-resource diff and binds the selected
+type revisions, field mappings, and bindings into `assessment_digest`. Apply
+MUST stage those edits together with the managed resources and lock, validate
+the combined collection, and commit them in the same transaction. A stale type
+revision therefore leaves both the user-owned type and every pack resource
+unchanged. A connector MUST NOT install the pack first and apply the reviewed
+mapping as a later independent mutation.
+
+The assessment includes a deterministic `assessment_digest` over the desired
+pack identity, current lock entry, and every relevant live target digest. Apply
+MUST recompute it inside the collection mutation boundary and fail with
+`concurrent_modification` before writing when it differs. Downgrades require an
+explicit `allow_downgrade` decision.
+
+An unmanaged target with different bytes is a conflict unless the assessment
+request contains an explicit adoption decision naming that target and its exact
+current digest. An accepted adoption may plan `update`, records the adopted
+digest in the diff, and is covered by `assessment_digest`. This is the safe
+upgrade bridge for collections created before pack receipts existed: tools can
+show the files that will become package-managed, require informed approval, and
+remain race-safe. Unknown targets, seed targets, and stale adoption digests MUST
+be rejected. Adoption is never inferred from application access or install
+intent.
+
+A pack-aware apply implementation MUST:
 
 1. validate the manifest, safe paths, source bytes, and resource digests
-2. stage every resource without changing the live collection
+2. stage every resource and reviewed existing-type setup without changing the live collection
 3. resolve the complete staged contract and type registries
 4. validate every contract, implementation, type, reference, and affected
    existing record
-5. compute and present the exact create, replace, and unchanged diff
-6. acquire its collection mutation boundary and recheck overwritten hashes
-7. commit all resources as one recoverable transaction
-8. reopen the collection and verify the committed registry
+5. compute and present the exact resource diff and assessment digest
+6. acquire its collection mutation boundary and recheck the assessment
+7. commit all resource changes and the lock as one recoverable transaction
+8. reopen the collection and verify the committed registry and lock
 
 An invalid resource aborts before any live write. A conflict or concurrent
 change aborts with the live collection unchanged. Implementations may use an
@@ -380,12 +469,12 @@ Revoking an application's access does not uninstall its type pack. Uninstall is
 a separate, explicitly requested operation because records may still depend on
 the installed types.
 
-A pack install or dry-run result reports the pack `id`, exact `version`, and
-every resource in manifest order as `{ target, action, digest }`, where
-`action` is `create`, `replace`, or `unchanged`. It also reports
-`cleanup_deferred` when committed state is valid but transaction-journal cleanup
-must be retried. Reinstalling identical bytes is valid and reports every
-resource as `unchanged`; it MUST NOT create a new logical collection revision.
+Applying a current pack is valid and reports every managed resource as
+`unchanged`; it MUST NOT create a new logical collection revision. Applying an
+upgrade deletes a retired managed target only when its live digest still
+matches the lock. User-modified managed resources produce `conflict` and no
+live write. Successful apply reports the committed receipt, exact resource
+diff, and `cleanup_deferred` when transaction-journal cleanup must be retried.
 
 ## Diagnostics
 
@@ -400,8 +489,8 @@ Data-contract-aware tools use these codes:
 | `data_contract_binding_invalid` | implementation binding fails its binding schema |
 | `data_contract_field_invalid` | a mapped contract or record field is missing or incompatible |
 | `data_contract_record_invalid` | a projected contract view fails the contract schema |
-| `invalid_type_pack` | a pack manifest, resource, path, or digest is invalid |
-| `type_pack_conflict` | a target differs from live state and replacement was not approved |
+| `invalid_type_pack` | a pack manifest, lock, resource, path, or digest is invalid |
+| `type_pack_conflict` | ownership, live bytes, or an untracked target prevents a safe apply |
 | `type_pack_apply_failed` | transactional commit or recovery did not complete normally |
 
 Diagnostics use the canonical shape from Chapter 16 and identify the contract

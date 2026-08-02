@@ -17,6 +17,7 @@ directory that has its own `mdbase.yaml`.
 ```text
 collection/
   mdbase.yaml
+  mdbase.lock.yaml
   _types/
     meta.md
     task.md
@@ -49,6 +50,7 @@ record scan unless explicitly excluded.
 The following paths are reserved by default:
 
 - `mdbase.yaml`
+- `mdbase.lock.yaml`, when managed type packs are installed
 - the configured types folder, default `_types/`
 - the configured contracts folder, default `_contracts/`
 - `.mdbase/` for derived implementation state
@@ -75,6 +77,7 @@ Tools MUST:
 - skip the configured types folder
 - skip the configured contracts folder
 - skip `.mdbase/`
+- skip `mdbase.lock.yaml`
 - stop scanning at nested collection roots
 - ignore non-record extensions unless configured otherwise
 

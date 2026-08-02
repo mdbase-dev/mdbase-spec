@@ -12,6 +12,7 @@ yet published package artifacts.
 | `type-file.schema.json` | frontmatter of `_types/*.md` v0.3 type files |
 | `data-contract.schema.json` | first-class record, event, and action contract frontmatter in `_contracts/*.md` |
 | `type-pack.schema.json` | transactional type-pack manifests |
+| `type-pack-lock.schema.json` | portable managed type-pack provenance and ownership |
 | `query.schema.json` | portable query input objects |
 | `query-result.schema.json` | query results plus optional context, view, grouping, and summary metadata |
 | `record-document.schema.json` | complete authoritative record documents returned by read and successful mutations |

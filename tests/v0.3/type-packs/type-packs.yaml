@@ -14,7 +14,7 @@ groups:
     tests:
       - id: type-pack-install-idempotent
         name: "a complete pack installs as one exact diff and identical reinstall is unchanged"
-        operation: install_type_pack
+        operation: apply_type_pack
         input:
           pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
           repeat: 2
@@ -22,14 +22,19 @@ groups:
           valid: true
           runs:
             - valid: true
+              status: install
               actions: [create, create]
             - valid: true
+              status: current
               actions: [unchanged, unchanged]
+          lock_exists: true
           implementations: 1
         covers:
           - core_write.transactional_type_pack_preflight
           - core_write.exact_type_pack_diff
-          - core_write.idempotent_type_pack_install
+          - core_write.idempotent_type_pack_apply
+          - core_write.managed_type_pack_provenance
+          - core_write.managed_type_pack_assessment
 
   - name: "preflight failure is atomic"
     setup:
@@ -40,7 +45,7 @@ groups:
     tests:
       - id: type-pack-digest-failure-atomic
         name: "a digest mismatch writes no live target"
-        operation: install_type_pack
+        operation: apply_type_pack
         input:
           pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
           corrupt_digest: true
@@ -64,7 +69,7 @@ groups:
     tests:
       - id: type-pack-target-conflict-atomic
         name: "a differing target rejects the whole pack without creating later resources"
-        operation: install_type_pack
+        operation: apply_type_pack
         input:
           pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
         expect:
@@ -74,3 +79,63 @@ groups:
           targets_exist: [true, false]
         covers:
           - core_write.type_pack_atomicity
+
+  - name: "managed upgrade conflict and concurrency"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+    tests:
+      - id: type-pack-managed-resource-conflict
+        name: "a user-modified managed target produces a structured non-applicable assessment"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+          install_then_modify: "_contracts/tasknotes.task.md"
+        expect:
+          valid: true
+          status: conflict
+          applicable: false
+          actions: [conflict, unchanged]
+        covers:
+          - core_write.managed_type_pack_assessment
+      - id: type-pack-stale-assessment
+        name: "apply rejects a target changed after assessment without writing"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+          mutate_after_assess: "_contracts/tasknotes.task.md"
+        expect:
+          valid: false
+          error:
+            code: concurrent_modification
+        covers:
+          - core_write.managed_type_pack_concurrency
+
+  - name: "explicit adoption of legacy definitions"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      files:
+        _contracts/tasknotes.task.md: |
+          Older unmanaged definition.
+    tests:
+      - id: type-pack-explicit-adoption
+        name: "a digest-pinned adoption decision can replace reviewed unmanaged bytes"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/tasknotes-migration/v0.3/mdbase-pack.yaml"
+          adopt_conflicts: true
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: install
+              actions: [update, create]
+          lock_exists: true
+          implementations: 1
+        covers:
+          - core_write.managed_type_pack_adoption

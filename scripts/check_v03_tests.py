@@ -52,7 +52,8 @@ EXECUTABLE_OPERATIONS = {
     "inspect_yaml",
     "migrate_type",
     "type_pack_resources_validate",
-    "install_type_pack",
+    "assess_type_pack",
+    "apply_type_pack",
     "data_contract_implementation_validate",
     "data_contract_digest",
     "data_contract_implementation_digest",
@@ -395,8 +396,12 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
         run_type_pack_resources_test(input_data, expect)
         return
 
-    if operation == "install_type_pack":
-        run_install_type_pack_test(input_data, expect, setup)
+    if operation == "assess_type_pack":
+        run_assess_type_pack_test(input_data, expect, setup)
+        return
+
+    if operation == "apply_type_pack":
+        run_apply_type_pack_test(input_data, expect, setup)
         return
 
     if operation == "data_contract_implementation_validate":
@@ -518,7 +523,7 @@ def run_type_pack_resources_test(input_data: dict[str, Any], expect: dict[str, A
     assert_expected_validation_result(failures, expect)
 
 
-def run_install_type_pack_test(
+def run_apply_type_pack_test(
     input_data: dict[str, Any], expect: dict[str, Any], setup: dict[str, Any]
 ) -> None:
     """Simulate the normative preflight/diff/atomicity rules without an engine."""
@@ -530,10 +535,12 @@ def run_install_type_pack_test(
         for target, content in (setup.get("files") or {}).items()
     }
     corrupt_digest = input_data.get("corrupt_digest") is True
+    adopt_conflicts = input_data.get("adopt_conflicts") is True
+    installed: dict[str, str] = {}
     runs: list[dict[str, Any]] = []
 
     for _ in range(int(input_data.get("repeat", 1))):
-        planned: list[tuple[str, bytes, str]] = []
+        planned: list[tuple[str, bytes, str, str]] = []
         error: dict[str, str] | None = None
         seen_sources: set[str] = set()
         seen_targets: set[str] = set()
@@ -566,30 +573,45 @@ def run_install_type_pack_test(
             if actual_digest != declared_digest:
                 error = {"code": "invalid_type_pack", "message": "digest mismatch"}
                 break
-            action = (
-                "create"
-                if target not in live
-                else "unchanged"
-                if live[target] == document
-                else "replace"
+            current_digest = (
+                "sha256:" + hashlib.sha256(live[target]).hexdigest()
+                if target in live
+                else None
             )
-            planned.append((target, document, action))
+            if target not in live:
+                action = "create"
+            elif live[target] == document:
+                action = "unchanged" if target in installed else "adopt"
+            elif target not in installed and adopt_conflicts:
+                action = "update"
+            else:
+                action = "conflict"
+            planned.append((target, document, action, current_digest or ""))
 
         if error is None and len(planned) != len(resources):
             error = {"code": "invalid_type_pack", "message": "incomplete pack"}
-        if error is None and any(action == "replace" for _, _, action in planned):
+        if error is None and any(action == "conflict" for _, _, action, _ in planned):
             error = {"code": "type_pack_conflict", "message": "target conflict"}
+
+        if error is None and input_data.get("mutate_after_assess"):
+            error = {
+                "code": "concurrent_modification",
+                "message": "collection changed after assessment",
+            }
 
         if error is not None:
             runs.append({"valid": False, "actions": [], "error": error})
             break
 
-        for target, document, _ in planned:
+        status = "current" if installed else "install"
+        for target, document, _, _ in planned:
             live[target] = document
+            installed[target] = "sha256:" + hashlib.sha256(document).hexdigest()
         runs.append(
             {
                 "valid": True,
-                "actions": [action for _, _, action in planned],
+                "status": status,
+                "actions": [action for _, _, action, _ in planned],
             }
         )
 
@@ -613,6 +635,7 @@ def run_install_type_pack_test(
         "valid": last["valid"],
         "runs": runs,
         "implementations": implementation_count,
+        "lock_exists": bool(installed),
         "targets_exist": [
             resource.get("target") in live for resource in resources
         ],
@@ -620,6 +643,52 @@ def run_install_type_pack_test(
     if "error" in last:
         actual["error"] = last["error"]
     assert_subset(actual, expect)
+
+
+def run_assess_type_pack_test(
+    input_data: dict[str, Any], expect: dict[str, Any], setup: dict[str, Any]
+) -> None:
+    """Exercise the structured managed-resource conflict shape used before apply."""
+    manifest_path = resolve(input_data["pack"])
+    manifest = load_yaml(manifest_path)
+    resources = manifest.get("resources", []) or []
+    live: dict[str, bytes] = {}
+    installed: dict[str, str] = {}
+
+    for resource in resources:
+        source = str(resource["source"])
+        target = str(resource["target"])
+        document = (manifest_path.parent / source).read_bytes()
+        live[target] = document
+        installed[target] = "sha256:" + hashlib.sha256(document).hexdigest()
+
+    modified_target = input_data.get("install_then_modify")
+    if isinstance(modified_target, str):
+        live[modified_target] = b"User-modified managed bytes."
+
+    actions: list[str] = []
+    for resource in resources:
+        target = str(resource["target"])
+        document = (manifest_path.parent / str(resource["source"])).read_bytes()
+        if target not in live:
+            actions.append("create")
+        elif live[target] == document:
+            actions.append("unchanged")
+        elif target in installed:
+            actions.append("conflict")
+        else:
+            actions.append("conflict")
+
+    conflicted = "conflict" in actions
+    assert_subset(
+        {
+            "valid": True,
+            "status": "conflict" if conflicted else "current",
+            "applicable": not conflicted,
+            "actions": actions,
+        },
+        expect,
+    )
 
 
 def run_data_contract_implementation_test(

@@ -55,10 +55,13 @@
     },
     "resource": {
       "type": "object",
-      "required": ["kind", "source", "target", "digest"],
+      "required": ["kind", "mode", "source", "target", "digest"],
       "properties": {
         "kind": {
           "enum": ["contract", "type", "schema"]
+        },
+        "mode": {
+          "enum": ["managed", "seed"]
         },
         "source": {
           "$ref": "#/$defs/safeRelativePath"
