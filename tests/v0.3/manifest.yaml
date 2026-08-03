@@ -84,8 +84,12 @@ claim_profiles:
     requires: [collection_semantics]
     requirements:
       - transactional_type_pack_preflight
+      - managed_type_pack_provenance
+      - managed_type_pack_assessment
+      - managed_type_pack_concurrency
+      - managed_type_pack_adoption
       - exact_type_pack_diff
-      - idempotent_type_pack_install
+      - idempotent_type_pack_apply
       - type_pack_atomicity
   - id: lifecycle
     status: draft

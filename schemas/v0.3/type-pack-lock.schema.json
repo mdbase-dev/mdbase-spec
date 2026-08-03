@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/v0.3/type-pack-lock.schema.json",
+  "title": "mdbase v0.3 managed type-pack lock",
+  "type": "object",
+  "required": ["kind", "lock_version", "packs"],
+  "properties": {
+    "kind": { "const": "mdbase.type-pack-lock" },
+    "lock_version": { "const": 1 },
+    "packs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/receipt" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 150,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "receipt": {
+      "type": "object",
+      "required": ["id", "version", "digest", "installed_by", "resources"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "version": { "$ref": "#/$defs/semanticVersion" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "installed_by": { "$ref": "#/$defs/identifier" },
+        "resources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "resource": {
+      "type": "object",
+      "required": ["kind", "mode", "source", "target", "digest"],
+      "properties": {
+        "kind": { "enum": ["contract", "type", "schema"] },
+        "mode": { "enum": ["managed", "seed"] },
+        "source": { "$ref": "#/$defs/safeRelativePath" },
+        "target": { "$ref": "#/$defs/safeRelativePath" },
+        "digest": { "$ref": "#/$defs/digest" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

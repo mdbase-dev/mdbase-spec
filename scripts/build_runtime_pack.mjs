@@ -769,6 +769,7 @@ function packManifest(items) {
   for (const item of items) {
     lines.push(
       `  - kind: ${item.kind}`,
+      "    mode: managed",
       `    source: ${item.source}`,
       `    target: ${item.target}`,
       `    digest: ${item.digest}`,
