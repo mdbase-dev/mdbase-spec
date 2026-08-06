@@ -7,6 +7,7 @@ A query selects records from a collection. The canonical query-object schema is
 
 ```yaml
 types: [task]
+timezone: Australia/Melbourne
 context:
   this:
     path: projects/alpha.md
@@ -32,6 +33,33 @@ MUST NOT change the meaning of portable members.
 Schema violations and semantic preflight failures such as cyclic projection
 dependencies or duplicate result names produce `invalid_query` and abort before
 candidate evaluation.
+
+## Temporal Execution Context
+
+A query MAY supply `timezone` as an IANA timezone identifier. It is ephemeral
+execution context: it applies only to this invocation and is not collection or
+saved-view state. `UTC` is the canonical identifier for Coordinated Universal
+Time. Numeric offsets and ambient aliases such as `local` are not valid query
+timezone identifiers because they cannot model daylight-saving transitions or
+identify a durable calendar authority.
+
+The effective query timezone is resolved in this order:
+
+1. the invocation's `timezone`
+2. the collection's configured timezone
+3. the implementation's documented local-runtime default
+
+An invalid invocation timezone produces `invalid_timezone` and aborts before
+candidate evaluation. An implementation MUST NOT silently substitute another
+timezone for a supplied value.
+
+The execution authority captures the current instant once per query. `now()`,
+`today()`, conversion of datetimes to calendar dates, and calendar arithmetic
+MUST all use that captured instant and the same effective timezone throughout
+the execution. Callers do not supply the current instant through this field.
+
+Interactive callers SHOULD send their current IANA timezone on every temporal
+query. Headless callers MAY omit it to use the durable collection default.
 
 ## Types
 
@@ -59,7 +87,7 @@ When no context is supplied, `this` is null. Supplying an unresolved context
 produces `context_not_found` and aborts the query before candidate evaluation.
 An invalid context is handled according to the collection validation level.
 
-Query time, timezone, and collection state are fixed for the context and all
+Query time, effective timezone, and collection state are fixed for the context and all
 candidates in one execution. A caller MUST NOT replace or mutate the context
 between candidate evaluations.
 
@@ -332,6 +360,12 @@ named view. Resolving an unknown view record or named-view ID produces
 View execution returns the query envelope and adds
 `meta.view: { path, id }`, using the resolved view-record path and named-view
 ID.
+
+A saved-view execution invocation MAY supply `timezone` with the same syntax,
+precedence, validation, and fixed-clock semantics as a direct query. The
+invocation timezone is applied after named-view resolution and is not written
+into the saved view. This lets one portable `today()` view follow its caller's
+calendar day without local post-filtering or daily view rewrites.
 
 Property-metadata keys MAY name effective fields, `file.*` values,
 `projection.*` values, or selection outputs. They provide labels, descriptions,
