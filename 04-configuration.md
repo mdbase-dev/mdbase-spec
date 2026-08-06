@@ -17,6 +17,7 @@ Recommended config:
 spec_version: "0.3.0"
 
 settings:
+  timezone: Australia/Melbourne
   types_folder: _types
   contracts_folder: _contracts
   record_extensions: [md]
@@ -37,6 +38,7 @@ Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
+| `settings.timezone` | string | local runtime | durable IANA timezone for authority-owned calendar semantics |
 | `settings.types_folder` | string | `_types` | folder containing type files |
 | `settings.contracts_folder` | string | `_contracts` | folder containing data contract files |
 | `settings.record_extensions` | list of strings | `[md]` | record file extensions without dot |
@@ -48,6 +50,13 @@ Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
 
 `settings.explicit_type_keys` replaces the default key list. An empty list makes
 all type membership inferred.
+
+`settings.timezone`, when present, MUST be an IANA timezone identifier. `UTC`
+is the canonical identifier for Coordinated Universal Time. Numeric offsets and
+ambient aliases such as `local` are invalid because they do not name a durable
+calendar authority or model daylight-saving transitions. An invalid configured
+timezone makes the collection configuration invalid; an implementation MUST
+NOT silently substitute its runtime timezone.
 
 The types and contracts folders MUST be different normalized paths. Both are
 reserved control-file folders and are excluded from ordinary record discovery.
