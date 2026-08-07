@@ -65,7 +65,9 @@ jobs:
           echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Build local interoperability dependency
-        if: steps.release.outputs.package_name == '@callumalpass/mdbase-runtime'
+        if: >-
+          steps.release.outputs.package_name == '@callumalpass/mdbase-runtime' ||
+          steps.release.outputs.package_name == '@callumalpass/mdbase-testbed'
         working-directory: packages/interop
         run: npm ci && npm run build
 
