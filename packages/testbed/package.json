@@ -1,6 +1,6 @@
 {
   "name": "@callumalpass/mdbase-testbed",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "type": "module",
   "description": "Black-box conformance runner and neutral scenarios for mdbase contracts, interoperability, and durable runtimes.",
   "license": "MIT",
