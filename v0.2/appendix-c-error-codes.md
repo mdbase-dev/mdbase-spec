@@ -63,7 +63,7 @@ This appendix defines standard error codes for validation issues and operation e
 | `invalid_link` | Link cannot be parsed | Malformed wikilink |
 | `link_not_found` | Link target doesn't exist | Target "[[missing]]" not found |
 | `link_wrong_type` | Target is wrong type | Expected person, found task |
-| `ambiguous_link` | Multiple candidates for a simple-name link (error on ID ambiguity, warning if still ambiguous after tiebreakers) | "[[note]]" matches notes/note.md and archive/note.md |
+| `ambiguous_link` | Multiple candidates exist at the first populated simple-name lookup priority; resolution fails closed | "[[note]]" matches notes/note.md and archive/note.md |
 
 ### Date/Time Errors
 
