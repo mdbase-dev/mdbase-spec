@@ -167,11 +167,15 @@ Given a link value and the path of the file containing it:
      - If exactly one match, resolve to it
      - If multiple matches, resolution MUST fail with `ambiguous_link`
    - **Filename match pass**: If no `id_field` match exists, search scoped **markdown files (records)** by filename
-   - If multiple filename candidates match, apply tiebreakers in order:
-     a. **Same directory**: Prefer a file in the same directory as the referring file
-     b. **Shortest path**: Prefer the file with the shortest path (closest to collection root)
-     c. **Alphabetical**: Sort candidate paths lexicographically and take the first
-   - If multiple candidates remain after all tiebreakers, resolve to `null` and emit an `ambiguous_link` warning
+     - If exactly one match exists, resolve to it
+     - If multiple matches exist, resolution MUST fail closed: resolve to `null` and emit `ambiguous_link`
+
+   Implementations MUST NOT choose among duplicate simple-name matches by
+   referring directory, path length, scan order, or lexical order. Those
+   choices are unstable across providers and can silently bind a relationship
+   to a different record after an unrelated move or import. Authors can make
+   the target unambiguous with a path, a unique `id_field`, or a narrower typed
+   target constraint.
 
    > **Note:** Non-markdown files are not records and are not candidates for simple name matching (per [§2.9](./02-collection-layout.md)). A wikilink `[[diagram]]` will not match `diagram.png` — only markdown files are searched by `id_field` and filename. Non-markdown files are only resolved when explicitly referenced by path (with extension or relative path).
 

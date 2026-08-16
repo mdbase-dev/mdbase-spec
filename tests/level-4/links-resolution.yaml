@@ -366,10 +366,10 @@ groups:
           resolved_path: "people/alice.md"
 
   # =============================================================================
-  # Group 6: Tiebreaker rules for simple name resolution
+  # Group 6: Ambiguous simple-name resolution fails closed
   # =============================================================================
 
-  - name: "simple name tiebreakers"
+  - name: "same-directory ambiguity"
     spec_ref: "§8.4"
 
     setup:
@@ -400,15 +400,15 @@ groups:
           ---
 
     tests:
-      - name: "tiebreaker prefers same directory"
+      - name: "same-directory duplicate remains ambiguous"
         operation: resolve_link
         input:
           path: "tasks/source.md"
           field: ref
         expect:
-          resolved_path: "tasks/target.md"
+          resolved_path: null
 
-  - name: "simple name tiebreaker - shortest path"
+  - name: "path-length ambiguity"
     spec_ref: "§8.4"
 
     setup:
@@ -439,15 +439,15 @@ groups:
           ---
 
     tests:
-      - name: "tiebreaker prefers shortest path when not in same directory"
+      - name: "shorter path does not win an ambiguous simple name"
         operation: resolve_link
         input:
           path: "source.md"
           field: ref
         expect:
-          resolved_path: "a/target.md"
+          resolved_path: null
 
-  - name: "simple name tiebreaker - alphabetical"
+  - name: "lexical-order ambiguity"
     spec_ref: "§8.4"
 
     setup:
@@ -478,13 +478,13 @@ groups:
           ---
 
     tests:
-      - name: "tiebreaker uses alphabetical order for equal-length paths"
+      - name: "lexical order does not win an ambiguous simple name"
         operation: resolve_link
         input:
           path: "source.md"
           field: ref
         expect:
-          resolved_path: "alpha/target.md"
+          resolved_path: null
 
   # =============================================================================
   # Group 7: Ambiguous link detection
