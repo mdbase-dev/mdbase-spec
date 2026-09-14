@@ -55,13 +55,11 @@ groups:
         tasks/task-b.md: |
           ---
           type: task
-          id: "task-b"
           title: "Task B"
           ---
         tasks/task-c.md: |
           ---
           type: task
-          id: "task-c"
           title: "Task C"
           parent: "[[task-b]]"
           ---
@@ -202,7 +200,6 @@ groups:
         notes/target.md: |
           ---
           type: note
-          id: "target"
           title: "Target Note"
           ---
 
@@ -284,7 +281,6 @@ groups:
         notes/target-note.md: |
           ---
           type: note
-          id: "target-note"
           title: "Target Note"
           ---
           Some body content here.
@@ -554,10 +550,10 @@ groups:
               link: "[Detail](../archive/detail.md)"
 
   # =============================================================================
-  # Group 6: Ambiguous link handling during rename
+  # Group 6: Deterministic duplicate-filename handling during rename
   # =============================================================================
 
-  - name: "ambiguous link not updated during rename"
+  - name: "deterministically selected duplicate filename updated during rename"
     spec_ref: "§12.5"
 
     setup:
@@ -594,7 +590,7 @@ groups:
           ---
 
     tests:
-      - name: "ambiguous link emits warning and is not updated"
+      - name: "deterministically selected duplicate filename is updated"
         operation: rename
         input:
           from: "folder-a/shared-name.md"
@@ -603,17 +599,18 @@ groups:
         expect:
           from: "folder-a/shared-name.md"
           to: "folder-a/renamed.md"
-          warnings:
+          references_updated:
             - path: "notes/source.md"
-              message_contains: "ambiguous"
-        # The ambiguous link is left unchanged
+              field: "ref"
+        # Equal-depth duplicate filenames use lexical normalized path order,
+        # so the link identifies folder-a/shared-name.md before the rename.
         verify_after:
           operation: read
           input:
             path: "notes/source.md"
           expect:
             frontmatter:
-              ref: "[[shared-name]]"
+              ref: "[[renamed]]"
 
   # =============================================================================
   # Group 7: rename_ref_update_failed error code

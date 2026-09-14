@@ -2,6 +2,14 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## Unreleased
+
+- Clarify that selected-type creation does not require explicit membership keys.
+  With inference-only configuration, final persisted fields and path must match
+  the selected type, and all applicable types remain subject to validation.
+- Add shared creation fixtures for inferred membership, ordinary `type` metadata,
+  auxiliary schemas, derived paths, and serialization-policy membership loss.
+
 ## 2026-07-28 (standard field references)
 
 ### Added

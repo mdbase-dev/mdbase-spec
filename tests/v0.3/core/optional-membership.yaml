@@ -1,0 +1,169 @@
+name: Selected create with inferred membership
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: core_collection
+spec_ref: "v0.3/07, v0.3/12"
+groups:
+  - name: No explicit membership keys
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          explicit_type_keys: []
+          default_validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          match:
+            where:
+              tags: {contains: task}
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: {type: string}
+                type: {type: string}
+                tags: {type: array, items: {type: string}}
+          ---
+        review.md: |
+          ---
+          kind: mdbase.type
+          name: review
+          match:
+            fields_present: [reviewed]
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [reviewer]
+          ---
+    tests:
+      - name: selected create succeeds through tag matching without adding keys
+        operation: create
+        input:
+          path: tasks/new.md
+          type: task
+          frontmatter: {title: Buy milk, tags: [task]}
+        expect:
+          valid: true
+          types: [task]
+          frontmatter: {title: Buy milk, tags: [task]}
+          frontmatter_not_contains: [type, types, mdbase_type]
+      - name: domain type is preserved rather than replaced with selected name
+        operation: create
+        input:
+          path: tasks/paper.md
+          type: task
+          frontmatter: {title: Read paper, tags: [task], type: article-journal}
+        expect:
+          valid: true
+          types: [task]
+          frontmatter: {type: article-journal}
+          frontmatter_not_contains: [types, mdbase_type]
+      - name: selected type must match the persisted document
+        operation: create
+        input:
+          path: tasks/not-matching.md
+          type: task
+          frontmatter: {title: Missing tag}
+        expect:
+          valid: false
+      - name: all inferred types validate alongside selected type
+        operation: create
+        input:
+          path: tasks/review.md
+          type: task
+          frontmatter: {title: Review paper, tags: [task], reviewed: true}
+        expect:
+          valid: false
+      - name: compatible auxiliary membership is retained
+        operation: create
+        input:
+          path: tasks/review-valid.md
+          type: task
+          frontmatter: {title: Review paper, tags: [task], reviewed: true, reviewer: Alice}
+        expect:
+          valid: true
+          types: [review, task]
+          frontmatter_not_contains: [type, types, mdbase_type]
+  - name: Final path establishes membership
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          explicit_type_keys: []
+          default_validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value: {type: object, required: [title], properties: {title: {type: string}}}
+          collection:
+            path:
+              pattern: "tasks/{title}.md"
+          ---
+    tests:
+      - name: selected type can derive its matching path
+        operation: create
+        input:
+          type: task
+          frontmatter: {title: Milk}
+        expect:
+          valid: true
+          path: tasks/Milk.md
+          types: [task]
+          frontmatter_not_contains: [type, types, mdbase_type]
+      - name: supplied matching path succeeds
+        operation: create
+        input:
+          type: task
+          path: tasks/Milk.md
+          frontmatter: {title: Milk}
+        expect:
+          valid: true
+          types: [task]
+      - name: supplied nonmatching path cannot satisfy selection
+        operation: create
+        input:
+          type: task
+          path: other/Milk.md
+          frontmatter: {title: Milk}
+        expect:
+          valid: false
+  - name: Serialization policy cannot erase membership
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          explicit_type_keys: []
+          write_empty_lists: false
+          default_validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          match:
+            fields_present: [markers]
+          schema:
+            dialect: json-schema-2020-12
+            value: {type: object}
+          ---
+    tests:
+      - name: omitted empty list cannot establish persisted membership
+        operation: create
+        input:
+          type: task
+          path: no.md
+          frontmatter: {markers: []}
+        expect:
+          valid: false

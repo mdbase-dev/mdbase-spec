@@ -65,6 +65,31 @@ Static JSON Schema defaults MAY be used by editor and create interfaces.
 Validation-time mutation occurs when the create operation explicitly copies a
 default into the draft.
 
+### Selected types and membership representation
+
+A request-level type selector identifies the type the caller intends to create;
+it is not itself a persisted frontmatter declaration. Contract selection MUST
+resolve and validate its designated implementing type before writing.
+
+When explicit declaration keys are configured, implementations MUST persist a
+selected type using those keys, preserving existing valid memberships. They
+MUST NOT hard-code `type` or `types` when those keys are not configured. A field
+outside the configured declaration keys remains ordinary application data.
+
+When `settings.explicit_type_keys` is empty, implementations MUST NOT add a type
+declaration field and MUST NOT reject a create solely because the list is empty.
+The selected type guides schema, lifecycle, and path policy. Membership is
+inferred from persisted frontmatter and the final canonical path. The selected
+(or contract-designated) type MUST be included in the final inferred membership;
+otherwise the operation MUST fail without writing a record. All applicable
+types participate in validation, not only the requested type. Matching errors
+MUST NOT be silently treated as non-matches.
+
+The pre-lifecycle membership freeze and final membership check still apply.
+Read defaults and projections are not persisted evidence of membership. A
+successful create guarantees membership for the written record under the
+current collection rules, not permanent membership after later user edits.
+
 ## Update
 
 Update modifies an existing record.
