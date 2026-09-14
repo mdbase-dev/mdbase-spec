@@ -160,6 +160,7 @@ fixture_sets:
     coverage_targets: [core_read, collection_semantics, links, core_write]
     files:
       - core/core-collection.yaml
+      - core/optional-membership.yaml
   - id: data_contracts
     description: Data contracts, type implementations, projections, stable digests, and conflicts.
     coverage_targets: [core_read]
