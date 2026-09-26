@@ -28,11 +28,12 @@ Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
 If frontmatter is absent, the persisted frontmatter object is `{}`.
 
 If frontmatter parses to a scalar, sequence, or other non-mapping value, the
-record's persisted frontmatter is treated as `{}` and the record reports a
-`frontmatter_not_mapping` validation issue whose severity follows the
-validation level in Chapter 04. A structured update of such a record fails with
-`frontmatter_not_mapping` at every validation level, so that the original value
-is never silently discarded; an explicit `document` replacement can repair it.
+record's persisted frontmatter is treated as `{}` and the record reports an
+`invalid_frontmatter` validation issue with `details.reason` set to
+`non_mapping_frontmatter`, whose severity follows the validation level in
+Chapter 04. A structured update of such a record fails with
+`invalid_frontmatter` at every validation level, so that the original value is
+never silently discarded; an explicit `document` replacement can repair it.
 
 ## Missing, Null, And Empty
 

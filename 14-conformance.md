@@ -136,7 +136,7 @@ forward-slash form. `field` uses JSON Pointer or an explicitly identified
 frontmatter selector. Implementations MAY add fields under `x-*`.
 
 The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
-`unsupported_profile`, `unsupported_feature`, `frontmatter_not_mapping`,
+`unsupported_profile`, `unsupported_feature`, `invalid_frontmatter`,
 `expression_compile_error`, `expression_evaluation_error`,
 `projection_shadowed`, `link_not_found`, `type_conflict`,
 `type_membership_changed`, `path_value_missing`, `schema_ref_forbidden`,

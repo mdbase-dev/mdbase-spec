@@ -33,7 +33,7 @@ All notable changes to this specification and conformance suite are documented h
   recoverable transaction, `allow_partial` commits operations independently,
   duplicate record paths are rejected, and results report every operation.
 - Defined `off`, `warn`, and `error` validation levels for reads, queries, and
-  writes. Non-mapping frontmatter reports `frontmatter_not_mapping`.
+  writes. Non-mapping frontmatter reports `invalid_frontmatter`.
 - Hidden paths and `node_modules` are always excluded, `settings.exclude` adds
   to them, and one portable glob syntax is defined. Removed
   `settings.include_subfolders`.

@@ -402,7 +402,9 @@ groups:
         expect:
           valid: false
           error:
-            code: frontmatter_not_mapping
+            code: invalid_frontmatter
+            details:
+              reason: non_mapping_frontmatter
 
   - name: "lifecycle assignment order"
     setup:
