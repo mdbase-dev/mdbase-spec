@@ -93,9 +93,12 @@ collection:
       scope: collection
 lifecycle:
   on_create:
+  - if: '!has(raw.id)'
     set:
       id:
         ulid: true
+  - if: '!has(raw.created_at)'
+    set:
       created_at:
         now: true
 ---

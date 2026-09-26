@@ -2,7 +2,7 @@ name: "v0.3 saved view record semantics"
 spec_version: "0.3.0"
 fixture_set: views
 category: views
-spec_ref: "v0.3/10, v0.3/11, v0.3/16"
+spec_ref: "v0.3/10, v0.3/11, v0.3/14"
 
 groups:
   - name: "ordinary view records and invocation context"
@@ -175,18 +175,16 @@ groups:
                   expr: 'this.title'
                 - name: record_alias
                   expr: 'this.record.title'
-                - name: note_alias
-                  expr: 'this.note.title'
                 - name: raw_value
                   expr: 'this.raw.title'
                 - name: default_value
                   expr: 'this.category'
                 - name: effective_present
-                  expr: 'this.present.record.category'
+                  expr: 'has(this.record.category)'
                 - name: raw_present
-                  expr: 'this.present.raw.category'
-                - name: missing_is_null
-                  expr: 'this.missing == null'
+                  expr: 'has(this.raw.category)'
+                - name: missing_is_absent
+                  expr: '!has(this.record.missing)'
                 - name: context_path
                   expr: 'this.file.path'
                 - name: reserved_collision
@@ -362,24 +360,22 @@ groups:
               values:
                 direct: Alpha
                 record_alias: Alpha
-                note_alias: Alpha
                 raw_value: Alpha
                 default_value: defaulted
                 effective_present: true
                 raw_present: false
-                missing_is_null: true
+                missing_is_absent: true
                 context_path: projects/alpha.md
                 reserved_collision: project-record
             - path: tasks/alpha-open.md
               values:
                 direct: Alpha
                 record_alias: Alpha
-                note_alias: Alpha
                 raw_value: Alpha
                 default_value: defaulted
                 effective_present: true
                 raw_present: false
-                missing_is_null: true
+                missing_is_absent: true
                 context_path: projects/alpha.md
                 reserved_collision: project-record
 

@@ -97,7 +97,7 @@ Update modifies an existing record.
 Pipeline:
 
 1. read existing raw frontmatter
-2. apply the requested patch
+2. apply the requested `patch` and `unset`
 3. re-match and freeze types when type-affecting fields or path changed
 4. apply lifecycle `on_update`
 5. verify type membership did not change as a lifecycle side effect
@@ -107,16 +107,25 @@ Pipeline:
 9. update derived indexes
 10. emit watch/runtime events
 
-If a patch sets a field to missing, the key is removed. If a patch sets a field
-to null, the key is persisted as null unless the operation policy says null
-means remove.
+A structured update accepts:
+
+- `patch`: an object whose top-level keys are set to the supplied values,
+  replacing any existing value; a null value persists an explicit null
+- `unset`: a list of field references, as defined in Chapter 07, whose keys are
+  removed from persisted frontmatter
+- `body`: optional replacement Markdown body
+
+Unsetting a key that is already missing is not an error. A request that names
+the same field in `patch` and `unset`, names a field inside a key that `patch`
+replaces, or uses an `unset` reference that selects an array item, is invalid
+and produces `invalid_request` before any write. When `unset` removes the last key of a
+nested object, the now-empty object remains.
 
 As an alternative to a frontmatter patch and body replacement, Update accepts
 `document` containing the complete candidate Markdown source. A document
-replacement MUST NOT be combined with `patch`, `fields`, `frontmatter`, or
-`body`. The candidate is parsed and passes through the same type matching,
-lifecycle, validation, concurrency, and atomic-write pipeline as a structured
-update. When lifecycle policy does not alter the candidate, the exact supplied
+replacement MUST NOT be combined with `patch`, `unset`, or `body`. The
+candidate is parsed and passes through the same type matching, lifecycle,
+validation, concurrency, and atomic-write pipeline as a structured update. When lifecycle policy does not alter the candidate, the exact supplied
 source MUST be preserved. If policy changes persisted values, the authoritative
 post-policy source MAY be reserialized and is returned when source was
 requested.
@@ -135,7 +144,8 @@ Delete is a Core Write operation and MAY emit an event for workflow runtimes.
 
 ## Rename
 
-Rename moves a record within the collection.
+Rename moves a record within the collection. It accepts `from` and `to`
+collection-relative paths, optional `if_revision`, and optional `update_refs`.
 
 Tools MUST reject target paths that escape the collection root.
 
@@ -143,19 +153,57 @@ If reference updating is enabled, link updates SHOULD preserve link style,
 alias, and anchor where possible. ID-based links SHOULD not be rewritten if the
 target ID did not change.
 
-Atomic reference updates across all affected files belong to a transaction
-profile.
+Reference updates across other files are applied after the rename and are not
+atomic with it unless the implementation advertises `atomic_batch`, in which
+case the rename and its reference updates commit as one batch. Failed
+reference updates are reported per file.
 
 ## Batch
 
-Batch operations group operations for validation and reporting.
+Batch applies an ordered list of create, update, delete, and rename operations
+as one validated unit:
 
-Recommended behavior:
+```yaml
+operations:
+  - op: update
+    path: tasks/a.md
+    patch: { status: done }
+    if_revision: sha256:opaque
+  - op: rename
+    from: tasks/b.md
+    to: archive/b.md
+dry_run: false
+```
 
-- validate every operation before writing unless `allow_partial` is true
-- support dry-run with full diagnostics
-- report per-operation result and diagnostics
-- stop on first error unless configured otherwise
+Each entry uses the input of the named operation plus `op`. Batch execution has
+two phases.
+
+**Preflight.** The implementation validates every operation in order against
+the collection state produced by the preceding operations, including lifecycle,
+type membership, schema and collection validation, path policy, and
+`if_revision`. If any operation fails preflight, the batch writes nothing and
+reports every preflight diagnostic.
+
+**Execution.** Operations are applied in order. If an operation fails during
+execution, for example because of an I/O error or a concurrent modification
+detected at write time, the implementation stops. Operations already applied
+remain applied and later operations are not attempted.
+
+The result lists every operation in request order with its `index`, `op`,
+`status` (`succeeded`, `failed`, or `not_attempted`), its operation result on
+success, and its diagnostics. `valid` is false when any operation did not
+succeed. A `dry_run` batch performs only preflight and reports what each
+operation would do.
+
+An implementation that advertises the `atomic_batch` optional feature makes
+execution all-or-nothing: after a failure or crash, recovery restores either
+the complete pre-batch state or the complete committed state before normal
+collection operations resume, with the same guarantee as type-pack apply in
+Chapter 05A.
+
+Watch notifications and runtime events for a batch are delivered after each
+operation's derived state is consistent, in operation order. With
+`atomic_batch`, they are delivered only after the whole batch commits.
 
 ## Saved Views
 

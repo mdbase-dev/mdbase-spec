@@ -22,6 +22,7 @@ import argparse
 import glob
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -63,11 +64,13 @@ EXECUTABLE_OPERATIONS = {
 CONFORMANCE_PROFILES = {
     "core_read",
     "collection_semantics",
+    "data_contracts",
     "cel",
     "cel_match",
     "cel_query",
     "links",
     "core_write",
+    "type_packs",
     "lifecycle",
     "event_action_interop/0.1",
     "runtime/0.2",
@@ -424,7 +427,7 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
             entry
             for entry in type_file.get("implements", []) or []
             if entry.get("contract") == contract.get("id")
-            and entry.get("version") == contract.get("version")
+            and version_satisfies(str(contract.get("version")), str(entry.get("version")))
         ]
         if len(matching) != 1:
             raise AssertionError("type must have one exact implementation")
@@ -814,6 +817,12 @@ def data_contract_implementation_digest(
         for key in ("name", "version", "match", "schema", "collection", "lifecycle")
         if key in type_file
     }
+    collection = type_semantics.get("collection")
+    if isinstance(collection, dict) and "display" in collection:
+        # Advisory display metadata never changes implementation identity.
+        type_semantics["collection"] = {
+            key: value for key, value in collection.items() if key != "display"
+        }
     payload = {
         "contract_digest": data_contract_digest(contract, contract_path),
         "type": type_semantics,
@@ -827,6 +836,62 @@ def data_contract_implementation_digest(
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+SEMVER = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+    r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+
+
+def parse_semver(value: str) -> tuple[int, int, int, str | None]:
+    match = SEMVER.match(value)
+    if match is None:
+        raise AssertionError(f"invalid semantic version {value!r}")
+    return int(match[1]), int(match[2]), int(match[3]), match[4]
+
+
+def version_satisfies(version: str, requirement: str) -> bool:
+    """Apply the portable version requirement grammar (Chapter 05A)."""
+    actual = semver_key(parse_semver(version))
+    return all(check(actual, bound) for check, bound in requirement_bounds(requirement))
+
+
+def requirement_bounds(requirement: str) -> list[tuple[Any, tuple]]:
+    import operator
+
+    ops = {">=": operator.ge, "<=": operator.le, ">": operator.gt, "<": operator.lt, "=": operator.eq}
+    if requirement[:1] in ("^", "~"):
+        major, minor, patch, pre = parse_semver(requirement[1:])
+        lower = semver_key((major, minor, patch, pre))
+        if requirement[0] == "~":
+            upper = (major, minor + 1, 0, "0")
+        elif major > 0:
+            upper = (major + 1, 0, 0, "0")
+        elif minor > 0:
+            upper = (0, minor + 1, 0, "0")
+        else:
+            upper = (0, 0, patch + 1, "0")
+        return [(ops[">="], lower), (ops["<"], semver_key(upper))]
+    bounds = []
+    for comparator in requirement.split(" "):
+        match = re.fullmatch(r"(>=|<=|>|<|=)?(.+)", comparator)
+        op = match[1] or "="
+        bounds.append((ops[op], semver_key(parse_semver(match[2]))))
+    return bounds
+
+
+def semver_key(version: tuple[int, int, int, str | None]) -> tuple:
+    major, minor, patch, pre = version
+    if pre is None:
+        return (major, minor, patch, 1, ())
+    return (major, minor, patch, 0, semver_prerelease_key(pre))
+
+
+def semver_prerelease_key(value: str) -> tuple[tuple[int, int | str], ...]:
+    return tuple(
+        (0, int(part)) if part.isdigit() else (1, part) for part in value.split(".")
+    )
 
 
 def contract_schema_fields(contract_type: Any) -> tuple[str, ...]:

@@ -1,0 +1,167 @@
+name: "v0.3 links and record discovery conformance"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: links
+spec_ref: "v0.3/02, v0.3/04, v0.3/08, v0.3/10"
+
+groups:
+  - name: "built-in exclusions and globs"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          exclude:
+            - "drafts/**"
+            - "archive/*.md"
+      files:
+        notes/visible.md: |
+          ---
+          title: Visible
+          ---
+        notes/deep/nested.md: |
+          ---
+          title: Nested
+          ---
+        .obsidian/plugin-notes.md: |
+          ---
+          title: Hidden folder
+          ---
+        notes/.hidden.md: |
+          ---
+          title: Hidden file
+          ---
+        node_modules/pkg/readme.md: |
+          # Package readme
+        drafts/draft.md: |
+          ---
+          title: Draft
+          ---
+        archive/old.md: |
+          ---
+          title: Archived
+          ---
+        archive/2025/older.md: |
+          ---
+          title: Older
+          ---
+    tests:
+      - name: "discovery applies built-in and configured exclusions"
+        id: core_read.builtin_exclusions
+        covers: [core_read.builtin_exclusions, core_read.portable_globs]
+        operation: query
+        input:
+          order_by:
+            - field: file.path
+        expect:
+          valid: true
+          results:
+            - path: "archive/2025/older.md"
+            - path: "notes/deep/nested.md"
+            - path: "notes/visible.md"
+
+  - name: "wikilink resolution without an id field"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                parent: { type: string }
+          collection:
+            links:
+              parent:
+                target_type: task
+          ---
+      files:
+        tasks/alice.md: |
+          ---
+          title: Alice file
+          ---
+        tasks/other.md: |
+          ---
+          id: alice
+          title: Record with id alice
+          ---
+        tasks/child.md: |
+          ---
+          parent: "[[alice]]"
+          related: "[[other]]"
+          note: "see tasks/other.md"
+          ---
+          Body link to [[alice]] and ![[other]].
+    tests:
+      - name: "simple wikilinks resolve by filename when no id field is configured"
+        id: links.filename_resolution
+        covers: [links.filename_resolution]
+        operation: resolve_link
+        input:
+          path: "tasks/child.md"
+          field: parent
+        expect:
+          valid: true
+          resolved: "tasks/alice.md"
+
+      - name: "undeclared frontmatter wikilinks are links but plain paths are not"
+        id: links.frontmatter_wikilinks
+        covers: [links.frontmatter_wikilinks]
+        operation: evaluate_cel
+        input:
+          path: "tasks/child.md"
+          expression: 'file.links.size() == 3 && file.hasLink(link("[[other]]")) && file.embeds.size() == 1'
+        expect:
+          valid: true
+          value: true
+
+      - name: "backlinks list each referring record once in path order"
+        id: links.backlinks
+        covers: [links.backlinks]
+        operation: evaluate_cel
+        input:
+          path: "tasks/other.md"
+          expression: 'file.backlinks.map(l, l.asFile().file.path) == ["tasks/child.md"]'
+        expect:
+          valid: true
+          value: true
+
+  - name: "wikilink resolution with a configured id field"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          id_field: id
+      files:
+        tasks/alice.md: |
+          ---
+          title: Alice file
+          ---
+        tasks/other.md: |
+          ---
+          id: alice
+          title: Record with id alice
+          ---
+        tasks/child.md: |
+          ---
+          parent: "[[alice]]"
+          fallback: "[[child]]"
+          ---
+    tests:
+      - name: "a configured id field resolves by id before filename"
+        id: links.configured_id_resolution
+        covers: [links.configured_id_resolution]
+        operation: evaluate_cel
+        input:
+          path: "tasks/child.md"
+          expression: 'link(parent).asFile().file.path == "tasks/other.md" && link(fallback).asFile().file.path == "tasks/child.md"'
+        expect:
+          valid: true
+          value: true

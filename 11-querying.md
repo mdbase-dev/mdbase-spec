@@ -13,7 +13,7 @@ context:
     path: projects/alpha.md
 projections:
   is_overdue:
-    expr: 'present.record.due && due < today() && status != "done"'
+    expr: 'due != null && due < today() && status != "done"'
 where: 'status != "done" && priority >= 3'
 select:
   - title
@@ -99,7 +99,7 @@ filter:
 ```yaml
 projections:
   is_overdue:
-    expr: 'present.record.due && due < today() && status != "done"'
+    expr: 'due != null && due < today() && status != "done"'
   urgency:
     expr: 'priority + (projection.is_overdue ? 10 : 0)'
 ```
@@ -110,8 +110,8 @@ summaries, and presentation mappings.
 
 Implementations MUST resolve projection dependencies deterministically and
 reject direct or indirect cycles before evaluating candidates. A projection
-evaluation error produces null for that candidate and a per-record diagnostic;
-it does not abort evaluation of other candidates.
+evaluation error produces null for that candidate's projection value and a
+per-record diagnostic; it does not abort evaluation of other candidates.
 
 Named query projections are effective query values. They are not persisted and
 do not replace raw or effective frontmatter fields with the same name.
@@ -122,8 +122,8 @@ do not replace raw or effective frontmatter fields with the same name.
 named projections. The expression result includes the record only when it is
 boolean true.
 
-Evaluation errors MUST produce null for that record, exclude it, and report a
-diagnostic according to query options.
+An evaluation error MUST exclude that record and report a diagnostic. It does
+not abort evaluation of other candidates.
 
 ## Selection
 
@@ -292,6 +292,15 @@ requested selection values and is omitted when `select` is omitted.
 requested. Without grouping, summaries appear in one group whose `values` is an
 empty object.
 
+### Evaluation Diagnostics
+
+Per-candidate evaluation errors are reported in `diagnostics` with severity
+`warning`, code `expression_evaluation_error`, and the expression location in
+`details.expression`. An implementation MAY aggregate diagnostics that share
+code, expression location, and message into one diagnostic whose `details`
+contains `count` and up to 10 sample record `paths`. Aggregation never hides a
+distinct message or expression location.
+
 ## Saved View Records
 
 A saved view is an ordinary Markdown record matched by the `view` type. The
@@ -315,7 +324,7 @@ query:
   types: [task]
   projections:
     urgency:
-      expr: 'priority + (due < today() ? 10 : 0)'
+      expr: 'priority + (due != null && due < today() ? 10 : 0)'
 
 views:
   - id: today
@@ -426,7 +435,8 @@ request for rendered output reports `unsupported_presentation` when neither the
 requested renderer nor its declared fallback is available.
 
 Source syntax, renderer configuration, and round-trip data use `x-*`
-extensions. Chapter 15 defines the adapter contract for Obsidian Bases sources.
+extensions. The [Obsidian Bases adapter](./adapters/obsidian-bases.md) defines
+the adapter contract for Obsidian `.base` sources.
 
 ### Optional support
 

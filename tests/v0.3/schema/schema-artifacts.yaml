@@ -2,7 +2,7 @@ name: "v0.3 schema artifact conformance"
 spec_version: "0.3.0"
 fixture_set: schema_artifacts
 category: schema_artifacts
-spec_ref: "v0.3/04, v0.3/05, v0.3/06, v0.3/11, v0.3/13, v0.3/14, v0.3/16"
+spec_ref: "v0.3/04, v0.3/05, v0.3/06, v0.3/11, runtime/0.2, v0.3/14"
 
 groups:
   - name: "canonical schemas"

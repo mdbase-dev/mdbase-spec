@@ -64,13 +64,6 @@ portable baseline for Core Read conformance.
 
 v0.3 uses ordinary JSON Schema constructs for discriminated unions.
 
-JSON Schema validation diagnostics use `schema_<keyword>`, where the JSON
-Schema keyword is converted to lower snake_case. For example, `required`
-produces `schema_required`, `additionalProperties` produces
-`schema_additional_properties`, and `unevaluatedProperties` produces
-`schema_unevaluated_properties`. Implementations MUST NOT place camelCase JSON
-Schema keyword names into the canonical diagnostic `code` field.
-
 Example:
 
 ```yaml
@@ -146,7 +139,7 @@ Nested file-to-file `$ref` references use the optional feature identifier
 `optional_features` in its claim document. Such references use the containing
 schema document as their base URI, obey the same owning-root boundary, detect
 cycles, and produce `schema_ref_unresolved` or `schema_ref_cycle` diagnostics.
-Implementations that do not support the feature report `unsupported_profile`
+Implementations that do not support the feature report `unsupported_feature`
 before invoking a resolver.
 
 Core tools MUST NOT fetch network references during collection validation.
@@ -165,10 +158,11 @@ Normative mdbase schemas have stable `$id` values under:
 https://mdbase.dev/schemas/v0.3/
 ```
 
-Runtime profile schemas use their independently versioned namespace:
+Companion profile schemas use their independently versioned namespaces:
 
 ```text
-https://mdbase.dev/schemas/runtime/v0.1/
+https://mdbase.dev/schemas/interop/v0.1/
+https://mdbase.dev/schemas/runtime/v0.2/
 ```
 
 Implementations MUST validate against the canonical schema contents associated
@@ -190,6 +184,13 @@ issue SHOULD include:
 
 Tools SHOULD preserve native JSON Schema diagnostic detail when exposing
 machine-readable results.
+
+JSON Schema validation diagnostics use `schema_<keyword>`, where the JSON
+Schema keyword is converted to lower snake_case. For example, `required`
+produces `schema_required`, `additionalProperties` produces
+`schema_additional_properties`, and `unevaluatedProperties` produces
+`schema_unevaluated_properties`. Implementations MUST NOT place camelCase JSON
+Schema keyword names into the canonical diagnostic `code` field.
 
 ## Additional Properties
 

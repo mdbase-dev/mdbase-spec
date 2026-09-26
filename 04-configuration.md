@@ -44,9 +44,8 @@ Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
 | `settings.record_extensions` | list of strings | `[md]` | record file extensions without dot |
 | `settings.validation` | string | `error` | default validation level: `off`, `warn`, or `error` |
 | `settings.explicit_type_keys` | list of strings | `[type, types]` | frontmatter keys used for explicit type declarations |
-| `settings.id_field` | string | `id` | field used for ID-based link and contract resolution |
-| `settings.include_subfolders` | boolean | `true` | whether record scanning recurses |
-| `settings.exclude` | list of globs | implementation default | excluded paths |
+| `settings.id_field` | string | none | field used for ID-based wikilink resolution; when absent, wikilinks resolve by path and filename only |
+| `settings.exclude` | list of globs | `[]` | paths excluded in addition to the built-in exclusions in Chapter 02 |
 
 `settings.explicit_type_keys` replaces the default key list. An empty list makes
 all type membership inferred.
@@ -63,6 +62,31 @@ reserved control-file folders and are excluded from ordinary record discovery.
 
 Unknown config keys MUST produce a warning while normal config loading
 continues. An explicit strict-config mode MAY reject them.
+
+## Validation Levels
+
+`settings.validation` controls how record validation issues affect operations.
+Record validation issues are JSON Schema failures, `format_invalid`, collection
+validator failures such as uniqueness and `validate_exists`, non-mapping
+frontmatter, and data contract view failures.
+
+| Level | Record validation | Reads and queries | Create, update, rename, batch |
+| --- | --- | --- | --- |
+| `off` | not performed | return records without validation diagnostics | write without record validation |
+| `warn` | performed | return records with `warning` diagnostics | write and report `warning` diagnostics |
+| `error` | performed | return records with `error` diagnostics | fail before writing when the resulting record has any issue |
+
+At every level a read returns the record, including an invalid one, and a query
+evaluates every candidate. Queries do not report per-record validation issues
+unless the caller requests them.
+
+Validation levels never relax request and safety checks: invalid requests, path
+escapes, type-file and configuration errors, `type_conflict`,
+`type_membership_changed`, lifecycle failures, concurrency conflicts, and
+expression compilation errors are always errors.
+
+An explicit `validate` operation always performs record validation. At level
+`off` it reports issues as `warning`.
 
 ## Runtime Host Config
 

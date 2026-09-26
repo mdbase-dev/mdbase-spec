@@ -25,28 +25,28 @@ collection:
 
 ## Field References
 
-Every collection-semantic selector uses one field-reference syntax. A field
-reference is either:
+Field references appear in collection sections, lifecycle `set` keys, update
+`unset` lists, and `implements` field maps. A field reference has one of two
+forms, distinguished by its first character.
 
-- the existing mdbase field-path form, such as `title`, `metadata.owner`, or
-  `blocks[]`
-- a non-root [RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901),
-  such as `/@type`, `/metadata/owner`, or `/schema/$id`
+**Field path** (the readable default). One or more object keys separated by
+`.`, where any segment may end in `[]` to select every item of an array, such
+as `title`, `metadata.owner`, or `blocks[]`. A segment begins with an ASCII
+letter or `_` and contains only ASCII letters, digits, `_`, `:`, and `-`.
 
-Field paths remain supported for compatibility and for the `[]` array-item
-selector. JSON Pointer is the exact, standards-based form for every JSON object
-key, including keys that contain `.`, `/`, `~`, `@`, or `$`. Pointer tokens
-escape `~` as `~0` and `/` as `~1`; for example `/a~1b` selects the key `a/b`.
-The URI-fragment form beginning with `#` is not accepted.
+**JSON Pointer** (the exact form). A non-empty
+[RFC 6901 JSON Pointer](https://www.rfc-editor.org/rfc/rfc6901) beginning with
+`/`, such as `/@type`, `/metadata/owner`, or `/a~1b`. Pointer tokens escape `~`
+as `~0` and `/` as `~1`, so `/a~1b` selects the key `a/b`. Numeric tokens are
+zero-based array indices. The URI-fragment form beginning with `#` and the
+empty pointer are not accepted, because collection semantics always address a
+field inside the frontmatter object.
 
-The empty JSON Pointer denotes the whole document in RFC 6901, but it is not a
-valid mdbase field reference. Collection semantics always address a field
-inside the frontmatter object.
-
-JSON Pointer resolves one exact value. Array tokens are zero-based indices.
-`[]` expansion belongs only to the field-path form. An operation that accepts a
-link collection applies its link rule to every item when the resolved value is
-an array.
+Use a field path unless a key contains another character, such as `@`, `$`,
+`.`, `/`, or a space, or a single array item must be addressed. Only field paths expand arrays with `[]`;
+a pointer resolves exactly one value. An operation that accepts a link
+collection applies its link rule to every item when the resolved value is an
+array.
 
 Lifecycle `set` creates missing intermediate objects. It MUST fail rather than
 replace a non-object intermediate value. Assignment through an array index is
@@ -139,7 +139,7 @@ expression:
 match:
   path_glob: "tasks/**/*.md"
   expr:
-    $expr: 'present.raw.tags && tags.exists(t, t == "task")'
+    $expr: 'has(raw.tags) && tags.exists(t, t == "task")'
 ```
 
 The expression combines with the other members of `match` using AND. It receives
@@ -177,6 +177,16 @@ For each defaulted field:
 
 Create and editor tooling MAY mirror static values into JSON Schema `default`
 annotations for presentation or scaffolding.
+
+Three mechanisms supply default-like values, each with one purpose:
+
+| Need | Mechanism | Persisted |
+| --- | --- | --- |
+| a value readers and queries see when a field is missing | `collection.read_defaults` | no |
+| a value written into new records | lifecycle `on_create` with a `literal`, `now`, `ulid`, or other provider | yes |
+| a suggestion shown by editors and create forms | JSON Schema `default` | only if the caller submits it |
+
+JSON Schema `default` never changes validation, reads, or queries.
 
 ## Links
 
@@ -263,16 +273,27 @@ JSON Schema and expressed in CEL:
 collection:
   projections:
     is_overdue:
-      expr: 'present.record.due && due < today() && status != "done"'
+      expr: 'due != null && due < today() && status != "done"'
 ```
 
 Projection values are available to queries. Persistence occurs only through an
 explicit write operation or runtime workflow.
 
-Collection projections enter the effective record and remain available through
-their declared field names. Query- and view-local named projections are
-separate, live under the `projection` CEL namespace, and never replace a
-collection projection or persisted field with the same name.
+Collection projections enter the effective record and `effective_frontmatter`
+under their declared field names, after read defaults are applied. They never
+replace a persisted field: a record that persists a field with the same name as
+a projection keeps its persisted value and reports a `projection_shadowed`
+warning. A projection whose evaluation fails is absent from that record's
+effective values and reports an expression diagnostic.
+
+Projections evaluate in the query context of Chapter 10 without `projection` or
+`this`. A projection MAY reference another collection projection by its field
+name; implementations evaluate them in dependency order and reject cycles when
+loading the type.
+
+Query- and view-local named projections are separate, live under the
+`projection` CEL namespace, and never replace a collection projection or
+persisted field with the same name.
 
 ## Private Domain Namespaces
 

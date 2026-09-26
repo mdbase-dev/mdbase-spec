@@ -132,7 +132,7 @@ groups:
                 completedDate: { type: string, format: date }
           lifecycle:
             on_update:
-              - if: 'old.status != status && status == "done"'
+              - if: 'old.?status.orValue(null) != status && status == "done"'
                 set:
                   completedDate: { today: true }
           ---

@@ -49,8 +49,8 @@ separate implementations of several contracts.
 In v0.3, "schema" means JSON Schema 2020-12 unless explicitly qualified.
 
 `schema.value` validates persisted frontmatter object shape. mdbase-specific
-sections such as `match`, `collection`, `lifecycle`, and `runtime` are outside
-the JSON Schema payload.
+sections such as `match`, `collection`, `lifecycle`, and `implements` are
+outside the JSON Schema payload.
 
 ## Match
 
@@ -108,7 +108,8 @@ view files as ordinary typed records.
 
 View records are passive collection data. Rendering a view, registering a
 renderer, or connecting user interaction to actions may be tool- or
-runtime-specific, but the record itself is not a runtime contract.
+runtime-specific, but the record itself declares no event, action, or
+executable behavior.
 
 ## Link
 
@@ -122,25 +123,14 @@ declares link meaning, target type, and existence requirements.
 ## Runtime
 
 A runtime is a process, plugin, daemon, CLI, CI job, or agent that executes
-runtime-profile behavior for a collection.
+companion-profile behavior for a collection.
 
-The core collection model is runtime-neutral. Runtime records make active
-behavior portable and inspectable without making every implementation a runtime.
+The core collection model is runtime-neutral. Event and action interfaces are
+ordinary data contracts with `contract_type: event` or `contract_type: action`.
+Live event sources and action providers declare the exact contracts they
+implement through the event/action interoperability profile. The durable
+runtime profile stores workflows, policies, runs, and related state as ordinary
+records whose types implement the standard runtime record contracts.
 
-## Runtime Contract
-
-A runtime contract is a typed record or virtual registry entry describing the
-interface of a provider, event, action, capability, policy, run, checkpoint,
-diagnostic, or workflow.
-
-Runtime contracts describe the interfaces used by action handlers, event
-sources, watchers, schedulers, agents, and provider APIs supplied by a runtime.
-
-## Explicit And Implicit Runtime Contracts
-
-Explicit contracts are ordinary Markdown records in a collection or installed
-pack.
-
-Implicit contracts are supplied by a conforming runtime, for example built-in
-file events or core record actions. A runtime may materialize implicit
-contracts as Markdown records for inspection or offline tooling.
+Installing a contract, type, or pack never runs code or grants authority. A
+host admits a live declaration under its own policy before that code can act.

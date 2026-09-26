@@ -49,7 +49,6 @@ CORE_CONFIG_SETTINGS = {
     "validation",
     "explicit_type_keys",
     "id_field",
-    "include_subfolders",
     "exclude",
 }
 
@@ -309,6 +308,10 @@ def migrate_config(source: dict[str, Any]) -> dict[str, Any]:
     target_settings = {key: value for key, value in settings.items() if key in CORE_CONFIG_SETTINGS}
     if "extensions" in settings and "record_extensions" not in target_settings:
         target_settings["record_extensions"] = [str(value).lstrip(".") for value in settings["extensions"]]
+    if settings.get("include_subfolders") is False:
+        # v0.3 has no include_subfolders setting; exclude every nested path.
+        target_settings["exclude"] = [*target_settings.get("exclude", []), "*/**"]
+    settings.pop("include_subfolders", None)
     target_settings.setdefault("record_extensions", ["md"])
     target_settings.setdefault("contracts_folder", "_contracts")
     target_settings.setdefault("validation", "warn")
@@ -710,14 +713,29 @@ def add_lifecycle(lifecycle: dict[str, Any], field: str, generated: Any) -> bool
     else:
         return False
     if on_create:
-        lifecycle.setdefault("on_create", {}).setdefault("set", {})[field] = on_create
+        action: dict[str, Any] = {"set": {field: on_create}}
+        if generated != "now_on_write":
+            # v0.2 generated values apply only when the field is missing; v0.3
+            # lifecycle `set` always assigns, so the guard preserves that rule.
+            action = {"if": missing_field_guard(field), **action}
+        lifecycle.setdefault("on_create", []).append(action)
     if on_update:
-        lifecycle.setdefault("on_update", {}).setdefault("set", {})[field] = on_update
+        lifecycle.setdefault("on_update", []).append({"set": {field: on_update}})
     return True
 
 
+def missing_field_guard(field: str) -> str:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", field):
+        return f"!has(raw.{field})"
+    return f"!({json.dumps(field)} in raw)"
+
+
 def lifecycle_has_field(lifecycle: dict[str, Any], field: str) -> bool:
-    return any(field in event.get("set", {}) for event in lifecycle.values())
+    return any(
+        field in action.get("set", {})
+        for event in lifecycle.values()
+        for action in (event if isinstance(event, list) else [event])
+    )
 
 
 def migrate_match(value: Any) -> dict[str, Any] | None:

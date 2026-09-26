@@ -36,15 +36,18 @@ General rules:
   file's folder.
 - Absolute collection paths use `/` from the collection root.
 - Wikilinks with `/`, `./`, or `../` use path-style resolution.
-- Simple wikilinks without path separators first try ID-based resolution using
-  the configured `id_field`, then filename resolution.
+- Simple wikilinks without path separators resolve by filename, matching the
+  target against record filenames with or without their record extension.
+- When `settings.id_field` is configured, a simple wikilink first tries
+  ID-based resolution against that field and falls back to filename
+  resolution when no record has that ID.
 
 After normalization, a link that escapes the collection root is invalid.
 
 ## Ambiguity
 
 If multiple records have the same configured ID, ID-based resolution is
-ambiguous and MUST fail.
+ambiguous and MUST fail without falling back to filename resolution.
 
 If filename resolution finds multiple candidates, tools SHOULD apply stable
 tiebreakers:
@@ -68,21 +71,38 @@ collection:
       validate_exists: true
 ```
 
-When `validate_exists` is true, unresolved links are validation errors at
-validation level `error`.
+When `validate_exists` is true, an unresolved link is a `link_not_found`
+record validation issue whose severity follows the validation level in
+Chapter 04.
 
 When `target_type` is present, a resolved target is valid only if it matches the
 target type.
 
 ## Body Links
 
-`file.links` includes:
+`file.links` includes, in this order and without de-duplication:
 
-- frontmatter link fields declared in `collection.links`
+- values of frontmatter fields declared in `collection.links`
+- every other frontmatter string, or string item of a frontmatter array, whose
+  complete value is a wikilink, such as `related: "[[alpha]]"`
 - body wikilinks
 - body Markdown links
 
-`file.embeds` includes Markdown and wikilink embeds.
+Undeclared frontmatter values in Markdown-link or bare-path syntax are not
+links, because ordinary strings often contain paths. `file.embeds` includes
+Markdown and wikilink embeds in the body.
+
+## Backlinks
+
+`file.backlinks` is a list of link values, as produced by `file.asLink()`, for
+the records whose `file.links` or `file.embeds` resolve to the current record,
+ordered by referring record path. A referring
+record appears once even when it links several times. A record that links to
+itself appears in its own backlinks. Unresolved and ambiguous links create no
+backlinks.
+
+Backlinks are derived from the current collection state. After a successful
+write, subsequent reads and queries observe backlinks that reflect it.
 
 Links and tags inside fenced code blocks and inline code MUST be ignored by
 body extraction.

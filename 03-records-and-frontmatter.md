@@ -28,8 +28,11 @@ Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
 If frontmatter is absent, the persisted frontmatter object is `{}`.
 
 If frontmatter parses to a scalar, sequence, or other non-mapping value, the
-record is invalid at validation level `error`. At validation level `warn`, tools
-SHOULD treat it as empty frontmatter and report a warning.
+record's persisted frontmatter is treated as `{}` and the record reports a
+`frontmatter_not_mapping` validation issue whose severity follows the
+validation level in Chapter 04. A structured update of such a record fails with
+`frontmatter_not_mapping` at every validation level, so that the original value
+is never silently discarded; an explicit `document` replacement can repair it.
 
 ## Missing, Null, And Empty
 
@@ -130,17 +133,17 @@ explicitly maps it to ordinary fields.
 
 Write-capable tools SHOULD preserve unrelated body text and line ending style.
 
-When serializing frontmatter, tools SHOULD:
+When serializing frontmatter, tools MUST:
 
-- omit missing values; bare nulls represent explicit null values
+- write an explicit null value for a key whose value is null
+- omit keys that are missing
 - quote empty strings
-- preserve array/object structure
-- produce deterministic key ordering when the operation rewrites a generated
-  file
 
-When updating a field to null, tools MAY either persist explicit null or remove
-the key depending on operation policy. The operation result MUST make the chosen
-behavior explicit.
+Tools SHOULD preserve array and object structure and SHOULD produce
+deterministic key ordering when an operation rewrites a generated file.
+
+A null value in written frontmatter always means explicit null. Removing a key
+is a distinct operation; Chapter 12 defines how an update requests it.
 
 ## YAML Profile
 

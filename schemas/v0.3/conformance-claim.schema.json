@@ -162,7 +162,7 @@
         "properties": {
           "profiles": {
             "allOf": [
-              { "contains": { "const": "core_read" } },
+              { "contains": { "const": "collection_semantics" } },
               { "contains": { "const": "cel" } }
             ]
           }
@@ -177,6 +177,23 @@
             "allOf": [
               { "contains": { "const": "collection_semantics" } },
               { "contains": { "const": "cel" } }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profiles": { "contains": { "const": "data_contracts" } } } },
+      "then": { "properties": { "profiles": { "contains": { "const": "core_read" } } } }
+    },
+    {
+      "if": { "properties": { "profiles": { "contains": { "const": "type_packs" } } } },
+      "then": {
+        "properties": {
+          "profiles": {
+            "allOf": [
+              { "contains": { "const": "data_contracts" } },
+              { "contains": { "const": "core_write" } }
             ]
           }
         }
@@ -212,7 +229,7 @@
         "properties": {
           "profiles": {
             "allOf": [
-              { "contains": { "const": "core_read" } },
+              { "contains": { "const": "data_contracts" } },
               { "contains": { "const": "event_action_interop/0.1" } },
               { "contains": { "const": "cel" } }
             ]
@@ -222,7 +239,7 @@
     },
     {
       "if": { "properties": { "profiles": { "contains": { "const": "watch" } } } },
-      "then": { "properties": { "profiles": { "contains": { "const": "core_read" } } } }
+      "then": { "properties": { "profiles": { "contains": { "const": "collection_semantics" } } } }
     }
   ],
   "$defs": {
@@ -234,11 +251,13 @@
       "enum": [
         "core_read",
         "collection_semantics",
+        "data_contracts",
         "cel",
         "cel_match",
         "cel_query",
         "links",
         "core_write",
+        "type_packs",
         "lifecycle",
         "event_action_interop/0.1",
         "runtime/0.2",

@@ -5,7 +5,7 @@
   "name": "Two applications consume one type implementation",
   "description": "One type implements one record contract and two independent consumers observe the same projected contract view.",
   "ring": "contract",
-  "profile": "core_read",
+  "profile": "data_contracts",
   "roles": ["contract_store", "record_consumer"],
   "operation": "contract.shared-consumers",
   "fixtures": [
@@ -17,9 +17,9 @@
     "consumers": ["consumer-alpha", "consumer-beta"]
   },
   "covers": [
-    "core_read.data_contract_discovery",
-    "core_read.data_contract_implementation_validation",
-    "core_read.data_contract_projection"
+    "data_contracts.data_contract_discovery",
+    "data_contracts.data_contract_implementation_validation",
+    "data_contracts.data_contract_projection"
   ],
   "expect": {
     "entries": [

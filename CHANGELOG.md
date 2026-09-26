@@ -10,6 +10,59 @@ All notable changes to this specification and conformance suite are documented h
 - Add shared creation fixtures for inferred membership, ordinary `type` metadata,
   auxiliary schemas, derived paths, and serialization-policy membership loss.
 
+### Spec review cleanup
+
+#### Changed
+
+- CEL expressions now follow standard CEL semantics. Field selection on null
+  and missing map keys are evaluation errors; each embedding context defines
+  how a top-level error is handled, and query filters exclude the failing
+  record with an `expression_evaluation_error` diagnostic. The CEL optional
+  types extension is required.
+- Replaced the `present` namespace with CEL `has()` and removed the `note`
+  alias for `record`.
+- Dates are RFC 3339 `full-date` strings, which CEL string comparison orders
+  chronologically; `today()` returns one. Schema fields with `format:
+  date-time` are CEL timestamps. Added `date()`, `startOfDay()`, and the date
+  methods `addDays`, `addMonths`, `addYears`, `daysUntil`, `year`, `month`,
+  `day`, and `dayOfWeek`. `duration()` is CEL's standard function. mdbase adds
+  no host types and overloads no standard function or operator.
+- A null patch value persists explicit null. Update accepts `unset` to remove
+  keys; `fields` and `frontmatter` are no longer aliases of `patch`.
+- Batch is normative: sequential preflight writes nothing on failure, execution
+  stops at the first failure, and results report every operation. Added the
+  `atomic_batch` optional feature.
+- Defined `off`, `warn`, and `error` validation levels for reads, queries, and
+  writes. Non-mapping frontmatter reports `frontmatter_not_mapping`.
+- Hidden paths and `node_modules` are always excluded, `settings.exclude` adds
+  to them, and one portable glob syntax is defined. Removed
+  `settings.include_subfolders`.
+- Simple wikilinks resolve by filename; ID resolution applies only when
+  `settings.id_field` is configured. Undeclared frontmatter wikilinks are links,
+  and `file.backlinks` is defined.
+- Type `implements.version` accepts a version requirement. The portable
+  grammar, shared with interoperability requirements, is an npm `semver` subset:
+  exact, `^`, `~`, and space-separated comparators, with pre-releases inside
+  the bounds. `collection.display` no longer affects implementation digests.
+- Watch implementations that claim `data_contracts` report `contract_changed`.
+- Migration adds `!has(raw.field)` guards to generated-field lifecycle actions.
+- The `@mdbase/cel-host` prototype now uses `@marcbachmann/cel-js` with optional
+  types and implements the revised host bindings and date functions.
+- Lifecycle events accept one action or an ordered action list, `set` always
+  assigns, and `on_delete` and `on_rename` were removed.
+- Data contracts moved from Core Read to a new `data_contracts` profile and
+  type packs moved from Core Write to a new `type_packs` profile. `cel_query`
+  and `watch` now require `collection_semantics`; `runtime/0.2` requires
+  `data_contracts`.
+- Moved the durable runtime chapters to `runtime/0.2.md` and the Obsidian Bases
+  adapter to `adapters/obsidian-bases.md`. `05-data-contracts.md` is now
+  `05a-data-contracts.md`; migrations and conformance are Chapters 13 and 14.
+
+#### Removed
+
+- Removed the undefined type `migrations` and `runtime` sections and the stale
+  runtime-contract and workflow conformance requirements.
+
 ## 2026-07-28 (standard field references)
 
 ### Added

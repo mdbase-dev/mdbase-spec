@@ -16,7 +16,7 @@ test("validates the complete neutral scenario inventory", () => {
     fixtures: 9,
     scenarios: 16,
     profiles: [
-      "core_read",
+      "data_contracts",
       "event_action_interop/0.1",
       "runtime/0.2"
     ]

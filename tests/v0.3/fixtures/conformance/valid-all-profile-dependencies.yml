@@ -10,11 +10,13 @@ interop_profile_version: "0.1"
 profiles:
   - core_read
   - collection_semantics
+  - data_contracts
   - cel
   - cel_match
   - cel_query
   - links
   - core_write
+  - type_packs
   - lifecycle
   - event_action_interop/0.1
   - runtime/0.2

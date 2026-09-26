@@ -2,7 +2,7 @@ name: "v0.3 CEL profile conformance"
 spec_version: "0.3.0"
 fixture_set: cel
 category: cel
-spec_ref: "v0.3/10, v0.3/11, v0.3/14"
+spec_ref: "v0.3/10, v0.3/11, runtime/0.2"
 
 groups:
   - name: "record query host bindings"
@@ -41,7 +41,7 @@ groups:
           match:
             path_glob: "cel-matched/**/*.md"
             expr:
-              $expr: 'present.raw.marker && marker == "selected" && status == null'
+              $expr: 'has(raw.marker) && marker == "selected" && status == null'
           schema:
             dialect: json-schema-2020-12
             value:
@@ -105,7 +105,7 @@ groups:
           results:
             - path: "tasks/open.md"
 
-      - name: "presence maps distinguish missing from effective default"
+      - name: "has() distinguishes missing from effective default"
         id: cel.presence_maps
         covers:
           - cel.context_bindings
@@ -113,7 +113,7 @@ groups:
         operation: evaluate_cel
         input:
           path: "tasks/open.md"
-          expression: 'present.raw.status == false && present.record.status'
+          expression: '!has(raw.status) && has(record.status)'
         expect:
           valid: true
           value: true
@@ -127,7 +127,7 @@ groups:
           valid: true
           value: true
 
-      - name: "type errors return null in query expressions"
+      - name: "evaluation errors yield a null projection value with a diagnostic"
         id: cel.query_evaluation_error
         covers:
           - cel.expression_diagnostics
@@ -141,6 +141,148 @@ groups:
           value: null
           diagnostics:
             - code: expression_evaluation_error
+
+      - name: "selecting a missing map key is an evaluation error"
+        id: cel.missing_key_error
+        covers:
+          - cel.standard_error_semantics
+          - cel.expression_diagnostics
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'raw.status == "open"'
+        expect:
+          valid: true
+          value: null
+          diagnostics:
+            - code: expression_evaluation_error
+
+      - name: "logical operators absorb errors commutatively"
+        id: cel.error_absorption
+        covers:
+          - cel.standard_error_semantics
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'raw.status == "open" || true'
+        expect:
+          valid: true
+          value: true
+          diagnostics: []
+
+      - name: "optional selection gives null-safe access"
+        id: cel.optional_selection
+        covers:
+          - cel.optional_types
+          - cel.missing_and_null
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'raw.?status.orValue("none") == "none" && record.?status.hasValue()'
+        expect:
+          valid: true
+          value: true
+
+      - name: "date strings compare chronologically and support calendar methods"
+        id: cel.date_strings
+        covers:
+          - cel.date_and_duration
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'due < "2026-07-01" && due.addMonths(1) == "2026-07-20" && due.addDays(11) == "2026-07-01" && due.daysUntil("2026-06-25") == 5 && due.year() == 2026 && due.month() == 6 && due.day() == 20 && due.dayOfWeek() == 6'
+        expect:
+          valid: true
+          value: true
+
+      - name: "month arithmetic clamps to the end of the month"
+        id: cel.date_month_clamp
+        covers:
+          - cel.date_and_duration
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: '"2026-01-31".addMonths(1) == "2026-02-28" && "2024-02-29".addYears(1) == "2025-02-28"'
+        expect:
+          valid: true
+          value: true
+
+      - name: "timestamps and durations use standard CEL types"
+        id: cel.standard_duration
+        covers:
+          - cel.date_and_duration
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'timestamp("2026-06-20T00:00:00Z") + duration("36h") == timestamp("2026-06-21T12:00:00Z")'
+        expect:
+          valid: true
+          value: true
+
+      - name: "date methods reject a receiver that is not a full-date"
+        id: cel.invalid_date_receiver
+        covers:
+          - cel.date_and_duration
+          - cel.standard_error_semantics
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'title.addDays(1) == "x"'
+        expect:
+          valid: true
+          value: null
+          diagnostics:
+            - code: expression_evaluation_error
+
+      - name: "date and timestamp conversions use the effective timezone"
+        id: cel.date_timestamp_conversion
+        covers:
+          - cel.date_and_duration
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          timezone: "Australia/Melbourne"
+          expression: 'startOfDay(due) == timestamp("2026-06-19T14:00:00Z") && date(timestamp("2026-06-20T15:30:00Z")) == "2026-06-21"'
+        expect:
+          valid: true
+          value: true
+
+      - name: "comparing a date string with a timestamp is an evaluation error"
+        id: cel.date_timestamp_mixing
+        covers:
+          - cel.date_and_duration
+          - cel.standard_error_semantics
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: 'due < now()'
+        expect:
+          valid: true
+          value: null
+          diagnostics:
+            - code: expression_evaluation_error
+        expect:
+          valid: true
+          value: true
+
+      - name: "query filter errors exclude only the failing records"
+        id: cel_query.filter_error_excludes_record
+        covers:
+          - cel_query.query_filtering
+          - cel_query.query_evaluation_diagnostics
+        operation: query
+        input:
+          types: [task]
+          where: 'raw.status == "done"'
+          order_by:
+            - field: file.path
+        expect:
+          valid: true
+          results:
+            - path: "tasks/done.md"
+          diagnostics_contain:
+            - code: expression_evaluation_error
+              severity: warning
 
       - name: "file host binding exposes path and folder helpers"
         operation: evaluate_cel
