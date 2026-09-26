@@ -1079,9 +1079,22 @@ def load_json(path: str | Path) -> Any:
         return json.load(handle)
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """Reject duplicate mapping keys, which PyYAML otherwise silently overwrites."""
+
+    def construct_mapping(self, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise ValueError(f"duplicate key {key!r} at line {key_node.start_mark.line + 1}")
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
-        loaded = yaml.safe_load(handle)
+        loaded = yaml.load(handle, Loader=UniqueKeyLoader)
     if not isinstance(loaded, dict):
         raise ValueError(f"{path}: expected YAML mapping")
     return loaded

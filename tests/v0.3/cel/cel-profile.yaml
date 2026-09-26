@@ -261,9 +261,6 @@ groups:
           value: null
           diagnostics:
             - code: expression_evaluation_error
-        expect:
-          valid: true
-          value: true
 
       - name: "query filter errors exclude only the failing records"
         id: cel_query.filter_error_excludes_record
