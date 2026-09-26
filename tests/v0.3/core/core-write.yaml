@@ -160,25 +160,28 @@ groups:
           status: open
           ---
     tests:
-      - name: "a preflight failure writes nothing"
-        id: core_write.batch_preflight_all_or_nothing
+      - name: "an atomic batch writes nothing when any operation fails"
+        id: core_write.batch_atomic
         covers: [core_write.batch_preflight]
         operation: batch
         input:
           operations:
-            - op: update
-              path: "notes/a.md"
-              patch: { status: done }
-            - op: update
-              path: "notes/b.md"
-              patch: { status: invalid-status }
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: update
+              input:
+                path: "notes/b.md"
+                patch: { status: invalid-status }
         expect:
           valid: false
+          failed: 1
+          preflight: true
           operations:
-            - index: 0
-              status: not_attempted
             - index: 1
-              status: failed
+              kind: update
+              valid: false
         verify_after:
           operation: read
           input:
@@ -187,39 +190,95 @@ groups:
             frontmatter:
               status: open
 
-      - name: "preflight sees the effect of earlier operations"
-        id: core_write.batch_sequential_preflight
+      - name: "an atomic batch commits every operation together"
+        id: core_write.batch_commit
         covers: [core_write.batch_preflight]
         operation: batch
         input:
           operations:
-            - op: create
-              path: "notes/c.md"
-              type: note
-              frontmatter: { title: C }
-            - op: update
-              path: "notes/c.md"
-              patch: { status: done }
+            - kind: create
+              input:
+                path: "notes/c.md"
+                type: note
+                frontmatter: { title: C, status: open }
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
         expect:
           valid: true
-          operations:
-            - index: 0
-              status: succeeded
-            - index: 1
-              status: succeeded
+          succeeded: 2
+          failed: 0
+          preflight: false
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              status: done
 
-      - name: "dry run reports results without writing"
+      - name: "a batch that names one path twice is rejected"
+        id: core_write.batch_duplicate_path
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          operations:
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: rename
+              input:
+                from: "notes/a.md"
+                to: "notes/renamed.md"
+        expect:
+          valid: false
+          error:
+            code: duplicate_batch_path
+
+      - name: "a partial batch commits operations independently"
+        id: core_write.batch_partial
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          allow_partial: true
+          operations:
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: update
+              input:
+                path: "notes/b.md"
+                patch: { status: invalid-status }
+        expect:
+          valid: false
+          succeeded: 1
+          failed: 1
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              status: done
+
+      - name: "a dry run reports results without writing"
         id: core_write.batch_dry_run
         covers: [core_write.batch_preflight]
         operation: batch
         input:
           dry_run: true
           operations:
-            - op: rename
-              from: "notes/a.md"
-              to: "notes/renamed.md"
+            - kind: rename
+              input:
+                from: "notes/a.md"
+                to: "notes/renamed.md"
         expect:
           valid: true
+          preflight: true
+          dry_run: true
         verify_after:
           operation: read
           input:

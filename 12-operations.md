@@ -153,57 +153,75 @@ If reference updating is enabled, link updates SHOULD preserve link style,
 alias, and anchor where possible. ID-based links SHOULD not be rewritten if the
 target ID did not change.
 
-Reference updates across other files are applied after the rename and are not
-atomic with it unless the implementation advertises `atomic_batch`, in which
-case the rename and its reference updates commit as one batch. Failed
+An implementation MAY commit a rename and its reference updates as one atomic
+batch. Otherwise reference updates are applied after the rename, and failed
 reference updates are reported per file.
 
 ## Batch
 
-Batch applies an ordered list of create, update, delete, and rename operations
-as one validated unit:
+Batch applies a list of create, update, delete, and rename operations as one
+request:
 
 ```yaml
 operations:
-  - op: update
-    path: tasks/a.md
-    patch: { status: done }
-    if_revision: sha256:opaque
-  - op: rename
-    from: tasks/b.md
-    to: archive/b.md
+  - kind: update
+    input:
+      path: tasks/a.md
+      patch: { status: done }
+      if_revision: sha256:opaque
+  - kind: rename
+    input:
+      from: tasks/b.md
+      to: archive/b.md
+dry_run: false
+allow_partial: false
+```
+
+Each item names its operation `kind` and that operation's `input`. A request
+that names one record path more than once, through `path`, `from`, or `to`,
+fails with `duplicate_batch_path` before any operation is prepared, so the
+items of one batch never depend on each other.
+
+**Atomic execution** is the default. The implementation prepares every
+operation, including lifecycle, type membership, schema and collection
+validation, path policy, and `if_revision`, against a staged copy of the
+collection. If any operation fails, nothing is written. Otherwise all changes
+commit as one recoverable transaction: after a failure or crash, recovery
+restores either the complete pre-batch state or the complete committed state
+before normal collection operations resume.
+
+**Partial execution** is selected with `allow_partial: true`. Each operation is
+prepared and committed independently in request order, and a failed operation
+does not prevent the others. A host that can commit only one atomic transaction
+per request, such as a durable runtime action, MAY reject `allow_partial` with
+`invalid_request`.
+
+**Dry runs** with `dry_run: true` prepare every operation and report the
+results without changing files, indexes, runtime state, or revisions.
+
+The result lists every operation in request order:
+
+```yaml
+operations:
+  - index: 0
+    kind: update
+    valid: true
+    result: {}
+    diagnostics: []
+succeeded: 1
+failed: 0
+preflight: false
 dry_run: false
 ```
 
-Each entry uses the input of the named operation plus `op`. Batch execution has
-two phases.
+`result` holds the operation's own result on success. `preflight` is true when
+the operations ran only against the staged copy, which happens for a dry run or
+a failed atomic batch. The envelope's `valid` is false when any operation
+failed.
 
-**Preflight.** The implementation validates every operation in order against
-the collection state produced by the preceding operations, including lifecycle,
-type membership, schema and collection validation, path policy, and
-`if_revision`. If any operation fails preflight, the batch writes nothing and
-reports every preflight diagnostic.
-
-**Execution.** Operations are applied in order. If an operation fails during
-execution, for example because of an I/O error or a concurrent modification
-detected at write time, the implementation stops. Operations already applied
-remain applied and later operations are not attempted.
-
-The result lists every operation in request order with its `index`, `op`,
-`status` (`succeeded`, `failed`, or `not_attempted`), its operation result on
-success, and its diagnostics. `valid` is false when any operation did not
-succeed. A `dry_run` batch performs only preflight and reports what each
-operation would do.
-
-An implementation that advertises the `atomic_batch` optional feature makes
-execution all-or-nothing: after a failure or crash, recovery restores either
-the complete pre-batch state or the complete committed state before normal
-collection operations resume, with the same guarantee as type-pack apply in
-Chapter 05A.
-
-Watch notifications and runtime events for a batch are delivered after each
-operation's derived state is consistent, in operation order. With
-`atomic_batch`, they are delivered only after the whole batch commits.
+Watch notifications and runtime events for an atomic batch are delivered after
+the whole batch commits. For a partial batch they follow each committed
+operation.
 
 ## Saved Views
 

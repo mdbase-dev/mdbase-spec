@@ -29,9 +29,9 @@ All notable changes to this specification and conformance suite are documented h
   no host types and overloads no standard function or operator.
 - A null patch value persists explicit null. Update accepts `unset` to remove
   keys; `fields` and `frontmatter` are no longer aliases of `patch`.
-- Batch is normative: sequential preflight writes nothing on failure, execution
-  stops at the first failure, and results report every operation. Added the
-  `atomic_batch` optional feature.
+- Batch is normative: batches are atomic by default and commit as one
+  recoverable transaction, `allow_partial` commits operations independently,
+  duplicate record paths are rejected, and results report every operation.
 - Defined `off`, `warn`, and `error` validation levels for reads, queries, and
   writes. Non-mapping frontmatter reports `frontmatter_not_mapping`.
 - Hidden paths and `node_modules` are always excluded, `settings.exclude` adds

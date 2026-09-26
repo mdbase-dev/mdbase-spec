@@ -135,21 +135,22 @@ details: {}
 forward-slash form. `field` uses JSON Pointer or an explicitly identified
 frontmatter selector. Implementations MAY add fields under `x-*`.
 
-The v0.3 core codes include `invalid_request`, `unsupported_profile`,
-`unsupported_feature`, `frontmatter_not_mapping`, `expression_compile_error`,
-`expression_evaluation_error`, `projection_shadowed`, `link_not_found`,
-`type_conflict`, `type_membership_changed`, `path_value_missing`,
-`schema_ref_forbidden`, `schema_ref_unresolved`, `schema_ref_cycle`,
-`format_invalid`, `lifecycle_expression_error`, `concurrent_modification`,
-`invalid_query`, `context_not_found`, `context_required`,
-`context_type_mismatch`, `view_not_found`, `invalid_view`,
-`unsupported_presentation`, `invalid_data_contract`, `data_contract_not_found`,
-`data_contract_conflict`, `data_contract_version_mismatch`,
-`data_contract_binding_invalid`, `data_contract_field_invalid`,
-`data_contract_record_invalid`, `invalid_type_pack`, `type_pack_conflict`,
-`type_pack_apply_failed`, `invalid_timezone`, and the JSON Schema
-`schema_<keyword>` codes from Chapter 06. Runtime profile 0.2 reuses interoperability
-codes such as `unknown_contract`, `contract_digest_conflict`, `no_provider`,
+The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
+`unsupported_profile`, `unsupported_feature`, `frontmatter_not_mapping`,
+`expression_compile_error`, `expression_evaluation_error`,
+`projection_shadowed`, `link_not_found`, `type_conflict`,
+`type_membership_changed`, `path_value_missing`, `schema_ref_forbidden`,
+`schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
+`lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
+`context_not_found`, `context_required`, `context_type_mismatch`,
+`view_not_found`, `invalid_view`, `unsupported_presentation`,
+`invalid_data_contract`, `data_contract_not_found`, `data_contract_conflict`,
+`data_contract_version_mismatch`, `data_contract_binding_invalid`,
+`data_contract_field_invalid`, `data_contract_record_invalid`,
+`invalid_type_pack`, `type_pack_conflict`, `type_pack_apply_failed`,
+`invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
+06. Runtime profile 0.2 reuses interoperability codes such as
+`unknown_contract`, `contract_digest_conflict`, `no_provider`,
 `ambiguous_provider`, and `capability_denied`, and additionally defines
 `event_source_unavailable`, `idempotency_unavailable`, `cursor_expired`,
 `stale_lease`, `invalid_run_transition`, `outcome_indeterminate`, and
@@ -321,8 +322,8 @@ Core Write implementations MUST:
 - enforce `if_revision` and report common concurrency conflicts
 - persist null patch values as explicit null and remove `unset` keys
 - apply the validation level to record validation issues
-- preflight every batch operation before writing and report per-operation
-  results
+- execute batches atomically by default, support `allow_partial` and
+  `dry_run`, reject duplicate batch paths, and report per-operation results
 - return the canonical operation envelope and final record revision
 - update derived state before reporting a successful mutation
 
