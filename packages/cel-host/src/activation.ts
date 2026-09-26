@@ -3,7 +3,8 @@ import { isPlainObject, type MarkdownRecord } from "./markdown.js";
 
 export interface BuildRecordActivationOptions {
   readDefaults?: Record<string, unknown>;
-  knownFields?: Iterable<string>;
+  /** Top-level fields that every matched schema declares `format: date-time`. */
+  dateTimeFields?: Iterable<string>;
   includeBody?: boolean;
 }
 
@@ -30,12 +31,6 @@ export interface RecordActivation {
   [key: string]: unknown;
   raw: Record<string, unknown>;
   record: Record<string, unknown>;
-  note: Record<string, unknown>;
-  present: {
-    raw: Record<string, boolean>;
-    record: Record<string, boolean>;
-    note: Record<string, boolean>;
-  };
   file: MdbaseFileActivation;
 }
 
@@ -46,27 +41,42 @@ export interface WorkflowActivation {
   item?: unknown;
 }
 
+/** System names that frontmatter fields never shadow (Chapter 10). */
+export const RESERVED_NAMES = new Set([
+  "record",
+  "raw",
+  "file",
+  "projection",
+  "this",
+  "values",
+  "old",
+  "operation",
+  "event",
+  "workflow",
+  "trigger",
+  "steps",
+  "vars",
+  "item"
+]);
+
 export function buildRecordActivation(
   record: MarkdownRecord,
   options: BuildRecordActivationOptions = {}
 ): RecordActivation {
-  const raw = cloneObject(record.frontmatter);
-  const effective = applyReadDefaults(raw, options.readDefaults ?? {});
-  const fieldNames = collectFieldNames(raw, effective, options.readDefaults ?? {}, options.knownFields);
-  const recordPresence = presenceMap(effective, fieldNames);
-  const file = buildFileActivation(record, options);
-
+  const dateTimeFields = new Set(options.dateTimeFields ?? []);
+  const raw = typeFields(cloneObject(record.frontmatter), dateTimeFields);
+  const effective = typeFields(applyReadDefaults(record.frontmatter, options.readDefaults ?? {}), dateTimeFields);
+  const topLevel: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(effective)) {
+    if (!RESERVED_NAMES.has(key)) {
+      topLevel[key] = value;
+    }
+  }
   return {
-    ...effective,
+    ...topLevel,
     raw,
     record: effective,
-    note: effective,
-    present: {
-      raw: presenceMap(raw, fieldNames),
-      record: recordPresence,
-      note: recordPresence
-    },
-    file
+    file: buildFileActivation(record, options)
   };
 }
 
@@ -79,7 +89,27 @@ export function buildWorkflowActivation(options: BuildWorkflowActivationOptions)
   };
 }
 
-export function evaluateTemplate(value: unknown, activation: Record<string, unknown>, evaluate: (expr: string, activation: Record<string, unknown>) => unknown): unknown {
+/**
+ * Wrap a record activation so that an unreserved top-level identifier naming a
+ * missing field evaluates to null, while map selection keeps CEL's no-such-key
+ * behavior.
+ */
+export function withMissingFieldsAsNull(activation: Record<string, unknown>): Record<string, unknown> {
+  return new Proxy(activation, {
+    get(target, key) {
+      if (typeof key !== "string" || Object.prototype.hasOwnProperty.call(target, key)) {
+        return Reflect.get(target, key);
+      }
+      return RESERVED_NAMES.has(key) ? undefined : null;
+    }
+  });
+}
+
+export function evaluateTemplate(
+  value: unknown,
+  activation: Record<string, unknown>,
+  evaluate: (expr: string, activation: Record<string, unknown>) => unknown
+): unknown {
   if (isExpressionObject(value)) {
     return evaluate(value.$expr, activation);
   }
@@ -170,35 +200,23 @@ export function inFolder(fileFolder: string, query: string): boolean {
   return normalizedFolder === normalizedQuery || normalizedFolder.startsWith(`${normalizedQuery}/`);
 }
 
-function cloneObject(value: Record<string, unknown>): Record<string, unknown> {
-  return { ...value };
-}
-
-function collectFieldNames(
-  raw: Record<string, unknown>,
-  effective: Record<string, unknown>,
-  readDefaults: Record<string, unknown>,
-  knownFields: Iterable<string> | undefined
-): string[] {
-  const fields = new Set<string>([
-    ...Object.keys(raw),
-    ...Object.keys(effective),
-    ...Object.keys(readDefaults)
-  ]);
-  if (knownFields) {
-    for (const field of knownFields) {
-      fields.add(field);
+/** Convert `format: date-time` strings to timestamps; other values are unchanged. */
+function typeFields(fields: Record<string, unknown>, dateTimeFields: ReadonlySet<string>): Record<string, unknown> {
+  const typed = cloneObject(fields);
+  for (const field of dateTimeFields) {
+    const value = typed[field];
+    if (typeof value === "string") {
+      const instant = new Date(value);
+      if (!Number.isNaN(instant.getTime()) && /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) {
+        typed[field] = instant;
+      }
     }
   }
-  return [...fields].sort();
+  return typed;
 }
 
-function presenceMap(source: Record<string, unknown>, fieldNames: readonly string[]): Record<string, boolean> {
-  const result: Record<string, boolean> = {};
-  for (const field of fieldNames) {
-    result[field] = Object.prototype.hasOwnProperty.call(source, field);
-  }
-  return result;
+function cloneObject(value: Record<string, unknown>): Record<string, unknown> {
+  return { ...value };
 }
 
 function normalizeTag(tag: string): string {
