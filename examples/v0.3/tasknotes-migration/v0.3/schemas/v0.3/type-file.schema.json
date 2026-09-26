@@ -1,0 +1,616 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mdbase.dev/schemas/v0.3/type-file.schema.json",
+  "title": "mdbase v0.3 type file frontmatter",
+  "type": "object",
+  "required": ["kind", "name", "schema"],
+  "properties": {
+    "kind": {
+      "const": "mdbase.type"
+    },
+    "name": {
+      "$ref": "#/$defs/typeName"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "match": {
+      "$ref": "#/$defs/match"
+    },
+    "schema": {
+      "$ref": "#/$defs/schemaWrapper"
+    },
+    "collection": {
+      "$ref": "#/$defs/collection"
+    },
+    "lifecycle": {
+      "$ref": "#/$defs/lifecycle"
+    },
+    "migrations": {
+      "$ref": "#/$defs/migrations"
+    },
+    "implements": {
+      "$ref": "#/$defs/implementations"
+    }
+  },
+  "patternProperties": {
+    "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+      "$ref": "#/$defs/domainExtension"
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "typeName": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "fieldName": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_:-]*$"
+    },
+    "fieldPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_:-]*(\\[\\])?(\\.[A-Za-z_][A-Za-z0-9_:-]*(\\[\\])?)*$"
+    },
+    "jsonPointer": {
+      "type": "string",
+      "format": "json-pointer",
+      "pattern": "^(/([^/~]|~0|~1)*)*$"
+    },
+    "fieldReference": {
+      "description": "A legacy mdbase field path or a non-root RFC 6901 JSON Pointer.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/fieldPath"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/jsonPointer"
+            },
+            {
+              "minLength": 1
+            }
+          ]
+        }
+      ]
+    },
+    "jsonSchema": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "schemaWrapper": {
+      "type": "object",
+      "required": ["dialect"],
+      "properties": {
+        "dialect": {
+          "const": "json-schema-2020-12"
+        },
+        "value": {
+          "$ref": "#/$defs/jsonSchema"
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["value"],
+          "not": {
+            "required": ["ref"]
+          }
+        },
+        {
+          "required": ["ref"],
+          "not": {
+            "required": ["value"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "match": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "path_glob": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          ]
+        },
+        "fields_present": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/fieldReference"
+          },
+          "uniqueItems": true
+        },
+        "where": {
+          "$ref": "#/$defs/matchWhere"
+        },
+        "expr": {
+          "$ref": "#/$defs/expression"
+        }
+      },
+      "additionalProperties": false
+    },
+    "matchWhere": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/fieldReference"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/matchPredicate"
+      }
+    },
+    "matchPredicate": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalar"
+        },
+        {
+          "type": "array"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "eq": {},
+            "neq": {},
+            "contains": {},
+            "containsAll": {
+              "type": "array"
+            },
+            "containsAny": {
+              "type": "array"
+            },
+            "exists": {
+              "type": "boolean"
+            },
+            "startsWith": {
+              "type": "string"
+            },
+            "endsWith": {
+              "type": "string"
+            },
+            "matches": {
+              "type": "string"
+            },
+            "gt": {
+              "$ref": "#/$defs/scalar"
+            },
+            "gte": {
+              "$ref": "#/$defs/scalar"
+            },
+            "lt": {
+              "$ref": "#/$defs/scalar"
+            },
+            "lte": {
+              "$ref": "#/$defs/scalar"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "properties": {
+        "display": {
+          "$ref": "#/$defs/display"
+        },
+        "read_defaults": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "links": {
+          "$ref": "#/$defs/links"
+        },
+        "unique": {
+          "$ref": "#/$defs/uniqueRules"
+        },
+        "path": {
+          "$ref": "#/$defs/pathPolicy"
+        },
+        "projections": {
+          "$ref": "#/$defs/projections"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+          "$ref": "#/$defs/domainExtension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "name_field": {
+          "$ref": "#/$defs/fieldReference"
+        },
+        "description_field": {
+          "$ref": "#/$defs/fieldReference"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "color_field": {
+          "$ref": "#/$defs/fieldReference"
+        }
+      },
+      "additionalProperties": false
+    },
+    "links": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/fieldReference"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/linkRule"
+      }
+    },
+    "linkRule": {
+      "type": "object",
+      "properties": {
+        "target_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/typeName"
+            },
+            {
+              "const": "any"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/typeName"
+              },
+              "uniqueItems": true
+            }
+          ]
+        },
+        "validate_exists": {
+          "type": "boolean"
+        },
+        "format": {
+          "enum": ["wikilink", "markdown", "path", "any"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "uniqueRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["field"],
+        "properties": {
+          "field": {
+            "$ref": "#/$defs/fieldReference"
+          },
+          "scope": {
+            "enum": ["collection", "type", "path_glob"]
+          },
+          "path_glob": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "scope": {
+                  "const": "path_glob"
+                }
+              },
+              "required": ["scope"]
+            },
+            "then": {
+              "required": ["path_glob"]
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "pathPolicy": {
+      "type": "object",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime": {
+          "$ref": "#/$defs/identifier"
+        },
+        "template": {
+          "type": "string",
+          "minLength": 1
+        },
+        "folder": {
+          "type": "string"
+        },
+        "generated_by": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "additionalProperties": false
+    },
+    "projections": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/fieldName"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["expr"],
+        "properties": {
+          "expr": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "properties": {
+        "on_create": {
+          "$ref": "#/$defs/lifecycleEvent"
+        },
+        "on_update": {
+          "$ref": "#/$defs/lifecycleEvent"
+        },
+        "on_delete": {
+          "$ref": "#/$defs/lifecycleEvent"
+        },
+        "on_rename": {
+          "$ref": "#/$defs/lifecycleEvent"
+        }
+      },
+      "additionalProperties": false
+    },
+    "lifecycleEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/lifecycleAction"
+        },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/lifecycleAction"
+          }
+        }
+      ]
+    },
+    "lifecycleAction": {
+      "type": "object",
+      "required": ["set"],
+      "properties": {
+        "if": {
+          "type": "string",
+          "minLength": 1
+        },
+        "set": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/fieldReference"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/lifecycleValue"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "lifecycleValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["now"],
+          "properties": {
+            "now": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["today"],
+          "properties": {
+            "today": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["uuid"],
+          "properties": {
+            "uuid": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["ulid"],
+          "properties": {
+            "ulid": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["slugify"],
+          "properties": {
+            "slugify": {
+              "$ref": "#/$defs/fieldReference"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["copy"],
+          "properties": {
+            "copy": {
+              "$ref": "#/$defs/fieldReference"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["literal"],
+          "properties": {
+            "literal": true
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "migrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to"],
+        "properties": {
+          "from": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "to": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": true
+            }
+          },
+          "action": {
+            "$ref": "#/$defs/identifier"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "oneOf": [
+          {
+            "required": ["steps"]
+          },
+          {
+            "required": ["action"]
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/implementation"
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["contract", "version", "fields"],
+      "properties": {
+        "contract": {
+          "$ref": "#/$defs/contractId"
+        },
+        "version": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "fields": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/fieldReference"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/fieldReference"
+          }
+        },
+        "binding": {
+          "type": "object"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+          "$ref": "#/$defs/domainExtension"
+        }
+      },
+      "additionalProperties": false
+    },
+    "contractId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "expression": {
+      "type": "object",
+      "required": ["$expr"],
+      "properties": {
+        "$expr": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "domainExtension": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "scalar": {
+      "type": ["string", "number", "integer", "boolean", "null"]
+    }
+  }
+}
