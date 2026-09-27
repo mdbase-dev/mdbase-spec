@@ -78,6 +78,9 @@ const environment = new Environment({
   .registerFunction("string.month(): int", (value: string) => BigInt(parseFullDate(value).month))
   .registerFunction("string.day(): int", (value: string) => BigInt(parseFullDate(value).day))
   .registerFunction("string.dayOfWeek(): int", (value: string) => BigInt(isoWeekday(value)))
+  // Unicode default full case mappings, without locale tailoring.
+  .registerFunction("string.lower(): string", (value: string) => value.toLowerCase())
+  .registerFunction("string.upper(): string", (value: string) => value.toUpperCase())
   .registerFunction("map.inFolder(string): bool", (file: Record<string, unknown>, folder: string) =>
     typeof file.folder === "string" && inFolder(file.folder, folder)
   )

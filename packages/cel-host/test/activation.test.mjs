@@ -94,6 +94,11 @@ test("date strings compare chronologically and support calendar methods", () => 
   evaluationError('title.addDays(1) == "x"');
 });
 
+test("lower and upper use Unicode case mappings", () => {
+  assert.equal(value('"Éclair Body".lower() == "éclair body" && "Straße".upper() == "STRASSE"'), true);
+  assert.equal(value('"Mission Body".lower().contains("mission body")'), true);
+});
+
 test("today, date, and startOfDay use the effective timezone", () => {
   const options = { timezone: "Australia/Melbourne", now: new Date("2026-06-20T15:30:00Z") };
   assert.equal(value("today()", options), "2026-06-21");
