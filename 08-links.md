@@ -130,8 +130,9 @@ The CEL profile defines host functions and methods for links:
 - `file.asLink()`
 - `linkValue.asFile()`
 
-Broken links resolve to null. Property access through null returns null under
-the mdbase CEL profile.
+`asFile()` returns null for a broken link. Selecting a field of null is a CEL
+evaluation error, so traversal through a link that may be broken uses a null
+check or optional selection, as shown in Chapter 10.
 
 ## Round Trip
 
