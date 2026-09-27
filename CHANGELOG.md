@@ -2,7 +2,7 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
-## Unreleased
+## 0.3.0-rc.4 (2026-09-27)
 
 - Clarify that selected-type creation does not require explicit membership keys.
   With inference-only configuration, final persisted fields and path must match
