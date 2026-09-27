@@ -266,8 +266,8 @@ Record validation ignores display metadata.
 
 ## Projections
 
-Collection projections are an optional effective-value feature declared outside
-JSON Schema and expressed in CEL:
+Collection projections are the optional feature `collection_projections`: an
+effective-value feature declared outside JSON Schema and expressed in CEL:
 
 ```yaml
 collection:
@@ -290,6 +290,12 @@ Projections evaluate in the query context of Chapter 10 without `projection` or
 `this`. A projection MAY reference another collection projection by its field
 name; implementations evaluate them in dependency order and reject cycles when
 loading the type.
+
+An implementation that does not advertise `collection_projections` still loads a
+type that declares projections. It leaves the projection values absent and
+reports a `warning` diagnostic with code `unsupported_feature`, the type name,
+and `details.feature: collection_projections`, so that authors never lose
+projections silently.
 
 Query- and view-local named projections are separate, live under the
 `projection` CEL namespace, and never replace a collection projection or

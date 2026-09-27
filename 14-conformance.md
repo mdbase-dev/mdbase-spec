@@ -9,7 +9,7 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Profile | Purpose |
 | --- | --- |
 | Core Read | discover collections, parse records, load types, match records, and validate JSON Schema |
-| Collection Semantics | apply defaults, projections, uniqueness, path policy, multi-type composition, and collection diagnostics |
+| Collection Semantics | apply defaults, uniqueness, path policy, multi-type composition, and collection diagnostics |
 | Data Contracts | load contracts, resolve type implementations, compute digests, and project contract views |
 | CEL | compile and evaluate the shared mdbase CEL language and host contract |
 | CEL Match | evaluate `match.expr` against raw candidate records |
@@ -263,6 +263,23 @@ Query implementations MUST:
 - return context, grouping, and summary metadata when requested
 - expose raw and effective frontmatter when requested
 - report per-record evaluation errors and continue evaluating remaining records
+
+## Collection Projection Optional Feature
+
+An implementation advertises `collection_projections` through
+`optional_features` when it:
+
+- evaluates `collection.projections` in the query context after read defaults
+- exposes projection values in effective reads, `effective_frontmatter`, and
+  queries under their declared field names
+- keeps persisted fields and reports `projection_shadowed` for a projection
+  with the same name
+- evaluates projections that reference each other in dependency order and
+  rejects cycles when loading the type
+- leaves a failed projection absent and reports an expression diagnostic
+
+An implementation that does not advertise it reports `unsupported_feature` as
+described in Chapter 07.
 
 ## View Record Optional Feature
 

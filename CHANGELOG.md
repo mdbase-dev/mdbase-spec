@@ -56,6 +56,9 @@ All notable changes to this specification and conformance suite are documented h
   becomes `*/**`, exclusions become equivalent portable globs, and settings
   without a v0.3 meaning move under `x-legacy-v0.2`.
 - A type may implement each contract ID only once.
+- Collection projections are the optional feature `collection_projections`.
+  Implementations without it still load the type and report
+  `unsupported_feature` instead of dropping projections silently.
 - The `@mdbase/cel-host` prototype now uses `@marcbachmann/cel-js` with optional
   types and implements the revised host bindings and date functions.
 - Lifecycle events accept one action or an ordered action list, `set` always
