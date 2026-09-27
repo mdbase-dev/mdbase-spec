@@ -380,8 +380,10 @@ Record notifications use these change kinds:
 
 Implementations also report `config_changed` and `type_changed` notifications.
 An implementation that also claims `data_contracts` reports `contract_changed`
-with the contract file `path` and the affected contract `id` and `version`
-after the contract registry and type implementations have been re-resolved. A rename may be
+with the contract file `path` after the contract registry and type
+implementations have been re-resolved. Implementations MAY also report
+`schema_changed`, `view_changed`, and `lock_changed`, each with a `path`, for
+referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename may be
 reported as `record_deleted` followed by `record_created` when the host cannot
 establish file identity.
 
