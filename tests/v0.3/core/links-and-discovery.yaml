@@ -165,3 +165,48 @@ groups:
         expect:
           valid: true
           value: true
+
+  - name: "duplicate configured ids"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          id_field: id
+      files:
+        tasks/a.md: |
+          ---
+          id: shared
+          ---
+        tasks/b.md: |
+          ---
+          id: shared
+          ---
+        tasks/shared.md: |
+          ---
+          title: Filename match
+          ---
+        tasks/child.md: |
+          ---
+          parent: "[[shared]]"
+          ---
+    tests:
+      - name: "duplicate ids are not a record validation issue"
+        id: links.duplicate_id_valid
+        covers: [links.configured_id_resolution]
+        operation: validate
+        input:
+          path: "tasks/a.md"
+        expect:
+          valid: true
+          diagnostics: []
+
+      - name: "ambiguous id resolution fails without filename fallback"
+        id: links.duplicate_id_ambiguous
+        covers: [links.configured_id_resolution]
+        operation: resolve_link
+        input:
+          path: "tasks/child.md"
+          field: parent
+        expect:
+          valid: true
+          resolved: null
