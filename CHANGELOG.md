@@ -40,14 +40,22 @@ All notable changes to this specification and conformance suite are documented h
   to them, and one portable glob syntax is defined. Removed
   `settings.include_subfolders`.
 - Simple wikilinks resolve by filename; ID resolution applies only when
-  `settings.id_field` is configured. Undeclared frontmatter wikilinks are links,
-  and `file.backlinks` is defined.
+  `settings.id_field` is configured, and duplicate IDs make ID resolution
+  ambiguous rather than invalidating records. Wikilinks with `./` or `../`
+  resolve from the containing folder and other wikilinks containing `/` from
+  the collection root. Undeclared frontmatter wikilinks are links, and
+  `file.backlinks` is defined.
 - Type `implements.version` accepts a version requirement. The portable
   grammar, shared with interoperability requirements, is an npm `semver` subset:
   exact, `^`, `~`, and space-separated comparators, with pre-releases inside
   the bounds. `collection.display` no longer affects implementation digests.
 - Watch implementations that claim `data_contracts` report `contract_changed`.
 - Migration adds `!has(raw.field)` guards to generated-field lifecycle actions.
+  Chapter 13 now specifies configuration migration: v0.2 validation and
+  `id_field` defaults are written explicitly, `include_subfolders: false`
+  becomes `*/**`, exclusions become equivalent portable globs, and settings
+  without a v0.3 meaning move under `x-legacy-v0.2`.
+- A type may implement each contract ID only once.
 - The `@mdbase/cel-host` prototype now uses `@marcbachmann/cel-js` with optional
   types and implements the revised host bindings and date functions.
 - Lifecycle events accept one action or an ordered action list, `set` always
