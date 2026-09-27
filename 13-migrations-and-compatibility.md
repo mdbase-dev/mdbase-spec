@@ -1,4 +1,4 @@
-# 15. Migrations And Compatibility
+# 13. Migrations And Compatibility
 
 ## Migration Philosophy
 
