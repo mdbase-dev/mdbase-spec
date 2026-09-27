@@ -152,7 +152,7 @@ def analyze(collection: Path, output: Path, mdb_bin: Path | None) -> dict[str, A
         raise SystemExit("type names are not unique case-insensitively")
 
     unsupported: list[dict[str, Any]] = []
-    proposed_config = migrate_config(source_config)
+    proposed_config = migrate_config(source_config, unsupported)
     migrated_types: dict[Path, str] = {}
     type_summaries: list[dict[str, Any]] = []
 
@@ -303,21 +303,53 @@ def resolve_effective_fields(
     return own_fields, strict, inheritance
 
 
-def migrate_config(source: dict[str, Any]) -> dict[str, Any]:
+def migrate_config(source: dict[str, Any], unsupported: list[dict[str, Any]]) -> dict[str, Any]:
+    """Migrate mdbase.yaml as described in Chapter 13, "Configuration"."""
     settings = copy.deepcopy(source.get("settings") or {})
     target_settings = {key: value for key, value in settings.items() if key in CORE_CONFIG_SETTINGS}
     if "extensions" in settings and "record_extensions" not in target_settings:
         target_settings["record_extensions"] = [str(value).lstrip(".") for value in settings["extensions"]]
+    if "record_extensions" in target_settings and "md" not in target_settings["record_extensions"]:
+        target_settings["record_extensions"] = ["md", *target_settings["record_extensions"]]
+    for key in ("default_validation", "id_field"):
+        target_key = "validation" if key == "default_validation" else key
+        for container in (settings, source):
+            if target_key not in target_settings and container.get(key) is not None:
+                target_settings[target_key] = copy.deepcopy(container[key])
+    settings.pop("default_validation", None)
+    types_folder = str(target_settings.get("types_folder") or "_types")
+    contracts_folder = str(target_settings.get("contracts_folder") or "_contracts")
+    excludes = []
+    for pattern in target_settings.pop("exclude", None) or []:
+        migrated = migrate_exclude(str(pattern), types_folder, contracts_folder)
+        if migrated is None:
+            continue
+        if not PORTABLE_GLOB.fullmatch(migrated) or any(
+            "**" in part and part != "**" for part in migrated.split("/")
+        ):
+            unsupported.append(
+                {
+                    "path": "mdbase.yaml",
+                    "feature": "settings.exclude",
+                    "value": pattern,
+                    "preserved_at": "settings.exclude",
+                }
+            )
+        excludes.append(migrated)
     if settings.get("include_subfolders") is False:
         # v0.3 has no include_subfolders setting; exclude every nested path.
-        target_settings["exclude"] = [*target_settings.get("exclude", []), "*/**"]
+        excludes.append("*/**")
     settings.pop("include_subfolders", None)
+    if excludes:
+        target_settings["exclude"] = excludes
     target_settings.setdefault("record_extensions", ["md"])
     target_settings.setdefault("contracts_folder", "_contracts")
+    # v0.2 validated at warn level by default; v0.3 defaults to error.
     target_settings.setdefault("validation", "warn")
     # Preserve an explicitly empty list: this collection uses CSL's `type`
     # field as data and therefore cannot use the default explicit type keys.
     target_settings.setdefault("explicit_type_keys", ["type", "types"])
+    # v0.2 resolved wikilinks by ID by default; v0.3 does so only when configured.
     target_settings.setdefault("id_field", "id")
 
     target: dict[str, Any] = {
@@ -331,7 +363,8 @@ def migrate_config(source: dict[str, Any]) -> dict[str, Any]:
     legacy_root = {
         key: value
         for key, value in source.items()
-        if key not in {"spec_version", "settings", "name", "description", "runtime"}
+        if key
+        not in {"spec_version", "settings", "name", "description", "runtime", "default_validation", "id_field"}
     }
     if legacy_settings or legacy_root:
         target["x-legacy-v0.2"] = {
@@ -339,6 +372,23 @@ def migrate_config(source: dict[str, Any]) -> dict[str, Any]:
             **({"root": legacy_root} if legacy_root else {}),
         }
     return target
+
+
+# A portable glob (Chapter 02): no leading slash, braces, or backslash escapes.
+PORTABLE_GLOB = re.compile(r"[^/{}\\][^{}\\]*")
+
+
+def migrate_exclude(pattern: str, types_folder: str, contracts_folder: str) -> str | None:
+    """The portable glob excluding what a v0.2 exclude pattern excluded, or None."""
+    if not any(character in pattern for character in "/*?["):
+        # A bare name excluded that root path and everything below it.
+        if pattern.startswith(".") or pattern in {"node_modules", types_folder, contracts_folder}:
+            return None
+        return f"{pattern}/**"
+    if "/" not in pattern:
+        # A wildcard pattern without a slash matched file names at any depth.
+        return f"**/{pattern}"
+    return pattern
 
 
 def type_matches_types_folder(match: Any) -> bool:

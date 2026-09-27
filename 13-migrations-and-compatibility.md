@@ -17,6 +17,34 @@ Migration analyzes the complete collection. Before a write, tooling MUST
 validate every existing record against the proposed target types and include
 incompatible records in the report.
 
+## Configuration
+
+Configuration migration preserves which files are records and how they
+validate and resolve:
+
+- `spec_version` becomes `0.3.0`.
+- `settings.default_validation`, or a top-level `default_validation`, becomes
+  `settings.validation`. When neither is set, migration writes
+  `validation: warn`, the v0.2 default.
+- A top-level `id_field` moves under `settings`. When neither is set,
+  migration writes `id_field: id`, because v0.2 resolved wikilinks by ID by
+  default.
+- `settings.extensions` becomes `settings.record_extensions`, without leading
+  dots and including `md`.
+- `settings.include_subfolders: false` adds the exclusion `*/**`, and the
+  setting is removed.
+- Each `settings.exclude` pattern becomes a portable glob that excludes the
+  same paths. A bare name without `/`, `*`, `?`, or `[` excluded that root
+  path and everything below it, so `archive` becomes `archive/**`. A pattern
+  without `/` that contains a wildcard matched file names at any depth, so
+  `*.draft.md` becomes `**/*.draft.md`. A pattern containing `/` is kept.
+  Patterns that only repeat the built-in exclusions from Chapter 02 or name the
+  types or contracts folder may be dropped. A pattern that is not a portable
+  glob is reported for review.
+- Other v0.2 settings, such as `default_strict` and the write options, have no
+  v0.3 meaning. Migration moves them under `x-legacy-v0.2` in the configuration
+  and migrates strictness into each type's `additionalProperties`.
+
 ## Type Mapping
 
 | v0.2.x feature | v0.3 destination |
