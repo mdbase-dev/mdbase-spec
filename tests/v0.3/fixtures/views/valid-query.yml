@@ -4,7 +4,7 @@ context:
     path: projects/alpha.md
 projections:
   is_overdue:
-    expr: 'present.record.due && due < today() && status != "done"'
+    expr: 'due != null && due < today() && status != "done"'
 where: 'status != "done"'
 select:
   - title

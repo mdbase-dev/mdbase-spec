@@ -109,14 +109,15 @@ order_by:
 | Goal | Start here |
 | --- | --- |
 | Understand the model | [Overview](./00-overview.md) and [Concepts](./01-concepts.md) |
-| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [First-Class Contracts](./05-data-contracts.md) |
+| Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [Data Contracts](./05a-data-contracts.md) |
 | Validate, query, or save views over records | [JSON Schema Profile](./06-json-schema-profile.md), [CEL Profile](./10-cel-profile.md), and [Querying](./11-querying.md) |
 | Add links or managed fields | [Links](./08-links.md) and [Lifecycle](./09-lifecycle.md) |
 | Connect applications | [Event and Action Interoperability](./interop/0.1.md) |
-| Define durable automation | [Durable Runtime Companion](./13-runtime-contracts.md), [Workflow Execution](./14-workflows.md), and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
-| Migrate a v0.2 collection | [Migrations And Compatibility](./15-migrations-and-compatibility.md) |
+| Define durable automation | [Durable Runtime Companion Profile](./runtime/0.2.md) and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
+| Migrate a v0.2 collection | [Migrations And Compatibility](./13-migrations-and-compatibility.md) |
+| Use Obsidian Bases views | [Obsidian Bases adapter](./adapters/obsidian-bases.md) |
 | Exchange typed events and actions | [Event/action interoperability profile 0.1](./interop/0.1.md) and [canonical interoperability schemas](./schemas/interop/v0.1/) |
-| Build a conforming tool | [Conformance](./16-conformance.md), the [portable interoperability testbed](./testbed/v0.1/), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
+| Build a conforming tool | [Conformance](./14-conformance.md), the [portable interoperability testbed](./testbed/v0.1/), [canonical schemas](./schemas/v0.3/), and [test fixtures](./tests/v0.3/) |
 
 ## Implementations
 

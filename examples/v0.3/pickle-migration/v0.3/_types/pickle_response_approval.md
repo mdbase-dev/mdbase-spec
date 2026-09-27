@@ -47,9 +47,12 @@ collection:
       scope: collection
 lifecycle:
   on_create:
+  - if: '!has(raw.id)'
     set:
       id:
         ulid: true
+  - if: '!has(raw.responded_at)'
+    set:
       responded_at:
         now: true
 ---

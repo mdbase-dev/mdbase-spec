@@ -2,7 +2,7 @@ name: "v0.3 Pickle collection migration conformance"
 spec_version: "0.3.0"
 fixture_set: migration
 category: migration
-spec_ref: "v0.3/15"
+spec_ref: "v0.3/13"
 
 groups:
   - name: "Pickle built-in type migration"

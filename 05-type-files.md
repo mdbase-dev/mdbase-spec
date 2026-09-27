@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A type file connects three parts of the mdbase model:
+A type file connects four parts of the mdbase model:
 
 - a rule for selecting records
 - a JSON Schema for validating their persisted frontmatter
@@ -145,8 +145,6 @@ The following top-level sections are defined by v0.3:
 | `match` | select records for inferred type membership |
 | `collection` | define Markdown-aware collection semantics |
 | `lifecycle` | assign managed values during mutations |
-| `runtime` | attach runtime annotations to the type |
-| `migrations` | declare explicit type-version migration steps |
 | `implements` | declare exact, schema-validated data contract implementations |
 
 Portable type-file validation accepts the core sections and `x-*` extension

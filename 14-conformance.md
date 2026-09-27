@@ -1,4 +1,4 @@
-# 16. Conformance
+# 14. Conformance
 
 ## Conformance Profiles
 
@@ -8,13 +8,15 @@ queries, writes, runtime preflight, workflow execution, and watching.
 
 | Profile | Purpose |
 | --- | --- |
-| Core Read | discover collections, parse records, load types and data contracts, and validate JSON Schema |
+| Core Read | discover collections, parse records, load types, match records, and validate JSON Schema |
 | Collection Semantics | apply defaults, uniqueness, path policy, multi-type composition, and collection diagnostics |
+| Data Contracts | load contracts, resolve type implementations, compute digests, and project contract views |
 | CEL | compile and evaluate the shared mdbase CEL language and host contract |
 | CEL Match | evaluate `match.expr` against raw candidate records |
 | Query | evaluate contextual CEL filters, projections, grouping, summaries, and query envelopes |
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
+| Type Packs | assess and transactionally apply managed type packs |
 | Lifecycle | apply standard managed-field policy during writes |
 | Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
 | Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
@@ -26,15 +28,17 @@ Normative profile IDs and dependencies are:
 | --- | --- |
 | `core_read` | none |
 | `collection_semantics` | `core_read` |
+| `data_contracts` | `core_read` |
 | `cel` | none |
 | `cel_match` | `core_read`, `cel` |
-| `cel_query` | `core_read`, `cel` |
+| `cel_query` | `collection_semantics`, `cel` |
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
+| `type_packs` | `data_contracts`, `core_write` |
 | `lifecycle` | `core_write`, `cel` |
 | `event_action_interop/0.1` | none |
-| `runtime/0.2` | `core_read`, `event_action_interop/0.1`, `cel` |
-| `watch` | `core_read` |
+| `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` |
+| `watch` | `collection_semantics` |
 
 An implementation claims a profile after passing every required behavior and
 test for that profile. `optional_features` records additional work outside the
@@ -131,17 +135,22 @@ details: {}
 forward-slash form. `field` uses JSON Pointer or an explicitly identified
 frontmatter selector. Implementations MAY add fields under `x-*`.
 
-The v0.3 core codes include `unsupported_profile`, `type_conflict`,
+The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
+`unsupported_profile`, `unsupported_feature`, `invalid_frontmatter`,
+`expression_compile_error`, `expression_evaluation_error`,
+`projection_shadowed`, `link_not_found`, `type_conflict`,
 `type_membership_changed`, `path_value_missing`, `schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
 `lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
 `context_not_found`, `context_required`, `context_type_mismatch`,
 `view_not_found`, `invalid_view`, `unsupported_presentation`,
-`invalid_data_contract`, `data_contract_not_found`,
-`data_contract_conflict`, `data_contract_version_mismatch`,
-`data_contract_binding_invalid`, `data_contract_field_invalid`, and
-`data_contract_record_invalid`. Runtime profile 0.2 reuses interoperability
-codes such as `unknown_contract`, `contract_digest_conflict`, `no_provider`,
+`invalid_data_contract`, `data_contract_not_found`, `data_contract_conflict`,
+`data_contract_version_mismatch`, `data_contract_binding_invalid`,
+`data_contract_field_invalid`, `data_contract_record_invalid`,
+`invalid_type_pack`, `type_pack_conflict`, `type_pack_apply_failed`,
+`invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
+06. Runtime profile 0.2 reuses interoperability codes such as
+`unknown_contract`, `contract_digest_conflict`, `no_provider`,
 `ambiguous_provider`, and `capability_denied`, and additionally defines
 `event_source_unavailable`, `idempotency_unavailable`, `cursor_expired`,
 `stale_lease`, `invalid_run_transition`, `outcome_indeterminate`, and
@@ -154,16 +163,44 @@ Core Read implementations MUST:
 - identify a collection by `mdbase.yaml`
 - scan records using collection-relative forward-slash paths
 - load and validate v0.3 type files
-- load exact-version data contracts and validate type `implements` entries
-- expose deterministic contract and implementation digests
-- project and validate contract views when a record is accessed through an
-  implementation
+- skip the contracts folder and ignore type `implements` sections when
+  `data_contracts` is not claimed
 - validate embedded JSON Schema against the v0.3 profile
 - select explicit types and evaluate structured inferred match rules
 - validate raw frontmatter independently against every matched schema
 - reject a type that requires an unsupported optional profile with
   `unsupported_profile`
 - report diagnostics in the canonical machine-readable shape
+
+## Data Contracts Requirements
+
+Data Contracts implementations MUST:
+
+- load contract files and register them by exact ID and version
+- report `data_contract_conflict` for one ID and version with different digests
+- resolve every type `implements` version requirement with the portable grammar
+- validate field mappings and bindings against the resolved contract
+- expose deterministic contract and implementation digests
+- project and validate contract views when a record is accessed through an
+  implementation
+- return every conforming implementation of a contract rather than selecting
+  one
+
+## Type Packs Requirements
+
+Type Packs implementations MUST:
+
+- validate pack manifests, safe resource paths, and resource digests
+- read and write `mdbase.lock.yaml` deterministically
+- produce a read-only assessment with an exact resource diff and
+  `assessment_digest`
+- honor managed and seed resource ownership, explicit adoption, and target
+  overrides
+- recheck the assessment inside the mutation boundary and fail with
+  `concurrent_modification` when it changed
+- commit resources, reviewed type setups, and the lock as one recoverable
+  transaction
+- treat reapplying a current pack as a no-op
 
 ## Collection Semantics Requirements
 
@@ -182,9 +219,15 @@ Collection Semantics implementations MUST:
 CEL implementations MUST:
 
 - compile and evaluate portable CEL source used by a claimed feature context
+  with standard CEL semantics
+- support the CEL optional types extension
 - supply the system bindings defined for that context in Chapter 10
 - preserve the mdbase missing, null, raw, and effective-value contract
-- provide `now()`, `today()`, and `duration()` with declared timezone behavior
+- type `format: date-time` values as timestamps and provide `now()`,
+  `today()`, the date conversions, and the date-string methods with declared
+  timezone behavior
+- provide the `lower()` and `upper()` text helpers with Unicode default case
+  mappings
 - enforce and report expression, evaluation, and traversal limits
 - distinguish compilation diagnostics from evaluation diagnostics
 
@@ -221,6 +264,23 @@ Query implementations MUST:
 - expose raw and effective frontmatter when requested
 - report per-record evaluation errors and continue evaluating remaining records
 
+## Collection Projection Optional Feature
+
+An implementation advertises `collection_projections` through
+`optional_features` when it:
+
+- evaluates `collection.projections` in the query context after read defaults
+- exposes projection values in effective reads, `effective_frontmatter`, and
+  queries under their declared field names
+- keeps persisted fields and reports `projection_shadowed` for a projection
+  with the same name
+- evaluates projections that reference each other in dependency order and
+  rejects cycles when loading the type
+- leaves a failed projection absent and reports an expression diagnostic
+
+An implementation that does not advertise it reports `unsupported_feature` as
+described in Chapter 07.
+
 ## View Record Optional Feature
 
 An implementation advertises `view_records` through `optional_features` when it:
@@ -243,19 +303,8 @@ A tool MAY advertise supported presentation identifiers separately in
 `optional_features`.
 
 An implementation advertises `obsidian_bases_views` through
-`optional_features` when it:
-
-- discovers `.base` sources selected by `x-obsidian.bases.include`
-- assigns deterministic named-view IDs and source revisions
-- parses filters and formulas before candidate evaluation
-- evaluates the Obsidian Bases expression dialect, including formula
-  dependencies, file and link values, date and duration behavior, methods, and
-  coercions
-- combines source and named-view filters with AND
-- applies source order, sort, group, limit, and presentation metadata
-- exposes the source's ordered properties and display names
-- returns the saved-view headless result envelope
-- keeps `.base` sources authoritative throughout discovery and execution
+`optional_features` when it meets the requirements of the
+[Obsidian Bases adapter](./adapters/obsidian-bases.md).
 
 An implementation advertises `writable_view_sources` through
 `optional_features` when it:
@@ -269,12 +318,6 @@ An implementation advertises `writable_view_sources` through
 - preserves source-format extension data supplied by the caller
 - makes successful mutations visible to subsequent list and execute operations
 
-Conformance suites for `obsidian_bases_views` MUST include an oracle corpus
-captured from the supported Obsidian expression environment. Each case records
-the expression, evaluation context, expected value or error, and source
-environment version. Known upstream divergences are identified individually in
-the corpus.
-
 ## Links Requirements
 
 Links implementations MUST:
@@ -282,7 +325,9 @@ Links implementations MUST:
 - parse wikilinks, Markdown links, and bare path link values
 - resolve collection-relative and file-relative paths safely
 - enforce `collection.links.target_type` and `validate_exists`
-- expose `file.links`, `file.embeds`, and `file.tags`
+- resolve simple wikilinks by filename, using ID resolution only when
+  `settings.id_field` is configured
+- expose `file.links`, `file.embeds`, `file.tags`, and `file.backlinks`
 - provide the CEL link helpers from Chapter 10
 - bound `asFile()` traversal
 
@@ -294,6 +339,10 @@ Core Write implementations MUST:
 - preserve unrelated Markdown body content where possible
 - reject paths that escape the collection root
 - enforce `if_revision` and report common concurrency conflicts
+- persist null patch values as explicit null and remove `unset` keys
+- apply the validation level to record validation issues
+- execute batches atomically by default, support `allow_partial` and
+  `dry_run`, reject duplicate batch paths, and report per-operation results
 - return the canonical operation envelope and final record revision
 - update derived state before reporting a successful mutation
 
@@ -301,68 +350,27 @@ Core Write implementations MUST:
 
 Lifecycle implementations MUST:
 
-- support `on_create` and `on_update`
+- support `on_create` and `on_update` with single-action and action-list forms
 - support `now`, `today`, `uuid`, `ulid`, `slugify`, `copy`, and `literal`
   value providers
+- apply actions in order with the assignment semantics of Chapter 09
 - evaluate lifecycle guards in the lifecycle CEL context
 - run lifecycle before final record validation
 - evaluate membership once after lifecycle and report
   `type_membership_changed`
 - report conflicts between matched lifecycle policies
 
-## Runtime Contracts Requirements
+## Event/Action Interoperability Requirements
 
-Runtime Contracts implementations MUST:
+The `event_action_interop/0.1` profile, its independently claimable roles, and
+its required scenarios are defined by the
+[event/action interoperability profile](./interop/0.1.md). Its claims validate
+against `schemas/interop/v0.1/conformance-claim.schema.json`.
 
-- load provider, action, event, capability, policy, and workflow contract records
-- represent implicit contracts supplied by a runtime
-- compose the effective registry deterministically
-- validate strict contract shapes and `x-*` extension names
-- validate embedded action and event JSON Schemas
-- validate event envelopes, payloads, action inputs, and action outputs
-- resolve workflow event, action, capability, and provider references
-- reject duplicate trigger and step IDs within a workflow
-- resolve provider listings and runtime-policy workflow and capability selectors
-- fail preflight for denied required capabilities
-- fail preflight with `executor_not_selected` when policy selects no executor
-- include capabilities supplied by providers, actions, and policy in the
-  effective capability set
-- materialize implicit contracts when claiming materialization support
+## Durable Runtime Requirements
 
-This profile covers registry composition, contract validation, authorization
-preflight, and materialization. Workflow execution has its own profile.
-
-## Workflow Requirements
-
-Workflow implementations MUST:
-
-- follow the preflight and event-to-run sequence in Chapter 14
-- atomically journal, deduplicate, and admit delivered events
-- apply trigger debounce and minimum-interval admission
-- evaluate workflow variables and detect dependency cycles
-- evaluate trigger, workflow, and step conditions in their defined contexts
-- evaluate step inputs and iteration in deterministic order
-- validate evaluated inputs before dispatch
-- perform dispatch-time capability authorization
-- apply execution mode and runtime-policy executor selection
-- reserve idempotency keys with the required executor scope
-- apply concurrency policy, run limits, and `on_error`
-- pin canonical workflow, registry, action, and policy revisions
-- claim work with bounded leases and reject stale lease writes
-- persist stable invocation IDs and dispatch intents before provider calls
-- recover idempotent attempts and mark ambiguous non-idempotent attempts
-  `indeterminate`
-- record standard run, step, attempt, receipt, and checkpoint results
-- validate action outputs and emitted events
-- commit action results and emitted-event admissions atomically
-- provide generation-safe one-shot timer upsert, cancel, fire, and missed-run
-  behavior when claiming canonical timer support
-- report unsupported actions, capabilities, and unsafe execution state through
-  runtime diagnostics
-
-Action handlers are runtime-specific contracts in the effective registry. A
-claim lists its tested handler set under `optional_features` or associated
-evidence.
+The `runtime/0.2` profile's requirements are defined by the
+[durable runtime companion profile](./runtime/0.2.md).
 
 ## Watch Requirements
 
@@ -389,8 +397,12 @@ Record notifications use these change kinds:
 - `record_deleted`
 - `record_renamed`
 
-Config, type, and runtime-aware implementations also use `config_changed`,
-`type_changed`, and `runtime_registry_changed` as applicable. A rename may be
+Implementations also report `config_changed` and `type_changed` notifications.
+An implementation that also claims `data_contracts` reports `contract_changed`
+with the contract file `path` after the contract registry and type
+implementations have been re-resolved. Implementations MAY also report
+`schema_changed`, `view_changed`, and `lock_changed`, each with a `path`, for
+referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename may be
 reported as `record_deleted` followed by `record_created` when the host cannot
 establish file identity.
 
@@ -406,13 +418,10 @@ Watch implementations MUST:
   collection boundaries as Core Read
 - report logical changes caused by external file updates and core write
   operations
-- publish record, config, and type notifications after derived read and query
-  state reflects the change
+- publish record, config, type, and contract notifications after derived read
+  and query state reflects the change
 - include both paths in a detected rename
 - preserve notification order for the same record or configuration subject
 - coalesce duplicate host notifications for one logical change and report the
   final observed state
 - isolate listener failures so later notifications continue to be delivered
-
-An implementation that also claims Runtime Contracts reports effective registry
-changes after registry recomposition through `runtime_registry_changed`.

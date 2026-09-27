@@ -26,14 +26,9 @@ claim_profiles:
       - json_schema_annotations
       - json_schema_formats
       - local_schema_ref
-      - data_contract_discovery
-      - data_contract_schema_validation
-      - data_contract_implementation_validation
-      - data_contract_projection
-      - data_contract_digest
-      - data_contract_implementation_digest
-      - data_contract_conflict
       - explicit_and_basic_matching
+      - builtin_exclusions
+      - portable_globs
       - raw_schema_validation
       - machine_readable_diagnostics
   - id: collection_semantics
@@ -45,6 +40,17 @@ claim_profiles:
       - simple_path_policy
       - display_metadata
       - independent_multi_type_validation
+  - id: data_contracts
+    status: coverage_complete
+    requires: [core_read]
+    requirements:
+      - data_contract_discovery
+      - data_contract_schema_validation
+      - data_contract_implementation_validation
+      - data_contract_projection
+      - data_contract_digest
+      - data_contract_implementation_digest
+      - data_contract_conflict
   - id: cel
     status: draft
     requires: []
@@ -52,7 +58,10 @@ claim_profiles:
       - portable_evaluation
       - context_bindings
       - missing_and_null
+      - standard_error_semantics
+      - optional_types
       - date_and_duration
+      - text_helpers
       - operational_limits
       - expression_diagnostics
   - id: cel_match
@@ -66,7 +75,7 @@ claim_profiles:
       - match_evaluation_diagnostics
   - id: cel_query
     status: draft
-    requires: [core_read, cel]
+    requires: [collection_semantics, cel]
     requirements:
       - query_context
       - invocation_context
@@ -78,10 +87,21 @@ claim_profiles:
   - id: links
     status: draft
     requires: [collection_semantics, cel]
-    requirements: []
+    requirements:
+      - filename_resolution
+      - configured_id_resolution
+      - frontmatter_wikilinks
+      - backlinks
   - id: core_write
     status: draft
     requires: [collection_semantics]
+    requirements:
+      - null_and_unset
+      - batch_preflight
+      - validation_levels
+  - id: type_packs
+    status: draft
+    requires: [data_contracts, core_write]
     requirements:
       - transactional_type_pack_preflight
       - managed_type_pack_provenance
@@ -94,7 +114,8 @@ claim_profiles:
   - id: lifecycle
     status: draft
     requires: [core_write, cel]
-    requirements: []
+    requirements:
+      - ordered_actions
   - id: event_action_interop/0.1
     status: draft
     requires: []
@@ -111,7 +132,7 @@ claim_profiles:
       - cancellation_and_unload
   - id: runtime/0.2
     status: draft
-    requires: [core_read, event_action_interop/0.1, cel]
+    requires: [data_contracts, event_action_interop/0.1, cel]
     requirements:
       - standard_runtime_pack
       - ordinary_record_contract_implementations
@@ -131,7 +152,7 @@ claim_profiles:
       - one_shot_timers
   - id: watch
     status: draft
-    requires: [core_read]
+    requires: [collection_semantics]
     requirements:
       - notification_shape
       - collection_scope
@@ -157,18 +178,20 @@ fixture_sets:
       - migration/pickle-collection-migration.yaml
   - id: core_collection
     description: v0.3 type wrappers, JSON Schema validation, matching, defaults, links, uniqueness, and paths.
-    coverage_targets: [core_read, collection_semantics, links, core_write]
+    coverage_targets: [core_read, collection_semantics, links, core_write, lifecycle]
     files:
       - core/core-collection.yaml
       - core/optional-membership.yaml
+      - core/core-write.yaml
+      - core/links-and-discovery.yaml
   - id: data_contracts
     description: Data contracts, type implementations, projections, stable digests, and conflicts.
-    coverage_targets: [core_read]
+    coverage_targets: [data_contracts]
     files:
       - data-contracts/data-contracts.yaml
   - id: type_packs
     description: Complete type packs validate, report exact diffs, install atomically, and reinstall idempotently.
-    coverage_targets: [core_write]
+    coverage_targets: [type_packs]
     files:
       - type-packs/type-packs.yaml
   - id: lifecycle

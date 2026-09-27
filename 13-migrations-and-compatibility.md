@@ -1,8 +1,8 @@
-# 15. Migrations And Compatibility
+# 13. Migrations And Compatibility
 
 ## Migration Philosophy
 
-v0.3 uses the source model defined by Chapters 01–14. Migration translates
+v0.3 uses the source model defined by Chapters 01–12. Migration translates
 v0.2.x collections into that model and reports features that need adapter-owned
 handling.
 
@@ -16,6 +16,34 @@ Migration tooling should produce:
 Migration analyzes the complete collection. Before a write, tooling MUST
 validate every existing record against the proposed target types and include
 incompatible records in the report.
+
+## Configuration
+
+Configuration migration preserves which files are records and how they
+validate and resolve:
+
+- `spec_version` becomes `0.3.0`.
+- `settings.default_validation`, or a top-level `default_validation`, becomes
+  `settings.validation`. When neither is set, migration writes
+  `validation: warn`, the v0.2 default.
+- A top-level `id_field` moves under `settings`. When neither is set,
+  migration writes `id_field: id`, because v0.2 resolved wikilinks by ID by
+  default.
+- `settings.extensions` becomes `settings.record_extensions`, without leading
+  dots and including `md`.
+- `settings.include_subfolders: false` adds the exclusion `*/**`, and the
+  setting is removed.
+- Each `settings.exclude` pattern becomes a portable glob that excludes the
+  same paths. A bare name without `/`, `*`, `?`, or `[` excluded that root
+  path and everything below it, so `archive` becomes `archive/**`. A pattern
+  without `/` that contains a wildcard matched file names at any depth, so
+  `*.draft.md` becomes `**/*.draft.md`. A pattern containing `/` is kept.
+  Patterns that only repeat the built-in exclusions from Chapter 02 or name the
+  types or contracts folder may be dropped. A pattern that is not a portable
+  glob is reported for review.
+- Other v0.2 settings, such as `default_strict` and the write options, have no
+  v0.3 meaning. Migration moves them under `x-legacy-v0.2` in the configuration
+  and migrates strictness into each type's `additionalProperties`.
 
 ## Type Mapping
 
@@ -57,15 +85,18 @@ a report explaining the difference.
 
 ## Generated Fields
 
-Generated fields migrate to lifecycle:
+Generated fields migrate to lifecycle. v0.2 generated values apply only when the
+field is missing, while lifecycle `set` always assigns, so migration adds a
+`!has(raw.field)` guard to preserve that rule:
 
 | v0.2.x generated | v0.3 lifecycle |
 | --- | --- |
-| `now` | `on_create.set.field: { now: true }` |
-| `now_on_write` | `on_update.set.field: { now: true }` |
-| `uuid` | `{ uuid: true }` |
-| `ulid` | `{ ulid: true }` |
-| `slugify from field` | `{ slugify: field }` |
+| `now` | `on_create: [{ if: '!has(raw.field)', set: { field: { now: true } } }]` |
+| `now_on_write` | unguarded `on_create` and `on_update` actions setting `{ now: true }` |
+| `uuid` | guarded `on_create` action setting `{ uuid: true }` |
+| `ulid` | guarded `on_create` action setting `{ ulid: true }` |
+| `slugify from field` | guarded `on_create` action setting `{ slugify: source }` |
+| `from field` without a transform | guarded `on_create` action setting `{ copy: source }` |
 
 ## Computed Fields
 
@@ -84,79 +115,6 @@ Current mdbase expressions migrate to CEL where possible.
 Tool-specific expression dialects are adapter concerns. Tools may translate
 them to CEL for portable storage and translate them back for user interfaces or
 exports.
-
-## Obsidian Bases Views
-
-Obsidian `.base` files are external saved-view sources. A collection provider
-discovers configured sources and exposes them through the saved-view operations
-in Chapter 12. Core Read continues to discover records through the collection's
-record extensions.
-
-Collections enable discovery with a namespaced configuration section:
-
-```yaml
-x-obsidian:
-  bases:
-    include:
-      - TaskNotes/Views/**/*.base
-    create_folder: TaskNotes/Views
-    default_for_new_views: true
-```
-
-`include` contains collection-relative glob patterns. The provider MUST apply
-the same path-boundary and symlink protections used for record discovery.
-`create_folder` identifies the preferred location for new Obsidian sources.
-`default_for_new_views` makes that source format the collection's default when
-a view-creation interface offers no explicit format. Providers advertising
-write support use these values when creating a source.
-
-Write-capable providers validate the complete `.base` document before a
-source operation commits it. They preserve unknown top-level keys, view keys,
-property metadata, formulas, and presentation options supplied in the
-document. A source editor can therefore modify the structures it understands
-while round-tripping the remainder.
-
-The `.base` file remains authoritative for a discovered Obsidian source.
-`list_views` returns `source.format: obsidian.base`, a revision derived from the
-source bytes, and a stable named-view ID for each contained view. Stable IDs are
-derived deterministically from view names when the source format supplies no
-ID. Collisions receive deterministic source-order suffixes.
-
-The structural mapping is:
-
-| Obsidian Bases | mdbase view record |
-| --- | --- |
-| global `filters` | `query.where` |
-| view `filters` | named-view `where`, combined with the shared filter |
-| `formulas` | `query.projections` |
-| `formula.name` | `projection.name` |
-| `properties` | property metadata |
-| view `order` | `select` order |
-| view `sort` | `order_by` |
-| `groupBy` | `group_by` |
-| custom and property summaries | `summary_functions` and `summaries` |
-| view `type` | `presentation.type` |
-| plugin view keys | presentation options or `x-*` extension data |
-
-Executing an Obsidian source evaluates its filters and formulas with Obsidian
-Bases expression semantics. The adapter parses the source dialect into an
-inspectable syntax tree and applies the source dialect's value coercion, date,
-link, file, formula, and error behavior. Translation to canonical CEL is an
-export operation and succeeds only when behavior is preserved. Translation
-diagnostics identify unsupported expressions, functions, coercions, or
-renderer features. Lossless source and round-trip metadata may be retained
-under `x-obsidian`.
-
-Execution returns the headless result envelope from Chapter 12. Selected and
-presentation-mapped values appear under each row's `values`; renderer metadata
-may approximate layout while retaining the source's filtering, formula,
-ordering, grouping, and pagination semantics.
-
-Obsidian placement state maps to the portable invocation context rather than to
-query semantics: opening a Base directly supplies the view definition, an
-embed supplies its embedding record, and an active-file interface supplies its
-active record. The adapter resolves that host state into an explicit invocation
-context before calling the query or view executor.
 
 ## Runtime Workflows
 

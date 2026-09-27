@@ -2,7 +2,7 @@ name: "v0.3 transactional type-pack conformance"
 spec_version: "0.3.0"
 fixture_set: type_packs
 category: type_packs
-spec_ref: "v0.3/05A, v0.3/16"
+spec_ref: "v0.3/05A, v0.3/14"
 
 groups:
   - name: "complete installation and idempotency"
@@ -30,11 +30,11 @@ groups:
           lock_exists: true
           implementations: 1
         covers:
-          - core_write.transactional_type_pack_preflight
-          - core_write.exact_type_pack_diff
-          - core_write.idempotent_type_pack_apply
-          - core_write.managed_type_pack_provenance
-          - core_write.managed_type_pack_assessment
+          - type_packs.transactional_type_pack_preflight
+          - type_packs.exact_type_pack_diff
+          - type_packs.idempotent_type_pack_apply
+          - type_packs.managed_type_pack_provenance
+          - type_packs.managed_type_pack_assessment
 
   - name: "preflight failure is atomic"
     setup:
@@ -55,7 +55,7 @@ groups:
             code: invalid_type_pack
           targets_exist: [false, false]
         covers:
-          - core_write.type_pack_atomicity
+          - type_packs.type_pack_atomicity
 
   - name: "target conflicts are atomic"
     setup:
@@ -78,7 +78,7 @@ groups:
             code: type_pack_conflict
           targets_exist: [true, false]
         covers:
-          - core_write.type_pack_atomicity
+          - type_packs.type_pack_atomicity
 
   - name: "managed upgrade conflict and concurrency"
     setup:
@@ -99,7 +99,7 @@ groups:
           applicable: false
           actions: [conflict, unchanged]
         covers:
-          - core_write.managed_type_pack_assessment
+          - type_packs.managed_type_pack_assessment
       - id: type-pack-stale-assessment
         name: "apply rejects a target changed after assessment without writing"
         operation: apply_type_pack
@@ -111,7 +111,7 @@ groups:
           error:
             code: concurrent_modification
         covers:
-          - core_write.managed_type_pack_concurrency
+          - type_packs.managed_type_pack_concurrency
 
   - name: "explicit adoption of legacy definitions"
     setup:
@@ -138,4 +138,4 @@ groups:
           lock_exists: true
           implementations: 1
         covers:
-          - core_write.managed_type_pack_adoption
+          - type_packs.managed_type_pack_adoption

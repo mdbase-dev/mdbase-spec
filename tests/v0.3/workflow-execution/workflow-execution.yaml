@@ -2,7 +2,7 @@ name: "v0.3 workflow execution and recovery conformance"
 spec_version: "0.3.0"
 fixture_set: workflow_execution
 category: workflow
-spec_ref: "v0.3/13, v0.3/14"
+spec_ref: "runtime/0.2"
 
 groups:
   - name: "durable admission and deterministic execution"

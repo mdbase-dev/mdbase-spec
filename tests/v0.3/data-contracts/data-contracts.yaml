@@ -2,7 +2,7 @@ name: "v0.3 data contract conformance"
 spec_version: "0.3.0"
 fixture_set: data_contracts
 category: data_contracts
-spec_ref: "v0.3/02, v0.3/04, v0.3/05, v0.3/05A, v0.3/06, v0.3/16"
+spec_ref: "v0.3/02, v0.3/04, v0.3/05, v0.3/05A, v0.3/06, v0.3/14"
 
 groups:
   - name: "contract artifacts and implementations"
@@ -16,9 +16,9 @@ groups:
         expect:
           valid: true
         covers:
-          - core_read.data_contract_discovery
-          - core_read.data_contract_schema_validation
-          - core_read.data_contract_implementation_validation
+          - data_contracts.data_contract_discovery
+          - data_contracts.data_contract_schema_validation
+          - data_contracts.data_contract_implementation_validation
 
       - id: data-contract-projection
         name: "a valid record projects through the declared field map"
@@ -30,7 +30,7 @@ groups:
         expect:
           valid: true
         covers:
-          - core_read.data_contract_projection
+          - data_contracts.data_contract_projection
 
       - name: "JSON Pointer maps JSON-LD and escaped property names"
         operation: data_contract_implementation_validate
@@ -58,6 +58,15 @@ groups:
         expect:
           valid: false
           error_contains: "required contract field"
+
+      - name: "a type implements each contract ID at most once"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/duplicate-implementation-type.md"
+        expect:
+          valid: false
+          error_contains: "more than once"
 
       - name: "mapped record fields must exist in the type schema"
         operation: data_contract_implementation_validate
@@ -95,7 +104,7 @@ groups:
         expect:
           digest: "sha256:a49d25136bf3024e146017771d068cdf59abfddbcdd1bfbf8010018c7f13f476"
         covers:
-          - core_read.data_contract_digest
+          - data_contracts.data_contract_digest
 
       - id: data-contract-implementation-digest
         name: "implementation digest pins contract, type semantics, and binding"
@@ -104,9 +113,9 @@ groups:
           contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
           type: "examples/v0.3/tasknotes-migration/v0.3/_types/task.md"
         expect:
-          digest: "sha256:54a839d00a740e29bca41e3440f56c84337ffc2f4b79e0c6c618a00455959902"
+          digest: "sha256:b994d1fdbc6e7a787393e033520afbcfbe6b715ae87ab62a09e24981811c4730"
         covers:
-          - core_read.data_contract_implementation_digest
+          - data_contracts.data_contract_implementation_digest
 
       - id: data-contract-conflict
         name: "different content for one exact contract identity conflicts"
@@ -119,7 +128,7 @@ groups:
           valid: false
           error_contains: "data contract conflict"
         covers:
-          - core_read.data_contract_conflict
+          - data_contracts.data_contract_conflict
 
   - name: "multiple local implementations"
     setup:

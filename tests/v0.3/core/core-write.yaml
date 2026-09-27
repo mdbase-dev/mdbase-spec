@@ -1,0 +1,474 @@
+name: "v0.3 core write conformance"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: operations
+spec_ref: "v0.3/03, v0.3/04, v0.3/09, v0.3/12"
+
+groups:
+  - name: "update patch, null, and unset"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                status: { type: [string, "null"] }
+                owner: { type: [string, "null"] }
+                tags:
+                  type: array
+                  items: { type: string }
+                metadata:
+                  type: object
+                  properties:
+                    source: { type: string }
+                    reviewer: { type: string }
+          ---
+      files:
+        notes/a.md: |
+          ---
+          title: A
+          status: open
+          owner: alice
+          tags: [x, y]
+          metadata:
+            source: import
+            reviewer: bob
+          ---
+          Body of A.
+    tests:
+      - name: "a null patch value persists explicit null"
+        id: core_write.patch_null_persists
+        covers: [core_write.null_and_unset]
+        operation: update
+        input:
+          path: "notes/a.md"
+          patch:
+            status: null
+        expect:
+          valid: true
+          frontmatter:
+            title: A
+            status: null
+            owner: alice
+
+      - name: "unset removes top-level and nested keys"
+        id: core_write.unset_removes_keys
+        covers: [core_write.null_and_unset]
+        operation: update
+        input:
+          path: "notes/a.md"
+          unset: [owner, metadata.reviewer]
+        expect:
+          valid: true
+          frontmatter_not_contains: [owner]
+          frontmatter:
+            title: A
+            status: open
+            metadata:
+              source: import
+          body_contains: "Body of A."
+
+      - name: "unsetting a missing key is not an error"
+        id: core_write.unset_missing_key
+        covers: [core_write.null_and_unset]
+        operation: update
+        input:
+          path: "notes/a.md"
+          unset: [does_not_exist]
+        expect:
+          valid: true
+
+      - name: "patching and unsetting the same field is an invalid request"
+        id: core_write.patch_unset_conflict
+        covers: [core_write.null_and_unset]
+        operation: update
+        input:
+          path: "notes/a.md"
+          patch:
+            owner: carol
+          unset: [owner]
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              owner: alice
+
+      - name: "unset cannot address array items"
+        id: core_write.unset_array_item
+        covers: [core_write.null_and_unset]
+        operation: update
+        input:
+          path: "notes/a.md"
+          unset: ["tags[]"]
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+
+  - name: "batch preflight and execution"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                status: { enum: [open, done] }
+          ---
+      files:
+        notes/a.md: |
+          ---
+          title: A
+          status: open
+          ---
+        notes/b.md: |
+          ---
+          title: B
+          status: open
+          ---
+    tests:
+      - name: "an atomic batch writes nothing when any operation fails"
+        id: core_write.batch_atomic
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          operations:
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: update
+              input:
+                path: "notes/b.md"
+                patch: { status: invalid-status }
+        expect:
+          valid: false
+          failed: 1
+          preflight: true
+          operations:
+            - index: 1
+              kind: update
+              valid: false
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              status: open
+
+      - name: "an atomic batch commits every operation together"
+        id: core_write.batch_commit
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          operations:
+            - kind: create
+              input:
+                path: "notes/c.md"
+                type: note
+                frontmatter: { title: C, status: open }
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+        expect:
+          valid: true
+          succeeded: 2
+          failed: 0
+          preflight: false
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              status: done
+
+      - name: "a batch that names one path twice is rejected"
+        id: core_write.batch_duplicate_path
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          operations:
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: rename
+              input:
+                from: "notes/a.md"
+                to: "notes/renamed.md"
+        expect:
+          valid: false
+          error:
+            code: duplicate_batch_path
+
+      - name: "a partial batch commits operations independently"
+        id: core_write.batch_partial
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          allow_partial: true
+          operations:
+            - kind: update
+              input:
+                path: "notes/a.md"
+                patch: { status: done }
+            - kind: update
+              input:
+                path: "notes/b.md"
+                patch: { status: invalid-status }
+        expect:
+          valid: false
+          succeeded: 1
+          failed: 1
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            frontmatter:
+              status: done
+
+      - name: "a dry run reports results without writing"
+        id: core_write.batch_dry_run
+        covers: [core_write.batch_preflight]
+        operation: batch
+        input:
+          dry_run: true
+          operations:
+            - kind: rename
+              input:
+                from: "notes/a.md"
+                to: "notes/renamed.md"
+        expect:
+          valid: true
+          preflight: true
+          dry_run: true
+        verify_after:
+          operation: read
+          input:
+            path: "notes/a.md"
+          expect:
+            valid: true
+
+  - name: "validation levels"
+    setup:
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+          ---
+      files:
+        notes/untitled.md: |
+          ---
+          status: open
+          ---
+        notes/scalar.md: |
+          ---
+          just a string
+          ---
+    tests:
+      - name: "error level rejects a write that leaves the record invalid"
+        id: core_write.validation_error_blocks_write
+        covers: [core_write.validation_levels]
+        operation: update
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: error
+        input:
+          path: "notes/untitled.md"
+          patch: { status: done }
+        expect:
+          valid: false
+          diagnostics:
+            - code: schema_required
+              severity: error
+
+      - name: "warn level writes and reports warnings"
+        id: core_write.validation_warn_allows_write
+        covers: [core_write.validation_levels]
+        operation: update
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: warn
+        input:
+          path: "notes/untitled.md"
+          patch: { status: done }
+        expect:
+          valid: true
+          frontmatter:
+            status: done
+          diagnostics:
+            - code: schema_required
+              severity: warning
+
+      - name: "off level writes without record validation"
+        id: core_write.validation_off
+        covers: [core_write.validation_levels]
+        operation: update
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: "off"
+        input:
+          path: "notes/untitled.md"
+          patch: { status: done }
+        expect:
+          valid: true
+          diagnostics: []
+
+      - name: "reads return invalid records at error level"
+        id: core_write.validation_error_read
+        covers: [core_write.validation_levels]
+        operation: read
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: error
+        input:
+          path: "notes/untitled.md"
+        expect:
+          valid: false
+          frontmatter:
+            status: open
+          diagnostics:
+            - code: schema_required
+              severity: error
+
+      - name: "structured updates never replace non-mapping frontmatter"
+        id: core_write.non_mapping_update
+        covers: [core_write.validation_levels]
+        operation: update
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: "off"
+        input:
+          path: "notes/scalar.md"
+          patch: { title: Scalar }
+        expect:
+          valid: false
+          error:
+            code: invalid_frontmatter
+            details:
+              reason: non_mapping_frontmatter
+
+  - name: "lifecycle assignment order"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        item.md: |
+          ---
+          kind: mdbase.type
+          name: item
+          version: 1
+          match:
+            path_glob: "items/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [id, label]
+              properties:
+                id: { type: string }
+                label: { type: string }
+                slug: { type: string }
+                stamp: { type: string }
+          lifecycle:
+            on_create:
+              - if: '!has(raw.id)'
+                set:
+                  id: { ulid: true }
+              - set:
+                  label: { literal: managed }
+                  slug: { slugify: label }
+              - set:
+                  stamp: { literal: first }
+              - set:
+                  stamp: { literal: second }
+          ---
+    tests:
+      - name: "guarded actions keep caller-supplied values"
+        id: lifecycle.guard_preserves_supplied_value
+        covers: [lifecycle.ordered_actions]
+        operation: create
+        input:
+          path: "items/one.md"
+          type: item
+          frontmatter:
+            id: caller-id
+            label: Caller Label
+        expect:
+          valid: true
+          frontmatter:
+            id: caller-id
+
+      - name: "set always assigns and reads the draft before its action"
+        id: lifecycle.set_overwrites_and_snapshots
+        covers: [lifecycle.ordered_actions]
+        operation: create
+        input:
+          path: "items/two.md"
+          type: item
+          frontmatter:
+            label: Caller Label
+        expect:
+          valid: true
+          frontmatter:
+            label: managed
+            slug: caller-label
+            stamp: second

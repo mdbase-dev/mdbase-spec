@@ -17,7 +17,7 @@
     "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@bufbuild/cel": "^0.6.0",
+    "@marcbachmann/cel-js": "^8.0.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
@@ -25,4 +25,3 @@
     "typescript": "^6.0.3"
   }
 }
-
