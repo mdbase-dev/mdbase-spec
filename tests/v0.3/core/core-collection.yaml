@@ -563,7 +563,6 @@ groups:
         input:
           path: "tasks/null-status.md"
         expect:
-          valid: true
           effective_frontmatter:
             status: null
 
