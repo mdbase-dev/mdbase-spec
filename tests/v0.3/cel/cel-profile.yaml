@@ -207,6 +207,18 @@ groups:
           valid: true
           value: true
 
+      - name: "lower and upper use Unicode case mappings"
+        id: cel.text_case
+        covers:
+          - cel.text_helpers
+        operation: evaluate_cel
+        input:
+          path: "tasks/open.md"
+          expression: '"Éclair Body".lower() == "éclair body" && "Straße".upper() == "STRASSE" && "Mission Body".lower().contains("mission body")'
+        expect:
+          valid: true
+          value: true
+
       - name: "timestamps and durations use standard CEL types"
         id: cel.standard_duration
         covers:

@@ -264,6 +264,24 @@ duration string in seconds, such as `"5400s"`. Typing never changes persisted
 or `effective_frontmatter` values; it applies only to expression evaluation and
 expression results.
 
+## Text Helpers
+
+Standard CEL compares strings exactly. For case-insensitive matching, the
+profile adds two string methods:
+
+| Method | Result |
+| --- | --- |
+| `s.lower()` | `s` with every character mapped to lowercase |
+| `s.upper()` | `s` with every character mapped to uppercase |
+
+Both use the Unicode default full case mappings without locale tailoring, so
+`"Éclair".lower()` is `"éclair"` and `"Straße".upper()` is `"STRASSE"`. A
+case-insensitive search lowercases the text it searches:
+
+```cel
+file.body.lower().contains("mission body")
+```
+
 ## File And Link Helpers
 
 Core Read supplies file metadata and:

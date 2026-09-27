@@ -27,6 +27,8 @@ All notable changes to this specification and conformance suite are documented h
   methods `addDays`, `addMonths`, `addYears`, `daysUntil`, `year`, `month`,
   `day`, and `dayOfWeek`. `duration()` is CEL's standard function. mdbase adds
   no host types and overloads no standard function or operator.
+- Added the `lower()` and `upper()` string methods, with Unicode default case
+  mappings, for case-insensitive matching.
 - A null patch value persists explicit null. Update accepts `unset` to remove
   keys; `fields` and `frontmatter` are no longer aliases of `patch`.
 - Batch is normative: batches are atomic by default and commit as one

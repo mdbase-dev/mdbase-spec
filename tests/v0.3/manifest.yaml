@@ -61,6 +61,7 @@ claim_profiles:
       - standard_error_semantics
       - optional_types
       - date_and_duration
+      - text_helpers
       - operational_limits
       - expression_diagnostics
   - id: cel_match

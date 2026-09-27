@@ -226,6 +226,8 @@ CEL implementations MUST:
 - type `format: date-time` values as timestamps and provide `now()`,
   `today()`, the date conversions, and the date-string methods with declared
   timezone behavior
+- provide the `lower()` and `upper()` text helpers with Unicode default case
+  mappings
 - enforce and report expression, evaluation, and traversal limits
 - distinguish compilation diagnostics from evaluation diagnostics
 
