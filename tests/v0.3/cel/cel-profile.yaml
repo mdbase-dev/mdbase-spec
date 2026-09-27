@@ -428,3 +428,67 @@ groups:
           value:
             path: tasks/card-001.md
             literal: event.data.file.path
+
+  - name: "invocation context links"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        project.md: |
+          ---
+          kind: mdbase.type
+          name: project
+          version: 1
+          match:
+            path_glob: "projects/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                lead: { type: string }
+                sibling: { type: string }
+          collection:
+            links:
+              lead: {}
+              sibling: {}
+          ---
+      files:
+        projects/alpha.md: |
+          ---
+          lead: "[Bob](people/bob.md)"
+          sibling: "[[./beta]]"
+          ---
+        projects/beta.md: |
+          ---
+          title: Beta
+          ---
+        projects/people/bob.md: |
+          ---
+          name: Bob
+          ---
+        tasks/t1.md: |
+          ---
+          title: T1
+          ---
+    tests:
+      - name: "context links resolve relative to the context record"
+        id: cel_query.context_links
+        covers:
+          - cel_query.invocation_context
+          - links.filename_resolution
+        operation: query
+        input:
+          context:
+            this:
+              path: "projects/alpha.md"
+          where: >-
+            file.inFolder("tasks") &&
+            this.lead.asFile() != null &&
+            this.lead.asFile().file.path == "projects/people/bob.md" &&
+            this.sibling.asFile() != null &&
+            this.sibling.asFile().file.path == "projects/beta.md"
+        expect:
+          valid: true
+          results:
+            - path: "tasks/t1.md"
