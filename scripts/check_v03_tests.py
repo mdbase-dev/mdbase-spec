@@ -721,11 +721,19 @@ def run_data_contract_implementation_test(
     if binding_schema is not None:
         Draft202012Validator.check_schema(binding_schema)
 
-    matching = [
+    for_contract = [
         entry
         for entry in type_file.get("implements", []) or []
         if entry.get("contract") == contract.get("id")
-        and entry.get("version") == contract.get("version")
+    ]
+    if len(for_contract) > 1:
+        failures.append(f"type implements data contract {contract.get('id')} more than once")
+        assert_expected_validation_result(failures, expect)
+        return
+    matching = [
+        entry
+        for entry in for_contract
+        if version_satisfies(str(contract.get("version")), str(entry.get("version")))
     ]
     if len(matching) != 1:
         failures.append(

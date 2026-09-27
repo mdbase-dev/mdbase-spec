@@ -59,6 +59,15 @@ groups:
           valid: false
           error_contains: "required contract field"
 
+      - name: "a type implements each contract ID at most once"
+        operation: data_contract_implementation_validate
+        input:
+          contract: "examples/v0.3/tasknotes-migration/v0.3/_contracts/tasknotes.task.md"
+          type: "tests/v0.3/fixtures/data-contracts/duplicate-implementation-type.md"
+        expect:
+          valid: false
+          error_contains: "more than once"
+
       - name: "mapped record fields must exist in the type schema"
         operation: data_contract_implementation_validate
         input:
