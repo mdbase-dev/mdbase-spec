@@ -35,7 +35,9 @@ General rules:
 - Markdown links and bare relative paths resolve relative to the containing
   file's folder.
 - Absolute collection paths use `/` from the collection root.
-- Wikilinks with `/`, `./`, or `../` use path-style resolution.
+- Wikilinks beginning with `./` or `../` resolve relative to the containing
+  file's folder. Other wikilinks containing `/`, such as `[[people/alice]]`,
+  resolve from the collection root.
 - Simple wikilinks without path separators resolve by filename, matching the
   target against record filenames with or without their record extension.
 - When `settings.id_field` is configured, a simple wikilink first tries
