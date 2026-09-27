@@ -56,6 +56,10 @@ All notable changes to this specification and conformance suite are documented h
   becomes `*/**`, exclusions become equivalent portable globs, and settings
   without a v0.3 meaning move under `x-legacy-v0.2`.
 - A type may implement each contract ID only once.
+- Link values resolve relative to the record they were read from, including
+  `this` and records returned by `asFile()`. `file.links` and `file.embeds`
+  hold alias-free link values that resolve as the originals do, with body
+  wikilinks before body Markdown links.
 - Collection projections are the optional feature `collection_projections`.
   Implementations without it still load the type and report
   `unsupported_feature` instead of dropping projections silently.

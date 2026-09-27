@@ -122,6 +122,17 @@ groups:
           valid: true
           value: true
 
+      - name: "file.links holds link values in declared, frontmatter, body order"
+        id: links.link_values
+        covers: [links.frontmatter_wikilinks]
+        operation: evaluate_cel
+        input:
+          path: "tasks/child.md"
+          expression: 'file.links == ["[[alice]]", "[[other]]", "[[alice]]"] && file.embeds == ["[[other]]"]'
+        expect:
+          valid: true
+          value: true
+
       - name: "backlinks list each referring record once in path order"
         id: links.backlinks
         covers: [links.backlinks]

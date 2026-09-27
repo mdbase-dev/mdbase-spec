@@ -299,7 +299,10 @@ The Links profile adds:
 
 `asFile()` returns the resolved record in the same shape as a query candidate:
 its effective fields at top level, plus `record`, `raw`, and `file` members. It
-returns null for an unresolved link. Because field selection on null
+returns null for an unresolved link. A link value resolves relative to the
+record it was read from: the candidate, the `this` context, or a record
+returned by `asFile()`, so `project.asFile().lead.asFile()` resolves `lead`
+from the project's folder. Because field selection on null
 is an error, traversal through a possibly broken link uses a guard or an
 optional:
 

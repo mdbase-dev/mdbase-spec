@@ -91,7 +91,15 @@ target type.
 - body Markdown links
 
 Undeclared frontmatter values in Markdown-link or bare-path syntax are not
-links, because ordinary strings often contain paths. `file.embeds` includes
+links, because ordinary strings often contain paths.
+
+Each entry is a link value that resolves exactly as the original link does,
+without its alias or anchor: a wikilink target is written `[[target]]`, and a
+path that resolves from the containing folder, from a Markdown link, a bare
+path, or a wikilink beginning with `./` or `../`, is written with a leading
+`./` or `../`. For example, `[[people/alice|Alice]]` becomes
+`[[people/alice]]` and `[notes](plan.md#goals)` becomes `./plan.md`.
+`file.embeds` uses the same form. `file.embeds` includes
 Markdown and wikilink embeds in the body.
 
 ## Backlinks
