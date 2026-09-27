@@ -220,3 +220,51 @@ groups:
           issues:
             - code: type_conflict
               field: stamp
+
+  - name: "lifecycle guard value typing"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        reviewed.md: |
+          ---
+          kind: mdbase.type
+          name: reviewed
+          version: 1
+          match:
+            path_glob: "reviews/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+                reviewedAt: { type: string, format: date-time }
+                stale: { type: boolean }
+          lifecycle:
+            on_update:
+              - if: >-
+                  reviewedAt < timestamp("2026-01-01T00:00:00Z") &&
+                  old.?reviewedAt.orValue(null) == reviewedAt
+                set:
+                  stale: { literal: true }
+          ---
+      files:
+        reviews/a.md: |
+          ---
+          title: A
+          reviewedAt: "2025-06-01T09:00:00+10:00"
+          ---
+    tests:
+      - name: "guards see date-time fields, including old values, as timestamps"
+        id: lifecycle.guard_timestamps
+        covers: [lifecycle.ordered_actions]
+        operation: update
+        input:
+          path: "reviews/a.md"
+          patch:
+            title: A revised
+        expect:
+          valid: true
+          frontmatter:
+            stale: true
