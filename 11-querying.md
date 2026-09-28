@@ -303,11 +303,12 @@ distinct message or expression location.
 
 ## Saved View Records
 
-A saved view is an ordinary Markdown record matched by the `view` type. The
-canonical query object above supplies its execution semantics, and the view
-record provides a portable persisted container. The canonical record schema is
-`schemas/v0.3/view.schema.json`; a collection can materialize the corresponding
-`_types/view.md` type file.
+A saved view is an ordinary Markdown record whose matched type implements the
+`mdbase.view` record contract (Chapter 05). The canonical query object above
+supplies its execution semantics, and the view record provides a portable
+persisted container. The contract's record schema is
+`schemas/v0.3/view.schema.json`. The example below uses the canonical `view`
+type, which maps each contract field to the same-named frontmatter field.
 
 One view record contains a shared canonical query fragment and one or more
 named views. The shared fragment is nested under `query` so its `types` member
@@ -350,7 +351,17 @@ A named view is addressed by the view record path or stable record ID plus the
 named-view ID. Human-readable names are not identifiers. Duplicate named-view
 IDs make the view record invalid.
 
-To derive an executable query:
+A tool resolves a view record through its contract view:
+
+1. the record MUST match exactly one type that implements `mdbase.view`; a
+   record that matches none is not a view and produces `view_not_found`, and a
+   record that matches several produces `invalid_view`
+2. the tool constructs the `mdbase.view` contract view through that type's
+   field mapping and validates it as Chapter 05A requires; an invalid contract
+   view produces `invalid_view`
+
+All remaining steps read the contract view, not raw frontmatter. To derive an
+executable query:
 
 1. inherit `query.types` unless the named view supplies `types`
 2. combine `query.where` and named-view `where` with AND
@@ -440,7 +451,8 @@ the adapter contract for Obsidian `.base` sources.
 
 ### Optional support
 
-Core Read implementations treat a canonical view file as an ordinary typed
-record. A tool advertises `view_records` in its `optional_features` claim when
-it resolves, lists, and executes named views with the semantics in this
-chapter.
+Core Read implementations treat a view record as an ordinary typed record. A
+tool advertises `view_records` in its `optional_features` claim when it
+resolves, lists, and executes named views with the semantics in this chapter.
+Because views are identified through the `mdbase.view` contract, a tool that
+advertises `view_records` also claims `data_contracts`.

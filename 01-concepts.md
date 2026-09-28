@@ -97,9 +97,10 @@ Chapter 07.
 
 ## View
 
-A view is an ordinary Markdown record whose matched type is `view`. It stores
-shared query scope and one or more named queries, with optional advisory
-presentation metadata.
+A view is an ordinary Markdown record whose matched type implements the
+`mdbase.view` record contract. It stores shared query scope and one or more
+named queries, with optional advisory presentation metadata. The type name is
+not significant; the contract implementation is.
 
 Views do not introduce a second query engine. A view-aware tool resolves a
 named view to the query model from Chapter 11 and executes it through the Query

@@ -283,9 +283,13 @@ described in Chapter 07.
 
 ## View Record Optional Feature
 
-An implementation advertises `view_records` through `optional_features` when it:
+An implementation advertises `view_records` through `optional_features` when it
+claims `data_contracts` and:
 
-- validates view frontmatter against the canonical view schema
+- identifies view records only through types implementing the `mdbase.view`
+  record contract, never by type name, path, or raw frontmatter value
+- reports `invalid_view` for a record that matches several implementing types
+- validates the `mdbase.view` contract view against the canonical view schema
 - lists view records with stable source and named-view descriptors
 - resolves a stable view-record ID or path plus a stable named-view ID
 - rejects duplicate named-view IDs with `invalid_view`

@@ -64,6 +64,45 @@ groups:
             dialect: json-schema-2020-12
             value:
               type: object
+              properties:
+                id: {}
+                version: {}
+                name: {}
+                query: {}
+                properties: {}
+                views: {}
+          implements:
+            - contract: mdbase.view
+              version: 1.0.0
+              fields:
+                id: id
+                version: version
+                name: name
+                query: query
+                properties: properties
+                views: views
+          ---
+      contracts:
+        mdbase.view.md: |
+          ---
+          kind: mdbase.contract
+          contract_type: record
+          id: mdbase.view
+          version: 1.0.0
+          record_schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [id, version, name, views]
+              properties:
+                id: {}
+                version: {}
+                name: {}
+                description: {}
+                query: {}
+                properties: {}
+                summary_functions: {}
+                views: {}
           ---
       files:
         projects/alpha.md: |
@@ -501,3 +540,155 @@ groups:
           valid: false
           diagnostics:
             - code: invalid_query
+
+  - name: "views are identified through the mdbase.view contract"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      contracts:
+        mdbase.view.md: |
+          ---
+          kind: mdbase.contract
+          contract_type: record
+          id: mdbase.view
+          version: 1.0.0
+          record_schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [id, version, name, views]
+              properties:
+                id: {}
+                version: {}
+                name: {}
+                description: {}
+                query: {}
+                properties: {}
+                summary_functions: {}
+                views: {}
+          ---
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            where:
+              type: note
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                type: { const: note }
+                title: { type: string }
+          ---
+        saved-query.md: |
+          ---
+          kind: mdbase.type
+          name: saved_query
+          version: 1
+          match:
+            where:
+              kind: saved-query
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                kind: { const: saved-query }
+                id: {}
+                version: {}
+                label: {}
+                views: {}
+          implements:
+            - contract: mdbase.view
+              version: 1.0.0
+              fields:
+                id: id
+                version: version
+                name: label
+                views: views
+          ---
+      files:
+        notes/a.md: |
+          ---
+          type: note
+          title: A
+          ---
+        notes/b.md: |
+          ---
+          type: note
+          title: B
+          ---
+        queries/notes.md: |
+          ---
+          kind: saved-query
+          id: note.views
+          version: 1
+          label: Note views
+          views:
+            - id: all
+              name: All notes
+              types: [note]
+              select: [title]
+              order_by:
+                - field: title
+                  direction: desc
+          ---
+        views/unclaimed.md: |
+          ---
+          type: view
+          id: unclaimed.views
+          version: 1
+          name: Unclaimed views
+          views:
+            - id: all
+              name: All
+              types: [note]
+          ---
+    tests:
+      - name: "discovery follows contract implementations and mapped fields"
+        id: views.contract_discovery
+        operation: list_views
+        input: {}
+        expect:
+          valid: true
+          views:
+            - id: note.views
+              name: Note views
+              source:
+                path: queries/notes.md
+                format: mdbase.view
+                writable: true
+              views:
+                - id: all
+                  name: All notes
+          meta:
+            total_count: 1
+
+      - name: "a view record with a custom type name executes through its contract view"
+        id: views.contract_execution
+        operation: execute_view
+        input:
+          path: queries/notes.md
+          view: all
+        expect:
+          valid: true
+          paths: [notes/b.md, notes/a.md]
+          meta:
+            view:
+              path: queries/notes.md
+              id: all
+
+      - name: "type view frontmatter without an implementing type is not a view"
+        id: views.unclaimed_type_value
+        operation: execute_view
+        input:
+          path: views/unclaimed.md
+          view: all
+        expect:
+          valid: false
+          diagnostics:
+            - code: view_not_found

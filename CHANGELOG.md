@@ -10,6 +10,28 @@ All notable changes to this specification and conformance suite are documented h
   competing changes, and publishes atomically. Engines that do not support the
   member must reject the manifest. Records are never migrated this way.
 
+### Saved views are identified through the `mdbase.view` contract
+
+#### Changed
+
+- A view record is a record whose matched type implements the new
+  `mdbase.view` 1.0.0 record contract, rather than a record whose type is named
+  `view`. Collections can implement the contract with any type name, match
+  rule, and field mapping; view-aware tools discover and execute views through
+  the contract view.
+- `view.schema.json` is the contract's record schema. `type` is no longer
+  required or fixed to `view`; it remains an optional string so the canonical
+  `view` type can validate its membership value.
+- `view_records` now requires `data_contracts`. A record that matches no type
+  implementing `mdbase.view` produces `view_not_found`; one matching several
+  implementing types produces `invalid_view`.
+
+#### Migration
+
+- Install the `mdbase.view` type pack, or add `implements: mdbase.view` to an
+  existing `_types/view.md`. Records with `type: view` frontmatter and no
+  implementing type are no longer listed or executed.
+
 ## 0.3.0-rc.4 (2026-09-27)
 
 - Clarify that selected-type creation does not require explicit membership keys.
