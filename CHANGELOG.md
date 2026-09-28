@@ -2,6 +2,14 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## Unreleased
+
+- A seed type resource may declare `upgrade_from: { digest, document }`, a
+  digest-pinned previous publisher baseline. The engine performs a conservative
+  three-way merge of baseline, live type and desired type, fails closed on
+  competing changes, and publishes atomically. Engines that do not support the
+  member must reject the manifest. Records are never migrated this way.
+
 ## 0.3.0-rc.4 (2026-09-27)
 
 - Clarify that selected-type creation does not require explicit membership keys.
