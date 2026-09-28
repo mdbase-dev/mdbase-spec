@@ -58,7 +58,9 @@ from their type files, never from their folder names.
 ## Record Discovery
 
 Tools discover records by recursively scanning the collection root for files
-with configured record extensions. The default extension set is:
+with configured record extensions. Each extension fixes the record's format
+(Chapter 03); `yaml`, `yml`, and `base` files are YAML document records. The
+default extension set is:
 
 ```yaml
 record_extensions: [md]
@@ -71,7 +73,7 @@ Tools MUST:
 - skip the configured types folder
 - skip the configured contracts folder
 - skip `.mdbase/`
-- skip `mdbase.lock.yaml`
+- skip `mdbase.yaml` and `mdbase.lock.yaml`, whatever the record extensions
 - stop scanning at nested collection roots
 - ignore non-record extensions unless configured otherwise
 - skip the built-in exclusions below

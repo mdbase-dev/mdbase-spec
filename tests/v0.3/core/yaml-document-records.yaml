@@ -1,0 +1,126 @@
+name: "v0.3 YAML document records"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: operations
+spec_ref: "v0.3/02, v0.3/03, v0.3/12"
+
+groups:
+  - name: "YAML document records opted in by extension"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+          record_extensions: [md, base]
+      types:
+        base.md: |
+          ---
+          kind: mdbase.type
+          name: obsidian_base
+          version: 1
+          match:
+            path_glob: 'views/**/*.base'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [views]
+              properties:
+                filters: {}
+                views: { type: array }
+          ---
+      files:
+        views/open.base: |
+          filters:
+            and:
+              - 'status == "open"'
+          views:
+            - type: table
+              name: Open
+        notes/a.md: |
+          ---
+          status: open
+          ---
+          A
+    tests:
+      - name: "the whole file is the frontmatter and the body is empty"
+        id: yaml_records.read
+        operation: read
+        input:
+          path: "views/open.base"
+        expect:
+          valid: true
+          types: [obsidian_base]
+          frontmatter:
+            filters:
+              and: ['status == "open"']
+            views:
+              - type: table
+                name: Open
+          body: ""
+
+      - name: "YAML document records are ordinary query candidates"
+        id: yaml_records.query
+        operation: query
+        input:
+          types: [obsidian_base]
+        expect:
+          valid: true
+          paths: [views/open.base]
+
+      - name: "the collection configuration is never a record"
+        id: yaml_records.config_excluded
+        operation: query
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              record_extensions: [md, yaml]
+        input: {}
+        expect:
+          valid: true
+          paths: [notes/a.md]
+
+      - name: "a body for a YAML document record is rejected before any write"
+        id: yaml_records.body_rejected
+        operation: update
+        input:
+          path: "views/open.base"
+          body: "text"
+        expect:
+          valid: false
+          diagnostics:
+            - code: invalid_request
+
+      - name: "a structured patch validates and writes the mapping"
+        id: yaml_records.patch
+        operation: update
+        input:
+          path: "views/open.base"
+          patch:
+            views:
+              - type: cards
+                name: Open
+        expect:
+          valid: true
+        verify_after:
+          operation: read
+          input:
+            path: "views/open.base"
+          expect:
+            frontmatter:
+              views:
+                - type: cards
+                  name: Open
+            body: ""
+
+      - name: "a whole-document replacement is written exactly as supplied"
+        id: yaml_records.document_replacement
+        operation: update
+        input:
+          path: "views/open.base"
+          document: "# kept\nviews:\n  - type: table\n    name: Renamed\n"
+          include_document: true
+        expect:
+          valid: true
+          document: "# kept\nviews:\n  - type: table\n    name: Renamed\n"

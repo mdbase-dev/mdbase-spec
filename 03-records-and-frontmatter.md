@@ -1,5 +1,19 @@
 # 03. Records And Frontmatter
 
+## Record Formats
+
+A record's format is fixed by its file extension:
+
+| Extension | Format |
+| --- | --- |
+| `yaml`, `yml`, `base` | YAML document record |
+| any other record extension | Markdown record |
+
+A collection opts into a format by listing the extension in
+`settings.record_extensions` (Chapter 04). Every format yields the same record
+model: persisted frontmatter, a body, and file metadata. Types, contracts,
+validation, queries, links, and operations apply to every format alike.
+
 ## Markdown Record Structure
 
 A Markdown record may begin with YAML frontmatter delimited by `---` on the
@@ -20,6 +34,27 @@ the file has no frontmatter and the full file is body text.
 
 Whitespace or a blank line before the opening delimiter means there is no
 frontmatter.
+
+## YAML Document Record Structure
+
+The whole file of a YAML document record is its frontmatter. There are no
+delimiters and no body:
+
+```yaml
+filters:
+  and:
+    - 'status == "open"'
+views:
+  - type: table
+    name: Open tasks
+```
+
+An empty file is an empty mapping. The body is always the empty string.
+
+YAML document records let a collection type and query files that another
+application owns, such as Obsidian `.base` files (see the
+[Obsidian Bases adapter](./adapters/obsidian-bases.md)), without a second
+storage, discovery, or authorization model.
 
 ## Frontmatter Value
 
@@ -104,8 +139,8 @@ frontmatter object, not against effective read defaults.
 
 ## Body
 
-The body is the Markdown content after the closing frontmatter delimiter. The
-body is not validated by JSON Schema unless a type explicitly models it through
+The body of a Markdown record is the content after the closing frontmatter
+delimiter. A YAML document record has no body. The body is not validated by JSON Schema unless a type explicitly models it through
 a separate mdbase feature.
 
 The body may participate in queries through `file.body` when body indexing is
@@ -133,6 +168,13 @@ explicitly maps it to ordinary fields.
 ## Serialization
 
 Write-capable tools SHOULD preserve unrelated body text and line ending style.
+
+A YAML document record serializes as its frontmatter mapping alone. A create or
+update that supplies a non-empty body for a YAML document record fails with
+`invalid_request` before any write. Structured writes re-emit the mapping and
+need not preserve comments, key order, or quoting style; a whole-document
+`document` replacement (Chapter 12) is written exactly as supplied. Tools that
+edit files another application owns SHOULD use whole-document replacement.
 
 When serializing frontmatter, tools MUST:
 

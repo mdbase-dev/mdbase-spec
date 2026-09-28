@@ -184,6 +184,7 @@ fixture_sets:
       - core/optional-membership.yaml
       - core/core-write.yaml
       - core/links-and-discovery.yaml
+      - core/yaml-document-records.yaml
   - id: data_contracts
     description: Data contracts, type implementations, projections, stable digests, and conflicts.
     coverage_targets: [data_contracts]
