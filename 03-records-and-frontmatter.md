@@ -6,10 +6,14 @@ A record's format is fixed by its file extension:
 
 | Extension | Format |
 | --- | --- |
-| `yaml`, `yml`, `base` | YAML document record |
+| `base` | YAML document record |
 | any other record extension | Markdown record |
 
-A collection opts into a format by listing the extension in
+The table is part of this specification, not collection configuration, so every
+tool reads a file the same way from its path alone. A row is added when a file
+type has a consumer, per file type rather than per syntax: a future JSON
+format would name the file type it serves (for example `canvas`), never every
+`.json` file. A collection opts into a format by listing the extension in
 `settings.record_extensions` (Chapter 04). Every format yields the same record
 model: persisted frontmatter, a body, and file metadata. Types, contracts,
 validation, queries, links, and operations apply to every format alike.

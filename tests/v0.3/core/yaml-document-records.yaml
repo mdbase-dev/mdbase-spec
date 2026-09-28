@@ -68,7 +68,7 @@ groups:
           valid: true
           paths: [views/open.base]
 
-      - name: "the collection configuration is never a record"
+      - name: "the collection configuration is never a record, even with a yaml record extension"
         id: yaml_records.config_excluded
         operation: query
         setup:

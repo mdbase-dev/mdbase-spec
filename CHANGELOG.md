@@ -4,12 +4,12 @@ All notable changes to this specification and conformance suite are documented h
 
 ## Unreleased
 
-### YAML document records and Bases as records (proposal)
+### YAML document records and Bases as records
 
-- A record's format is fixed by its extension: `yaml`, `yml`, and `base` files
-  are YAML document records whose whole file is the frontmatter, with no body.
-  Collections opt in through `record_extensions`; `mdbase.yaml` and
-  `mdbase.lock.yaml` are never records.
+- A record's format is fixed by its extension through a table in the
+  specification: `base` files are YAML document records whose whole file is
+  the frontmatter, with no body. Collections opt in through
+  `record_extensions`; `mdbase.yaml` and `mdbase.lock.yaml` are never records.
 - The `obsidian.base` record contract lets a type claim `.base` files, so Bases
   are discovered, written, and authorized as ordinary records. Discovery
   through `x-obsidian.bases.include` and the saved-view source operations for

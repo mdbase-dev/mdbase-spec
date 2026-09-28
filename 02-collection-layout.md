@@ -59,7 +59,7 @@ from their type files, never from their folder names.
 
 Tools discover records by recursively scanning the collection root for files
 with configured record extensions. Each extension fixes the record's format
-(Chapter 03); `yaml`, `yml`, and `base` files are YAML document records. The
+(Chapter 03); `base` files are YAML document records. The
 default extension set is:
 
 ```yaml
