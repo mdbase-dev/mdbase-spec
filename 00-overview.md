@@ -237,8 +237,8 @@ and reports a diagnostic.
 
 ### View records save reusable queries
 
-A collection can define the ordinary `view` type and store one or more named
-queries in a Markdown record. Shared query scope, named-view filters,
+A collection can install the `mdbase.view` contract and a type that implements
+it, then store one or more named queries in a Markdown record. Shared query scope, named-view filters,
 projections, ordering, grouping, and summaries remain machine-readable, while
 the Markdown body documents the view for people. Optional presentation metadata
 can select a renderer without changing query results.

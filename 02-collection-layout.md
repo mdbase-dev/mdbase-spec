@@ -24,6 +24,8 @@ collection/
     view.md
   _contracts/
     example.task.md
+    mdbase.view/
+      1.0.0.md
   tasks/
     example.md
   views/
@@ -32,7 +34,8 @@ collection/
 
 Only `mdbase.yaml` is required. Untyped records form a valid collection.
 
-View records are ordinary records and require no reserved folder. A collection
+View records are ordinary records identified by their type's `mdbase.view`
+contract implementation, not by location, and require no reserved folder. A collection
 MAY organize them under `Views/`, `_views/`, or any other non-excluded path.
 Unlike the configured types folder, such a folder remains part of the normal
 record scan unless explicitly excluded.
