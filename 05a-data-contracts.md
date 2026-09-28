@@ -368,7 +368,37 @@ resources:
 updated or retired by a later pack version only while its live bytes still
 match the installed digest. A `seed` resource is created only when its target
 is absent and becomes user-owned immediately; later pack versions neither
-replace nor delete it.
+replace nor delete it unless an explicit seed-type upgrade is declared below.
+
+A seed **type** resource MAY declare `upgrade_from: { digest, document }`.
+The document is an exact previous publisher baseline, pinned by SHA-256, not
+an assertion that the user's current document is unchanged. This declaration
+is part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
+Engines that do not support this member MUST reject the manifest.
+
+An upgrade performs a conservative three-way merge of baseline, live type,
+and desired type. The type kind and name MUST match. Unchanged publisher
+settings retain live customizations; unchanged live settings accept publisher
+changes. Object settings merge recursively. Contract implementations merge by
+contract ID only when unambiguous, retaining customized field mappings and
+bindings while updating exact version references. Competing changes (including
+ambiguous implementation lists) MUST fail closed. Other arrays are indivisible.
+Missing values and explicit null are distinct. Top-level setting removal
+requires separate manual review. The live Markdown body and unrelated YAML
+nodes MUST be preserved. Reformatting a changed YAML node is permitted.
+
+The merged resource digest MUST appear in the assessment. Normal assessment
+and collection revision guards still apply. The upgrade, contract resources,
+and provenance MUST publish atomically only after validating the staged
+collection. A remaining reference to a removed exact contract MUST block the
+whole upgrade; implementations MUST NOT rewrite additional types implicitly.
+Record documents MUST NOT be migrated by this mechanism. An intentionally
+preserved seed target MUST NOT be upgraded.
+
+This is not version negotiation or grant migration. Callers coordinating
+applications must retain old contracts and implementations when supported
+applications still require them, or arrange a separately reviewed coordinated
+upgrade. Existing grants never acquire the new contract version implicitly.
 
 Resource digests are SHA-256 over the exact resource bytes. Source and target
 paths are relative, forward-slash paths without traversal.
