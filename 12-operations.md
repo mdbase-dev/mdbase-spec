@@ -56,7 +56,9 @@ Pipeline:
 5. verify type membership did not change as a lifecycle side effect
 6. validate JSON Schema
 7. run collection validators
-8. choose or validate path policy
+8. choose or validate path policy; the final path's extension fixes the
+   record's format (Chapter 03), and a body is rejected when that format is a
+   YAML document
 9. write Markdown file
 10. update derived indexes
 11. emit watch/runtime events after state is consistent
@@ -113,7 +115,8 @@ A structured update accepts:
   replacing any existing value; a null value persists an explicit null
 - `unset`: a list of field references, as defined in Chapter 07, whose keys are
   removed from persisted frontmatter
-- `body`: optional replacement Markdown body
+- `body`: optional replacement Markdown body; a non-empty body for a YAML
+  document record (Chapter 03) is `invalid_request`
 
 Unsetting a key that is already missing is not an error. A request that names
 the same field in `patch` and `unset`, names a field inside a key that `patch`
@@ -122,7 +125,9 @@ and produces `invalid_request` before any write. When `unset` removes the last k
 nested object, the now-empty object remains.
 
 As an alternative to a frontmatter patch and body replacement, Update accepts
-`document` containing the complete candidate Markdown source. A document
+`document` containing the complete candidate source in the record's format:
+Markdown source for a Markdown record, or the whole YAML document for a YAML
+document record. A document
 replacement MUST NOT be combined with `patch`, `unset`, or `body`. The
 candidate is parsed and passes through the same type matching, lifecycle,
 validation, concurrency, and atomic-write pipeline as a structured update. When lifecycle policy does not alter the candidate, the exact supplied

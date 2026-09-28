@@ -9,6 +9,41 @@ in [Querying](../11-querying.md) and the saved-view operations in
 `obsidian_bases_views` optional feature ignore `.base` files and the
 `x-obsidian` configuration section.
 
+## Bases as records
+
+A collection that lists `base` in `settings.record_extensions` stores each
+`.base` file as a YAML document record (Chapter 03). A Base is a saved-view
+source when its matched type implements the `obsidian.base` record contract
+(`_contracts/obsidian.base/1.0.0.md`), exactly as a canonical view is one when
+its type implements `mdbase.view`:
+
+```yaml
+kind: mdbase.type
+name: obsidian_base
+version: 1
+match: { path_glob: 'TaskNotes/Views/**/*.base' }
+implements:
+  - contract: obsidian.base
+    version: 1.0.0
+    fields: { filters: filters, formulas: formulas, properties: properties, views: views }
+```
+
+`list_views` discovers such records alongside `mdbase.view` records and reports
+`source.format: obsidian.base`. `execute_view` selects the evaluator from the
+contract the record's type implements: the Query profile for `mdbase.view`, the
+Obsidian Bases dialect below for `obsidian.base`. A Base is created, replaced,
+renamed, and deleted with the ordinary record operations under ordinary record
+grants. Because Obsidian owns the format, writers SHOULD replace a Base with a
+whole-document `update` so comments and layout survive; structured patches
+remain valid but re-emit the YAML.
+
+The type's path match replaces `x-obsidian.bases.include`, and the record
+operations replace the saved-view source operations for Bases. Both remain
+defined below for collections that do not list `base` as a record extension.
+They are transitional: they are removed in the release that removes the
+saved-view source operations for canonical views, and no new consumer should
+adopt them.
+
 ## Sources
 
 Obsidian `.base` files are external saved-view sources. A collection provider
