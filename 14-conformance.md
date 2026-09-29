@@ -310,18 +310,6 @@ An implementation advertises `obsidian_bases_views` through
 `optional_features` when it meets the requirements of the
 [Obsidian Bases adapter](./adapters/obsidian-bases.md).
 
-An implementation advertises `writable_view_sources` through
-`optional_features` when it:
-
-- marks only writable source formats with `source.writable: true`
-- reads complete source documents with stable opaque revisions
-- validates complete candidate documents before create or update
-- creates sources without replacing an existing path
-- applies `if_revision` to update and delete
-- writes source replacements atomically
-- preserves source-format extension data supplied by the caller
-- makes successful mutations visible to subsequent list and execute operations
-
 ## Links Requirements
 
 Links implementations MUST:

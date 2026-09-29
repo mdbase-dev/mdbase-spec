@@ -37,12 +37,13 @@ grants. Because Obsidian owns the format, writers SHOULD replace a Base with a
 whole-document `update` so comments and layout survive; structured patches
 remain valid but re-emit the YAML.
 
-The type's path match replaces `x-obsidian.bases.include`, and the record
-operations replace the saved-view source operations for Bases. Both remain
+The type's path match replaces `x-obsidian.bases.include`, which remains
 defined below for collections that do not list `base` as a record extension.
-They are transitional: they are removed in the release that removes the
-saved-view source operations for canonical views, and no new consumer should
-adopt them.
+Sources discovered that way are not records: they are listed and executed but
+report `source.writable: false`, and changes to them are reported as
+`view_changed`. Configured discovery is transitional and no new consumer should
+adopt it; it is removed, with `view_changed`, once collections have adopted
+Bases as records.
 
 ## Sources
 
@@ -67,14 +68,12 @@ x-obsidian:
 the same path-boundary and symlink protections used for record discovery.
 `create_folder` identifies the preferred location for new Obsidian sources.
 `default_for_new_views` makes that source format the collection's default when
-a view-creation interface offers no explicit format. Providers advertising
-write support use these values when creating a source.
+a view-creation interface offers no explicit format.
 
-Write-capable providers validate the complete `.base` document before a
-source operation commits it. They preserve unknown top-level keys, view keys,
-property metadata, formulas, and presentation options supplied in the
-document. A source editor can therefore modify the structures it understands
-while round-tripping the remainder.
+A writer that replaces a Base record with a whole-document `update` preserves
+unknown top-level keys, view keys, property metadata, formulas, and
+presentation options, so a source editor can modify the structures it
+understands while round-tripping the remainder.
 
 The `.base` file remains authoritative for a discovered Obsidian source.
 `list_views` returns `source.format: obsidian.base`, a revision derived from the

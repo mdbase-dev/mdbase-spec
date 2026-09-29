@@ -4,6 +4,15 @@ All notable changes to this specification and conformance suite are documented h
 
 ## Unreleased
 
+### Saved views are edited with the record operations
+
+- `read_view_source`, `create_view_source`, `update_view_source` and
+  `delete_view_source`, and the `writable_view_sources` feature, are removed.
+  Saved views are records claimed through `mdbase.view` or `obsidian.base`,
+  edited with `read` (`include_document`), `update` (`document`), `create` and
+  `delete`. `list_views` reports `source.writable: true` for sources that are
+  records. `view_changed` remains for configured sources that are not records.
+
 ### YAML document records and Bases as records
 
 - A record's format is fixed by its extension through a table in the
