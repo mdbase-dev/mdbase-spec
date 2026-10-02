@@ -468,12 +468,14 @@ publisher document its target descends from, when that is known. Because a seed
 becomes user-owned, the installed digest of a seed describes the pack, not the
 target, and MUST NOT be used as its origin. An apply sets `origin_digest` to the
 desired resource digest when it creates the seed, when it upgrades it (by exact
-replacement or by merge), and when it preserves a seed whose live bytes already
-equal the desired document. In every other case it carries the previous entry's
+replacement or by merge), and whenever the target's live bytes equal the desired
+document, whatever else applies. Otherwise it carries the previous entry's
 `origin_digest` for that target forward unchanged, or omits it when there is
-none, including when a seed target existed before the pack was installed and
-when the seed is an intentionally preserved target. A lock entry without
-`origin_digest` means the origin is unknown.
+none. A seed target that existed before the pack was installed, and an
+intentionally preserved seed target, therefore have no origin unless their bytes
+equal the desired document. A lock entry without `origin_digest` means the
+origin is unknown. An apply that changes only seed origins leaves the pack's
+status `current`; it is not a reconfiguration.
 
 Full collection snapshots, authority transfers, and unscoped synchronization
 MUST carry `mdbase.lock.yaml` when it exists. A scoped application projection
