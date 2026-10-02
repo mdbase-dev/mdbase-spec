@@ -385,9 +385,9 @@ Engines that do not support this member MUST reject the manifest.
 The manifest is invalid (`invalid_type_pack`) when `upgrade_from` appears on a
 resource that is not a seed type, when a baseline's digest is not the SHA-256 of
 its document, when two baselines share a digest, when a baseline's digest equals
-the resource's own digest, when a baseline document's type kind or name differs
-from the desired type, or when a baseline's `version` differs from the version
-its document declares.
+the resource's own digest, when a baseline document's frontmatter `kind` or
+`name` differs from the desired document's, or when a baseline's `version`
+differs from the `version` its document's frontmatter declares.
 
 A seed's **origin** is the publisher document its live target descends from.
 The lock records it (see Pack Identity And Portable Provenance). When the target
@@ -474,7 +474,11 @@ document, whatever else applies. Otherwise it carries the previous entry's
 none. A seed target that existed before the pack was installed, and an
 intentionally preserved seed target, therefore have no origin unless their bytes
 equal the desired document. A lock entry without `origin_digest` means the
-origin is unknown. An apply that changes only seed origins leaves the pack's
+origin is unknown. Locks written before `origin_digest` existed carry none, so
+an edited seed under such a lock is preserved with a reason rather than merged
+until it is upgraded or recreated; an unedited seed still upgrades, because its
+bytes prove its origin. `origin_digest` is defined only for seed resources and
+MUST NOT appear on a managed resource. An apply that changes only seed origins leaves the pack's
 status `current`; it is not a reconfiguration.
 
 Full collection snapshots, authority transfers, and unscoped synchronization
