@@ -104,6 +104,32 @@ Future v0.3 adapters should support these operations:
 - `assess_type_pack`
 - `apply_type_pack`
 
+### Type-pack history
+
+`assess_type_pack` and `apply_type_pack` tests may prepare the collection with
+`input.history`, steps applied in order after `setup` and before the operation:
+
+- `apply: <pack>` assesses and applies a pack; the step must succeed.
+- `write: { path, content }` writes exact bytes.
+- `replace: { path, old, new }` replaces the single occurrence of `old` in the
+  current bytes; the step fails unless `old` occurs exactly once.
+
+Seed-upgrade expectations, all keyed by collection target:
+
+- `resources`: entries matched by `target`, asserting `action`, optionally
+  `upgrade_baseline_version` (the assessment's `upgrade_baseline.version`), and
+  `reason` (`true` when a reason must be present, `false` when it must not).
+  For `apply_type_pack`, these refer to the first run's assessment.
+- `target_matches_source`: the target's bytes equal the named source file.
+- `target_unchanged`: the target's bytes equal what they were before the
+  operation.
+- `target_frontmatter`: JSON Pointer to expected value in the target's parsed
+  frontmatter. Merged output may be reformatted, so merges are compared
+  structurally rather than by bytes.
+- `target_body_contains`: text that must appear in the target's body.
+- `lock_origin`: the target's lock `origin_digest` is the SHA-256 of the named
+  source file, or `absent`.
+
 The repository also includes `scripts/check_v03_tests.py`, which validates the
 suite structure and executes local artifact checks that do not require a full
 v0.3 implementation. It also runs the prototype TaskNotes migration checks for

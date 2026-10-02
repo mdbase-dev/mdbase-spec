@@ -1,0 +1,11 @@
+# Ships the v2 starter without upgrade_from: an installed seed is preserved.
+kind: mdbase.type-pack
+id: example.seed-notes
+version: 1.5.0
+name: Seed note example
+resources:
+  - kind: type
+    mode: seed
+    source: _types/note.md
+    target: _types/note.md
+    digest: sha256:28887fbf68c97de99bc271209466bbf457a3635b3ed2ee93e6c5bf8213f53c10

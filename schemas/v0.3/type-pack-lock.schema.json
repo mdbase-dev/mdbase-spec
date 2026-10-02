@@ -56,7 +56,8 @@
         "mode": { "enum": ["managed", "seed"] },
         "source": { "$ref": "#/$defs/safeRelativePath" },
         "target": { "$ref": "#/$defs/safeRelativePath" },
-        "digest": { "$ref": "#/$defs/digest" }
+        "digest": { "$ref": "#/$defs/digest" },
+        "origin_digest": { "$ref": "#/$defs/digest" }
       },
       "additionalProperties": false
     }

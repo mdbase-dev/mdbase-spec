@@ -15,11 +15,24 @@ All notable changes to this specification and conformance suite are documented h
   through `x-obsidian.bases.include` and the saved-view source operations for
   Bases become transitional.
 
-- A seed type resource may declare `upgrade_from: { digest, document }`, a
-  digest-pinned previous publisher baseline. The engine performs a conservative
-  three-way merge of baseline, live type and desired type, fails closed on
-  competing changes, and publishes atomically. Engines that do not support the
-  member must reject the manifest. Records are never migrated this way.
+- A seed type resource may declare `upgrade_from`: one baseline or a list of
+  baselines, each a digest-pinned starter the publisher previously shipped
+  (`{ digest, document, version? }`), so a collection can upgrade from any
+  supported starter, not only the latest. The engine chooses the merge
+  baseline from the seed's origin and never guesses: an unedited seed equal to
+  any baseline is replaced with the exact desired bytes; an edited seed merges
+  against the baseline it descends from; a seed whose origin is unknown or not
+  listed is preserved with a reason rather than merged or made to conflict.
+  Competing changes still fail closed, publication is atomic, and the
+  assessment reports the baseline used. Engines that do not support the member
+  must reject the manifest. Records are never migrated this way.
+- The type-pack lock records a seed's `origin_digest`, the publisher document
+  its target descends from, set when the seed is created, upgraded, or already
+  matches the desired document, and otherwise carried forward. A seed's
+  installed digest describes the pack, not the target, and is never its origin.
+- Type-pack conformance adds seed-upgrade fixtures (`examples/v0.3/seed-upgrades`)
+  and `input.history` steps, with an executable model in
+  `scripts/type_pack_model.py`.
 
 ### Saved views are identified through the `mdbase.view` contract
 

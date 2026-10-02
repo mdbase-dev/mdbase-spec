@@ -1,0 +1,34 @@
+kind: mdbase.type-pack
+id: example.seed-notes
+version: 3.0.0
+name: Seed note example
+resources:
+  - kind: type
+    mode: seed
+    source: _types/note.md
+    target: _types/note.md
+    digest: sha256:57160cce297903e123f876d789d518ed83b1cf790edafae660f43f3d44744065
+    upgrade_from:
+      - digest: sha256:9fcf75786fa90108e1d0183de472e589adce9a0883157b68c8aaf2f036b03c13
+        version: 2
+        document: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          description: A note.
+          match:
+            where:
+              type: note
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+              additionalProperties: true
+          ---
+          # Note
+
+          A note in this collection.

@@ -532,6 +532,9 @@ def run_apply_type_pack_test(
     """Simulate the normative preflight/diff/atomicity rules without an engine."""
     manifest_path = resolve(input_data["pack"])
     manifest = load_yaml(manifest_path)
+    if uses_seed_model(input_data, manifest):
+        run_seed_pack_test("apply_type_pack", input_data, expect, setup)
+        return
     resources = manifest.get("resources", []) or []
     live = {
         str(target): str(content).encode()
@@ -654,6 +657,9 @@ def run_assess_type_pack_test(
     """Exercise the structured managed-resource conflict shape used before apply."""
     manifest_path = resolve(input_data["pack"])
     manifest = load_yaml(manifest_path)
+    if uses_seed_model(input_data, manifest):
+        run_seed_pack_test("assess_type_pack", input_data, expect, setup)
+        return
     resources = manifest.get("resources", []) or []
     live: dict[str, bytes] = {}
     installed: dict[str, str] = {}
@@ -692,6 +698,105 @@ def run_assess_type_pack_test(
         },
         expect,
     )
+
+
+def uses_seed_model(input_data: dict[str, Any], manifest: dict[str, Any]) -> bool:
+    return "history" in input_data or any(
+        resource.get("mode") == "seed" or "upgrade_from" in resource
+        for resource in manifest.get("resources", []) or []
+    )
+
+
+def run_seed_pack_test(
+    operation: str, input_data: dict[str, Any], expect: dict[str, Any], setup: dict[str, Any]
+) -> None:
+    """Run seed-upgrade fixtures against the executable model in type_pack_model."""
+    import type_pack_model as model  # type: ignore[import-not-found]
+
+    collection = model.Collection(
+        files={str(path): str(content).encode() for path, content in (setup.get("files") or {}).items()}
+    )
+    for step in input_data.get("history", []) or []:
+        if "apply" in step:
+            applied = collection.apply(model.load_pack(resolve(step["apply"])))
+            if not applied.applicable:
+                raise AssertionError(f"history step {step} did not apply")
+        elif "write" in step:
+            collection.files[step["write"]["path"]] = str(step["write"]["content"]).encode()
+        elif "replace" in step:
+            path, old, new = step["replace"]["path"], step["replace"]["old"], step["replace"]["new"]
+            current = collection.files[path].decode()
+            if current.count(old) != 1:
+                raise AssertionError(f"history replace in {path} must match exactly once")
+            collection.files[path] = current.replace(old, new).encode()
+        else:
+            raise AssertionError(f"unsupported history step: {step}")
+    before = dict(collection.files)
+
+    try:
+        pack = model.load_pack(resolve(input_data["pack"]))
+    except model.PackInvalid as invalid:
+        assert_subset({"valid": False, "error": {"code": "invalid_type_pack", "message": str(invalid)}}, expect)
+        return
+
+    def summary(assessment: Any) -> dict[str, Any]:
+        return {
+            "valid": True,
+            "status": assessment.status,
+            "applicable": assessment.applicable,
+            "actions": [item.action for item in assessment.resources],
+        }
+
+    if operation == "assess_type_pack":
+        first = collection.assess(pack)
+        actual: dict[str, Any] = summary(first)
+    else:
+        runs = []
+        first = None
+        for _ in range(int(input_data.get("repeat", 1))):
+            assessment = collection.apply(pack)
+            first = first or assessment
+            runs.append({**summary(assessment), "valid": assessment.applicable})
+        actual = {"valid": runs[-1]["valid"], "runs": runs}
+    assert_subset(actual, {key: value for key, value in expect.items() if key in actual})
+
+    for expected in expect.get("resources", []) or []:
+        item = next((item for item in first.resources if item.target == expected["target"]), None)
+        if item is None:
+            raise AssertionError(f"no planned resource for {expected['target']}")
+        if "action" in expected and item.action != expected["action"]:
+            raise AssertionError(f"{item.target}: expected {expected['action']}, got {item.action}")
+        if "upgrade_baseline_version" in expected and (
+            item.baseline is None or item.baseline.version != expected["upgrade_baseline_version"]
+        ):
+            raise AssertionError(f"{item.target}: wrong upgrade baseline {item.baseline}")
+        if "reason" in expected and bool(item.reason) != expected["reason"]:
+            raise AssertionError(f"{item.target}: reason presence {bool(item.reason)}, expected {expected['reason']}")
+    for target, source in (expect.get("target_matches_source") or {}).items():
+        if collection.files.get(target) != resolve(source).read_bytes():
+            raise AssertionError(f"{target} does not match {source}")
+    for target in expect.get("target_unchanged", []) or []:
+        if collection.files.get(target) != before.get(target):
+            raise AssertionError(f"{target} changed")
+    for target, pointers in (expect.get("target_frontmatter") or {}).items():
+        frontmatter, _ = model.split_document(collection.files[target])
+        for pointer, value in pointers.items():
+            current: Any = frontmatter
+            for token in pointer.strip("/").split("/"):
+                current = current[token.replace("~1", "/").replace("~0", "~")]
+            if current != value:
+                raise AssertionError(f"{target}{pointer}: expected {value!r}, got {current!r}")
+    for target, texts in (expect.get("target_body_contains") or {}).items():
+        _, body = model.split_document(collection.files[target])
+        for text in texts:
+            if text not in body:
+                raise AssertionError(f"{target} body lacks {text!r}")
+    for target, source in (expect.get("lock_origin") or {}).items():
+        entries = [receipt["resources"].get(target) for receipt in collection.lock.values()]
+        origin = next((entry.get("origin_digest") for entry in entries if entry), None)
+        wanted = None if source == "absent" else model.digest(resolve(source).read_bytes())
+        if origin != wanted:
+            raise AssertionError(f"{target}: lock origin {origin}, expected {wanted}")
 
 
 def run_data_contract_implementation_test(
