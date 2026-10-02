@@ -139,3 +139,297 @@ groups:
           implementations: 1
         covers:
           - type_packs.managed_type_pack_adoption
+
+  - name: "seed type upgrades follow the seed's origin"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+    tests:
+      - id: seed-upgrade-unedited-older-baseline
+        name: "an unedited seed from an older listed baseline is replaced with the exact desired bytes"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+          repeat: 2
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [update]
+            - valid: true
+              status: current
+              actions: [preserve]
+          resources:
+            - target: _types/note.md
+              action: update
+              upgrade_baseline_version: 1
+          target_matches_source:
+            _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
+          lock_origin:
+            _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
+        covers:
+          - type_packs.seed_type_upgrade
+
+      - id: seed-upgrade-single-baseline-object
+        name: "a single baseline object is a list of one"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v2/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [update]
+          resources:
+            - target: _types/note.md
+              action: update
+              upgrade_baseline_version: 1
+          target_matches_source:
+            _types/note.md: "examples/v0.3/seed-upgrades/v2/_types/note.md"
+        covers:
+          - type_packs.seed_type_upgrade
+
+      - id: seed-upgrade-edited-merges-against-origin
+        name: "an edited seed merges against the baseline it was installed from, keeping the user's edits"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+            - replace:
+                path: _types/note.md
+                old: "      title: { type: string }\n"
+                new: "      title: { type: string }\n      mood: { type: string }\n"
+            - replace:
+                path: _types/note.md
+                old: "A note in this collection.\n"
+                new: "My notes, as I keep them.\n"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [update]
+          resources:
+            - target: _types/note.md
+              action: update
+              upgrade_baseline_version: 1
+          target_frontmatter:
+            _types/note.md:
+              /version: 3
+              /description: "A note with a creation date and tags."
+              /schema/value/properties/created: { type: string, format: date-time }
+              /schema/value/properties/tags: { type: array, items: { type: string } }
+              /schema/value/properties/mood: { type: string }
+          target_body_contains:
+            _types/note.md: ["My notes, as I keep them."]
+          lock_origin:
+            _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
+        covers:
+          - type_packs.seed_type_upgrade
+
+      - id: seed-upgrade-origin-survives-preserve
+        name: "a pack version that preserves a seed keeps its origin, so a later upgrade merges against the true baseline"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+            - apply: "examples/v0.3/seed-upgrades/v1.5-plain/mdbase-pack.yaml"
+            - replace:
+                path: _types/note.md
+                old: "      title: { type: string }\n"
+                new: "      title: { type: string }\n      mood: { type: string }\n"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [update]
+          resources:
+            - target: _types/note.md
+              action: update
+              upgrade_baseline_version: 1
+          target_frontmatter:
+            _types/note.md:
+              /version: 3
+              /schema/value/properties/created: { type: string, format: date-time }
+              /schema/value/properties/mood: { type: string }
+        covers:
+          - type_packs.seed_type_upgrade
+
+      - id: seed-upgrade-unlisted-origin-preserved
+        name: "an edited seed whose origin is not a listed baseline is preserved with a reason, without a conflict"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3-only-v2/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+            - replace:
+                path: _types/note.md
+                old: "      title: { type: string }\n"
+                new: "      title: { type: string }\n      mood: { type: string }\n"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [preserve]
+          resources:
+            - target: _types/note.md
+              action: preserve
+              reason: true
+          target_unchanged: [_types/note.md]
+          lock_origin:
+            _types/note.md: "examples/v0.3/seed-upgrades/v1/_types/note.md"
+        covers:
+          - type_packs.seed_type_upgrade
+
+      - id: seed-upgrade-edited-after-upgrade-preserved
+        name: "a seed edited after its upgrade is preserved without a reason"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+            - apply: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+            - replace:
+                path: _types/note.md
+                old: "      title: { type: string }\n"
+                new: "      title: { type: string }\n      mood: { type: string }\n"
+        expect:
+          valid: true
+          status: current
+          applicable: true
+          actions: [preserve]
+          resources:
+            - target: _types/note.md
+              action: preserve
+              reason: false
+        covers:
+          - type_packs.seed_type_upgrade
+
+  - name: "a seed target that existed before installation has no origin"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      files:
+        _types/note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          description: The collection's own note type.
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              additionalProperties: true
+          ---
+    tests:
+      - id: seed-upgrade-unknown-origin-preserved
+        name: "a user-owned type at a seed target is never merged into a starter"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [preserve]
+          resources:
+            - target: _types/note.md
+              action: preserve
+              reason: true
+          target_unchanged: [_types/note.md]
+          lock_origin:
+            _types/note.md: absent
+        covers:
+          - type_packs.seed_type_upgrade
+
+  - name: "upgrade baselines are validated"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+    tests:
+      - id: seed-upgrade-invalid-duplicate-baseline
+        name: "invalid upgrade_from (duplicate-baseline) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-duplicate-baseline/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-self-baseline
+        name: "invalid upgrade_from (self-baseline) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-self-baseline/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-version-mismatch
+        name: "invalid upgrade_from (version-mismatch) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-version-mismatch/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-name-mismatch
+        name: "invalid upgrade_from (name-mismatch) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-name-mismatch/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-managed-upgrade
+        name: "invalid upgrade_from (managed-upgrade) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-managed-upgrade/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-baseline-digest
+        name: "invalid upgrade_from (baseline-digest) rejects the manifest"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-baseline-digest/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation

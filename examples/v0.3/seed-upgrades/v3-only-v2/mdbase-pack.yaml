@@ -1,0 +1,36 @@
+# Supports upgrading only from the v2 starter.
+kind: mdbase.type-pack
+id: example.seed-notes
+version: 3.0.0
+name: Seed note example
+resources:
+  - kind: type
+    mode: seed
+    source: _types/note.md
+    target: _types/note.md
+    digest: sha256:57160cce297903e123f876d789d518ed83b1cf790edafae660f43f3d44744065
+    upgrade_from:
+      - digest: sha256:28887fbf68c97de99bc271209466bbf457a3635b3ed2ee93e6c5bf8213f53c10
+        version: 2
+        document: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 2
+          description: A note with a creation date.
+          match:
+            where:
+              type: note
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                created: { type: string, format: date-time }
+              additionalProperties: true
+          ---
+          # Note
+
+          A note in this collection.

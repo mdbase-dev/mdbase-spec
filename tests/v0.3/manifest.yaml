@@ -111,6 +111,8 @@ claim_profiles:
       - exact_type_pack_diff
       - idempotent_type_pack_apply
       - type_pack_atomicity
+      - seed_type_upgrade
+      - seed_type_upgrade_validation
   - id: lifecycle
     status: draft
     requires: [core_write, cel]
@@ -191,7 +193,7 @@ fixture_sets:
     files:
       - data-contracts/data-contracts.yaml
   - id: type_packs
-    description: Complete type packs validate, report exact diffs, install atomically, and reinstall idempotently.
+    description: Complete type packs validate, report exact diffs, install atomically, reinstall idempotently, and upgrade seed types from their recorded origin.
     coverage_targets: [type_packs]
     files:
       - type-packs/type-packs.yaml

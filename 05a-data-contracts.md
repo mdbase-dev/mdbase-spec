@@ -370,14 +370,49 @@ match the installed digest. A `seed` resource is created only when its target
 is absent and becomes user-owned immediately; later pack versions neither
 replace nor delete it unless an explicit seed-type upgrade is declared below.
 
-A seed **type** resource MAY declare `upgrade_from: { digest, document }`.
-The document is an exact previous publisher baseline, pinned by SHA-256, not
-an assertion that the user's current document is unchanged. This declaration
-is part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
+A seed **type** resource MAY declare `upgrade_from`: one baseline, or a
+non-empty list of baselines. A baseline is `{ digest, document }` with an
+optional integer `version`. `document` is the exact bytes of a starter the
+publisher previously shipped for this resource, pinned by SHA-256 in `digest`;
+it is not an assertion that the user's current document is unchanged. `version`,
+when present, is the `version` that document declares and is only for
+presentation. A single baseline is equivalent to a list containing it. Listing
+every previously shipped starter that remains supported lets a collection
+upgrade from any of them, not only from the most recent. This declaration is
+part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
 Engines that do not support this member MUST reject the manifest.
 
-An upgrade performs a conservative three-way merge of baseline, live type,
-and desired type. The type kind and name MUST match. Unchanged publisher
+The manifest is invalid (`invalid_type_pack`) when `upgrade_from` appears on a
+resource that is not a seed type, when a baseline's digest is not the SHA-256 of
+its document, when two baselines share a digest, when a baseline's digest equals
+the resource's own digest, when a baseline document's frontmatter `kind` or
+`name` differs from the desired document's, or when a baseline's `version`
+differs from the `version` its document's frontmatter declares.
+
+A seed's **origin** is the publisher document its live target descends from.
+The lock records it (see Pack Identity And Portable Provenance). When the target
+exists, is not an intentionally preserved seed target, and the resource declares
+`upgrade_from`, the engine plans exactly one of these, in order:
+
+1. The live bytes equal the desired document: `preserve`.
+2. The live bytes equal a baseline's document: `update`, writing the desired
+   document byte-for-byte. Byte equality proves the origin, whatever the lock
+   records.
+3. The origin is the desired document: `preserve`. The seed was already upgraded
+   and has been edited since.
+4. The origin is a baseline: `update` by a three-way merge of that baseline, the
+   live type, and the desired type.
+5. Otherwise, because the origin is unknown or is not a listed baseline:
+   `preserve`, with a `reason` stating that no upgrade baseline applies. The
+   type is left as it is; it does not make the pack conflict.
+
+An engine MUST NOT choose a merge baseline any other way. In particular, it MUST
+NOT merge against a baseline the seed is not known to descend from, because the
+differences between that baseline and the seed's actual origin would be applied
+as if they were the user's edits. The assessment reports, for every seed
+`update`, the baseline used as `upgrade_baseline: { digest, version? }`.
+
+A three-way merge is conservative. The type kind and name MUST match. Unchanged publisher
 settings retain live customizations; unchanged live settings accept publisher
 changes. Object settings merge recursively. Contract implementations merge by
 contract ID only when unambiguous, retaining customized field mappings and
@@ -427,6 +462,24 @@ pack's exact ID, version, pack digest, stable installer identity, and the kind,
 mode, canonical source, resolved target, and installed digest of every resource. Tools write it
 deterministically and users MAY inspect or version it. Tools MUST NOT infer
 ownership from filenames, application names, or `x-*` metadata.
+
+A seed resource's entry also records `origin_digest`, the digest of the
+publisher document its target descends from, when that is known. Because a seed
+becomes user-owned, the installed digest of a seed describes the pack, not the
+target, and MUST NOT be used as its origin. An apply sets `origin_digest` to the
+desired resource digest when it creates the seed, when it upgrades it (by exact
+replacement or by merge), and whenever the target's live bytes equal the desired
+document, whatever else applies. Otherwise it carries the previous entry's
+`origin_digest` for that target forward unchanged, or omits it when there is
+none. A seed target that existed before the pack was installed, and an
+intentionally preserved seed target, therefore have no origin unless their bytes
+equal the desired document. A lock entry without `origin_digest` means the
+origin is unknown. Locks written before `origin_digest` existed carry none, so
+an edited seed under such a lock is preserved with a reason rather than merged
+until it is upgraded or recreated; an unedited seed still upgrades, because its
+bytes prove its origin. `origin_digest` is defined only for seed resources and
+MUST NOT appear on a managed resource. An apply that changes only seed origins leaves the pack's
+status `current`; it is not a reconfiguration.
 
 Full collection snapshots, authority transfers, and unscoped synchronization
 MUST carry `mdbase.lock.yaml` when it exists. A scoped application projection
