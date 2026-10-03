@@ -383,7 +383,8 @@ part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
 Engines that do not support this member MUST reject the manifest.
 
 The manifest is invalid (`invalid_type_pack`) when `upgrade_from` appears on a
-resource that is not a seed type, when a baseline's digest is not the SHA-256 of
+resource that is not a seed type, when it is an empty list, when a baseline lacks
+`digest` or `document`, when a baseline's digest is not the SHA-256 of
 its document, when two baselines share a digest, when a baseline's digest equals
 the resource's own digest, when a baseline document's frontmatter `kind` or
 `name` differs from the desired document's, or when a baseline's `version`
