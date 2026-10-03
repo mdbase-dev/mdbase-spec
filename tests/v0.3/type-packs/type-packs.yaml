@@ -433,3 +433,25 @@ groups:
             code: invalid_type_pack
         covers:
           - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-empty-baselines
+        name: "invalid upgrade_from (empty-baselines) rejects the manifest with invalid_type_pack"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-empty-baselines/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
+      - id: seed-upgrade-invalid-incomplete-baseline
+        name: "invalid upgrade_from (incomplete-baseline) rejects the manifest with invalid_type_pack"
+        operation: assess_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/invalid-incomplete-baseline/mdbase-pack.yaml"
+        expect:
+          valid: false
+          error:
+            code: invalid_type_pack
+        covers:
+          - type_packs.seed_type_upgrade_validation
