@@ -236,8 +236,12 @@ standing for the three bodies:
      appended texts begin with one, the line terminator at the start of
      `S`'s text is dropped: `F`'s text already ended `B`'s last line;
    - then, when `F`'s appended text is not empty and does not end with a line
-     terminator, and `S`'s remaining text does not begin with one, a `\n` is
-     inserted between the two.
+     terminator, and `S`'s remaining text does not begin with one, a line
+     terminator is inserted between the two, in the body's line-ending style:
+     the style of `B`'s first line terminator, or when `B` has none, of the
+     first line terminator in `F`'s and then `S`'s appended text, and `\n`
+     when there is none at all. A merge therefore never mixes `\n` and
+     `\r\n` in a body that used one style.
 
    So no empty line appears between the two appends. Journals, logs, and
    checklists grow this way, and appending to them concurrently is not a

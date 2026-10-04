@@ -148,8 +148,55 @@ This includes `..` traversal, symlink traversal where the implementation follows
 symlinks, and absolute paths supplied where a collection-relative path is
 required.
 
-Implementations MAY reject platform-reserved filenames or characters when a
-write operation targets a filesystem where those paths cannot be represented.
+### Portable Paths
+
+A collection is read and written on Linux, macOS, and Windows file systems,
+and inside applications such as Obsidian. A path that one platform reads
+differently from another can escape the collection, reach a tool's private
+or executable state, or fail to be written at all. Every tool MUST therefore
+reject, for every record, resource, and file it creates, renames, moves,
+replicates, or applies from another tool, a collection-relative path that:
+
+- is empty, or longer than 1,024 bytes of UTF-8;
+- begins with `/` (an absolute or UNC path), or contains `\`;
+- has an empty segment (`a//b`, a trailing `/`), a `.` or `..` segment, or a
+  segment longer than 255 bytes;
+- contains any of `<`, `>`, `:`, `"`, `|`, `?`, `*` (`:` also covers drive
+  prefixes such as `C:x.md` and alternate data streams);
+- contains a control character (U+0000–U+001F, U+007F–U+009F);
+- contains a character that is invisible or that HFS+ ignores in names:
+  U+00AD, U+034F, U+115F, U+1160, U+17B4, U+17B5, U+180B–U+180F,
+  U+200B–U+200F, U+202A–U+202E, U+2060–U+206F, U+3164, U+FE00–U+FE0F,
+  U+FEFF, U+FFA0, U+FFF0–U+FFF8, U+1BCA0–U+1BCA3, U+1D173–U+1D17A, and
+  U+E0000–U+E0FFF (so `\u200C.git` cannot name `.git`);
+- has a segment ending in `.` or a space, which Windows strips;
+- has a segment that is a Windows device name, compared without ASCII case
+  on the part before its first `.` with trailing spaces removed: `CON`,
+  `PRN`, `AUX`, `NUL`, `CONIN$`, `CONOUT$`, `CLOCK$`, and `COM` or `LPT`
+  followed by one of `0`–`9`, `¹`, `²`, `³`;
+- has a segment shaped like an NTFS 8.3 short name, which can alias another
+  name such as `.git`: one to six characters, `~`, a decimal number without a
+  leading zero, and optionally `.` and up to three characters (`GIT~1`,
+  `MDBASE~2.TXT`);
+- has a segment beginning with `.`: hidden files and tool state such as
+  `.obsidian`, `.git`, `.vscode`, and `.mdbase` are never collection content
+  (see Record Discovery);
+- has a segment equal to `node_modules`.
+
+The names `.mdbase` and `node_modules` compare without ASCII case, with U+017F
+LATIN SMALL LETTER LONG S read as `s` and U+212A KELVIN SIGN as `k`: the only
+characters whose case folding gives a letter of those names. This comparison
+is fixed and does not depend on a Unicode version, so the rule gives the same
+verdict in every release.
+
+A tool that reads a collection skips files at such paths as it skips
+excluded paths. A write that would create one fails with `invalid_request`
+(`details.reason` names the rule) before any write.
+
+**Provisional (rc.5).** The rule set comes from the first implementation's
+security review (mdbase-next SEC-033). Earlier drafts let implementations
+reject such paths optionally, which allowed a path from one device to write
+an Obsidian plugin or escape the collection on another.
 
 ## Path Equivalence
 

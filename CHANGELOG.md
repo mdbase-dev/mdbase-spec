@@ -102,7 +102,9 @@ Bases, seed type upgrades, and saved-view identification.
   - the pinned Myers body alignment;
   - a `type_conflict` during a merge merges as `conflict`;
   - conflict order;
-  - append-append onto a base without a final line break;
+  - append-append onto a base without a final line break, with separators in
+    the body's line-ending style;
+  - portable paths: a normative path-safety rule set (Chapter 02);
   - regex `\<`/`\>`, `regex-lite`-only syntax and portable limits;
   - Unicode 17.0.0 for path keys and case mappings;
   - RFC 8785 number text;

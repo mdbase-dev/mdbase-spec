@@ -1684,6 +1684,19 @@ groups:
             b
             c
           conflicts: []
+      - name: "append-append in a CRLF body inserts a CRLF separator"
+        id: merge.append_separator_crlf
+        since: 0.3.0-rc.5
+        covers: [merge.append_append_union]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\n"
+          first: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nb"
+          second: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nc\r\n"
+        expect:
+          document: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nb\r\nc\r\n"
+          conflicts: []
       - name: "the body alignment is the pinned Myers alignment"
         id: merge.body_alignment_pinned
         since: 0.3.0-rc.5

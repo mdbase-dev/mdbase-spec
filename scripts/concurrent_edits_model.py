@@ -534,6 +534,15 @@ class MergeResult:
     conflicts: list[dict[str, Any]]
 
 
+def _line_ending_style(*texts: str) -> str:
+    """The style of the first line terminator in the texts, in order."""
+    for text in texts:
+        index = text.find("\n")
+        if index >= 0:
+            return "\r\n" if index > 0 and text[index - 1] == "\r" else "\n"
+    return "\n"
+
+
 def merge_body(base: str, first: str, second: str) -> str | None:
     if first == second or second == base:
         return first
@@ -548,7 +557,7 @@ def merge_body(base: str, first: str, second: str) -> str | None:
                     second_tail = second_tail[len(eol) :]
                     break
         separator = (
-            "\n"
+            _line_ending_style(base, first_tail, second_tail)
             if first_tail and not first_tail.endswith("\n") and not second_tail.startswith(("\n", "\r\n"))
             else ""
         )
