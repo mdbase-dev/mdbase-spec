@@ -1,0 +1,374 @@
+# Core Write additions in 0.3.0-rc.5: list operations (Chapter 12), writer format
+# fidelity (Chapter 12A), and path collisions on create and rename (Chapters
+# 02 and 12). expect.document is the exact post-write source.
+name: "core write additions"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: operations
+spec_ref: "v0.3/02, v0.3/03, v0.3/12, v0.3/12A"
+
+groups:
+  - name: "list operations and format fidelity"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        notes/a.md: |
+          ---
+          title: 'A'   # quoted on purpose
+          status: open
+          tags: [x, y]   # flow style
+          reviewers:
+            - ann
+          ---
+          Body of A.
+        notes/single-tag.md: |
+          ---
+          tags: solo
+          ---
+        notes/scalar-list.md: |
+          ---
+          labels: not-a-list
+          ---
+    tests:
+      - name: "add appends missing items and keeps the flow style and comments"
+        id: core_write.add_flow_style
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations, core_write.writer_format_fidelity]
+        operation: update
+        input:
+          path: "notes/a.md"
+          add: { tags: [y, z] }
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            ---
+            title: 'A'   # quoted on purpose
+            status: open
+            tags: [x, y, z]   # flow style
+            reviewers:
+              - ann
+            ---
+            Body of A.
+
+      - name: "add to a block list keeps the block style"
+        id: core_write.add_block_style
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations, core_write.writer_format_fidelity]
+        operation: update
+        input:
+          path: "notes/a.md"
+          add: { reviewers: [bo] }
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            ---
+            title: 'A'   # quoted on purpose
+            status: open
+            tags: [x, y]   # flow style
+            reviewers:
+              - ann
+              - bo
+            ---
+            Body of A.
+
+      - name: "removing every item leaves an empty list"
+        id: core_write.remove_to_empty
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/a.md"
+          remove: { tags: [x, y, absent] }
+        expect:
+          valid: true
+          frontmatter: { tags: [] }
+
+      - name: "add creates a missing field"
+        id: core_write.add_creates_field
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/a.md"
+          add: { labels: [new] }
+        expect:
+          valid: true
+          frontmatter: { labels: [new] }
+
+      - name: "a tags string is read as a one-item list"
+        id: core_write.tags_string
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/single-tag.md"
+          add: { tags: [more] }
+        expect:
+          valid: true
+          frontmatter: { tags: [solo, more] }
+
+      - name: "a non-list value cannot take list operations"
+        id: core_write.non_list_rejected
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/scalar-list.md"
+          add: { labels: [x] }
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+
+      - name: "naming one field in patch and add is invalid"
+        id: core_write.patch_and_add_conflict
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/a.md"
+          patch: { tags: [q] }
+          add: { tags: [z] }
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+
+      - name: "adding and removing the same item is invalid"
+        id: core_write.add_remove_same_item
+        since: 0.3.0-rc.5
+        covers: [core_write.list_operations]
+        operation: update
+        input:
+          path: "notes/a.md"
+          add: { tags: [z] }
+          remove: { tags: [z] }
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+
+      - name: "a patch re-emits only the changed entry"
+        id: core_write.patch_minimal_bytes
+        since: 0.3.0-rc.5
+        covers: [core_write.writer_format_fidelity]
+        operation: update
+        input:
+          path: "notes/a.md"
+          patch: { status: done }
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            ---
+            title: 'A'   # quoted on purpose
+            status: done
+            tags: [x, y]   # flow style
+            reviewers:
+              - ann
+            ---
+            Body of A.
+
+      - name: "a new key is appended after the last entry"
+        id: core_write.new_key_appended
+        since: 0.3.0-rc.5
+        covers: [core_write.writer_format_fidelity]
+        operation: update
+        input:
+          path: "notes/a.md"
+          patch: { owner: ann }
+          unset: [status]
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            ---
+            title: 'A'   # quoted on purpose
+            tags: [x, y]   # flow style
+            reviewers:
+              - ann
+            owner: ann
+            ---
+            Body of A.
+
+  - name: "format fidelity for YAML document records"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          record_extensions: [md, base]
+      files:
+        views/tasks.base: |
+          # Owned by Obsidian
+          filters:
+            and:
+              - 'status == "open"'   # keep this filter first
+          views:
+            - type: table
+              name: Open tasks
+          limit: 10
+    tests:
+      - name: "a structured update keeps comments and untouched entries"
+        id: core_write.yaml_document_fidelity
+        since: 0.3.0-rc.5
+        covers: [core_write.writer_format_fidelity]
+        operation: update
+        input:
+          path: "views/tasks.base"
+          patch: { limit: 25 }
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            # Owned by Obsidian
+            filters:
+              and:
+                - 'status == "open"'   # keep this filter first
+            views:
+              - type: table
+                name: Open tasks
+            limit: 25
+
+  - name: "path collisions"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+          collection:
+            path:
+              pattern: "tasks/{title}.md"
+          ---
+      files:
+        tasks/Call Bob.md: |
+          ---
+          title: Call Bob
+          ---
+        tasks/todo.md: |
+          ---
+          title: todo
+          ---
+    tests:
+      - name: "an explicit path equivalent to an existing record fails"
+        id: paths.explicit_create_conflict
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: create
+        input:
+          path: "tasks/CALL BOB.md"
+          type: task
+          frontmatter: { title: Another }
+        expect:
+          valid: false
+          error:
+            code: path_conflict
+
+      - name: "a derived path that collides gets the first free suffix"
+        id: paths.derived_create_suffix
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: call bob }
+        expect:
+          valid: true
+          path: "tasks/call bob (2).md"
+          frontmatter: { title: call bob }
+
+      - name: "a derived path value containing a slash is rejected"
+        id: paths.derived_slash_rejected
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: "Q3/Q4 plan" }
+        expect:
+          valid: false
+          error:
+            code: path_value_invalid
+            field: title
+
+      - name: "a case-only rename of the same record is allowed"
+        id: paths.case_only_rename
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: rename
+        input:
+          from: "tasks/todo.md"
+          to: "tasks/Todo.md"
+        expect:
+          valid: true
+          path: "tasks/Todo.md"
+
+      - name: "a rename onto another record's equivalent path fails"
+        id: paths.rename_conflict
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: rename
+        input:
+          from: "tasks/todo.md"
+          to: "tasks/call bob.md"
+        expect:
+          valid: false
+          error:
+            code: path_conflict
+
+  - name: "discovered path collisions"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        notes/Plan.md: |
+          ---
+          title: upper
+          ---
+        notes/plan.md: |
+          ---
+          title: lower
+          ---
+    tests:
+      - name: "both files are records and both report path_collision"
+        id: paths.discovered_collision
+        since: 0.3.0-rc.5
+        covers: [core_read.path_equivalence]
+        operation: read
+        input:
+          path: "notes/plan.md"
+        expect:
+          valid: true
+          frontmatter: { title: lower }
+          diagnostics:
+            - code: path_collision
+              severity: warning
+              details: { paths: ["notes/Plan.md", "notes/plan.md"] }

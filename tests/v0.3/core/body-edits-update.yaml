@@ -1,0 +1,156 @@
+# Update with body_edits (Chapter 12), since 0.3.0-rc.5.
+name: body edits through update
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: operations
+spec_ref: v0.3/12
+groups:
+  - name: body_edits requests
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          record_extensions: [md, base]
+      files:
+        notes/meeting.md: |
+          ---
+          title: Meeting
+          ---
+          Agenda
+          - budget
+          - hiring
+        views/open.base: |
+          views:
+            - type: table
+              name: Open
+    tests:
+      - name: body_edits apply directly through update
+        id: core_write.body_edits_direct
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: notes/meeting.md
+          patch:
+            title: Weekly meeting
+          body_base: "sha256:1f72be3e4919a0546aef495f8cd10a6316b585386fec3bbf2096007d42ee57d7"
+          body_edits:
+            - start: 9
+              end: 15
+              text: costs
+          include_document: true
+        expect:
+          valid: true
+          document: |
+            ---
+            title: Weekly meeting
+            ---
+            Agenda
+            - costs
+            - hiring
+      - name: a stale base without base text fails without writing
+        id: core_write.body_edits_stale_base
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: notes/meeting.md
+          body_base: "sha256:5d1af5fb9d7c67c2b30ab3023be2dec7d0b4361387924cc9f86d1978dc5153d4"
+          body_edits:
+            - start: 0
+              end: 6
+              text: Plan
+        expect:
+          valid: false
+          error:
+            code: concurrent_modification
+            details:
+              reason: body_base_unavailable
+      - name: body_base_text lets a stale base rebase
+        id: core_write.body_edits_base_text
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits, merge.body_edit_rebase]
+        operation: update
+        input:
+          path: notes/meeting.md
+          body_base: "sha256:5d1af5fb9d7c67c2b30ab3023be2dec7d0b4361387924cc9f86d1978dc5153d4"
+          body_base_text: |
+            Agenda
+            - budget
+          body_edits:
+            - start: 0
+              end: 6
+              text: Plan
+        expect:
+          valid: true
+          body: |
+            Plan
+            - budget
+            - hiring
+      - name: body_base_text must match body_base
+        id: core_write.body_edits_base_text_mismatch
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: notes/meeting.md
+          body_base: "sha256:1f72be3e4919a0546aef495f8cd10a6316b585386fec3bbf2096007d42ee57d7"
+          body_base_text: |
+            something else
+          body_edits:
+            - start: 0
+              end: 6
+              text: Plan
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+      - name: body_edits cannot be combined with body
+        id: core_write.body_edits_with_body
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: notes/meeting.md
+          body: |
+            x
+          body_base: "sha256:1f72be3e4919a0546aef495f8cd10a6316b585386fec3bbf2096007d42ee57d7"
+          body_edits:
+            - start: 0
+              end: 0
+              text: y
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+      - name: body_edits require body_base
+        id: core_write.body_edits_without_base
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: notes/meeting.md
+          body_edits:
+            - start: 0
+              end: 0
+              text: y
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+      - name: a YAML document record has no body to edit
+        id: core_write.body_edits_yaml_document
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: update
+        input:
+          path: views/open.base
+          body_base: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          body_edits:
+            - start: 0
+              end: 0
+              text: y
+        expect:
+          valid: false
+          error:
+            code: invalid_request

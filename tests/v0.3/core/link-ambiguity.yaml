@@ -1,0 +1,84 @@
+# Link clarifications in 0.3.0-rc.5 (Chapters 04 and 08): settings.id_field has
+# no default, and an ambiguous ID resolves to null with ambiguous_link and no
+# filename fallback.
+name: "link resolution clarifications"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: links
+spec_ref: "v0.3/04, v0.3/08"
+
+groups:
+  - name: "no id_field configured"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        people/alice.md: |
+          ---
+          title: Alice by filename
+          ---
+        people/someone.md: |
+          ---
+          id: alice
+          title: Record whose id is alice
+          ---
+        tasks/t.md: |
+          ---
+          owner: "[[alice]]"
+          ---
+    tests:
+      - name: "an id field is not used for resolution unless configured"
+        id: links.no_default_id_field
+        since: 0.3.0-rc.5
+        covers: [links.id_field_no_default]
+        operation: resolve_link
+        input:
+          path: "tasks/t.md"
+          field: owner
+        expect:
+          valid: true
+          resolved: "people/alice.md"
+
+  - name: "duplicate configured ids"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          id_field: id
+      files:
+        tasks/a.md: |
+          ---
+          id: shared
+          ---
+        tasks/b.md: |
+          ---
+          id: shared
+          ---
+        tasks/shared.md: |
+          ---
+          title: Filename match
+          ---
+        tasks/child.md: |
+          ---
+          parent: "[[shared]]"
+          ---
+    tests:
+      - name: "the ambiguity is a cross-record warning on the referring record"
+        id: links.ambiguous_id_validate
+        since: 0.3.0-rc.5
+        covers: [links.ambiguous_id_link]
+        operation: validate
+        input:
+          path: "tasks/child.md"
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              id_field: id
+              validation: warn
+        expect:
+          valid: true
+          issues:
+            - code: ambiguous_link
+              severity: warning
+              field: parent

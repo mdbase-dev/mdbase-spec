@@ -1,0 +1,1717 @@
+# Three-way record merge fixtures (Chapter 12A).
+#
+# Each merge_records test supplies the base, first, and second versions of one
+# record. "first" is the earlier-ordered version; at a conflict the merged
+# document keeps its value. expect.document is the exact merged bytes and
+# expect.conflicts lists every conflict by kind and field, in key order.
+#
+# The first group converts the 13 fixtures of the mdbase-next feasibility
+# prototype (reference/prototype/crates/mdb-core/tests/merge_fixtures): the
+# prototype's "theirs" (sequenced first) is "first" and its "ours" (the
+# incoming external edit) is "second". The prototype spelled the max
+# declaration as an x-merge schema annotation; here it is collection.merge.
+name: "three-way record merge"
+spec_version: "0.3.0"
+fixture_set: merge
+category: merge
+spec_ref: "v0.3/07, v0.3/12A"
+groups:
+  - name: "prototype merge fixtures (TaskNotes-like task type)"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1 }
+                status: { type: string, enum: [open, doing, done] }
+                priority: { type: integer, minimum: 1, maximum: 5 }
+                blocked_by: { type: array, uniqueItems: true, items: { type: string } }
+                completedDate: { type: string }
+          collection:
+            read_defaults:
+              status: open
+            unique:
+              - field: code
+                scope: type
+                enforce: write
+            links:
+              blocked_by[]:
+                target_type: task
+            path:
+              pattern: "tasks/{title}.md"
+            merge:
+              completedDate: max
+          lifecycle:
+            on_create:
+              - if: '!has(raw.id)'
+                set:
+                  id: { ulid: true }
+              - set:
+                  dateCreated: { now: true }
+                  dateModified: { now: true }
+            on_update:
+              set:
+                dateModified: { now: true }
+          ---
+          # Task
+    tests:
+      - name: "Both append different lines at the end: union (theirs first), no conflict. (prototype fixture body-append-append)"
+        id: merge.body_append_append
+        since: 0.3.0-rc.5
+        covers: [merge.append_append_union]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            - one
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            - one
+            - theirs
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            - one
+            - ours
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            - one
+            - theirs
+            - ours
+          conflicts: []
+      - name: "Different body lines edited: both kept. (prototype fixture body-disjoint-hunks)"
+        id: merge.body_disjoint_hunks
+        since: 0.3.0-rc.5
+        covers: [merge.body_three_way]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            l1
+            l2
+            l3
+            l4
+            l5
+            l6
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            l1 theirs
+            l2
+            l3
+            l4
+            l5
+            l6
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            l1
+            l2
+            l3
+            l4
+            l5
+            l6 ours
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            l1 theirs
+            l2
+            l3
+            l4
+            l5
+            l6 ours
+          conflicts: []
+      - name: "Same line edited differently: conflict; theirs stays. (prototype fixture body-overlap)"
+        id: merge.body_overlap
+        since: 0.3.0-rc.5
+        covers: [merge.body_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            x
+            y
+            z
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            x
+            y theirs
+            z
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            x
+            y ours
+            z
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            x
+            y theirs
+            z
+          conflicts:
+            - kind: body
+      - name: "completedDate declared merge: max. (prototype fixture declared-max)"
+        id: merge.declared_max
+        since: 0.3.0-rc.5
+        covers: [merge.declared_strategies, merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            completedDate: 2026-10-01
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            completedDate: 2026-10-05
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            completedDate: 2026-10-04
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            completedDate: 2026-10-05
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "Different keys changed on each side: both kept. (prototype fixture disjoint-fields)"
+        id: merge.disjoint_fields
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 4
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 4
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "A field change and a body change merge. (prototype fixture field-vs-body)"
+        id: merge.field_vs_body
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.body_three_way]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2 ours
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2 ours
+            line3
+          conflicts: []
+      - name: "Untouched entries keep comments/quoting; the changed key is copied verbatim from the side that changed it. (prototype fixture format-preserved)"
+        id: merge.format_preserved
+        since: 0.3.0-rc.5
+        covers: [merge.merge_format_fidelity]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2   # p
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: 'doing'  # moved
+            priority: 2   # p
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 3   # p
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: 'doing'  # moved
+            priority: 3   # p
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "dateModified changed on both sides: the later timestamp wins, no conflict. (prototype fixture lifecycle-now-max)"
+        id: merge.lifecycle_now_max
+        since: 0.3.0-rc.5
+        covers: [merge.default_strategies, merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-03T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-02T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-03T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "Ours sets priority 9 (violates maximum 5) via an external edit: accepted, validity reported, not a conflict. (prototype fixture merge-invalid-is-reported)"
+        id: merge.merge_invalid_is_reported
+        since: 0.3.0-rc.5
+        covers: [merge.invalid_merge_reported]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 9
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 9
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "Default merge: conflict. The earlier-sequenced value (theirs) stays. (prototype fixture same-field-different-values)"
+        id: merge.same_field_different_values
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: doing
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts:
+            - kind: field
+              field: status
+      - name: "Both sides set the same value: no conflict. (prototype fixture same-field-same-value)"
+        id: merge.same_field_same_value
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: done
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "Both add different tags: union. (prototype fixture tags-union-add-add)"
+        id: merge.tags_union_add_add
+        since: 0.3.0-rc.5
+        covers: [merge.default_strategies, merge.union_semantics]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b, c]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b, d]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b, c, d]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+      - name: "One side removes b, the other adds c: remove and add both apply. (prototype fixture tags-union-remove-add)"
+        id: merge.tags_union_remove_add
+        since: 0.3.0-rc.5
+        covers: [merge.union_semantics]
+        operation: merge_records
+        input:
+          path: tasks/T.md
+          base: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          first: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, b, c]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          second: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+        expect:
+          document: |
+            ---
+            type: task
+            title: T # keep me
+            status: open
+            priority: 2
+            tags: [a, c]
+            dateModified: 2026-10-01T00:00:00.000Z
+            ---
+            line1
+            line2
+            line3
+          conflicts: []
+  - name: "declared strategies, defaults, paths, and edge cases"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        item.md: |
+          ---
+          kind: mdbase.type
+          name: item
+          version: 1
+          match:
+            path_glob: "items/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+                score: { type: number }
+                reviewers: { type: array, uniqueItems: true, items: { type: string } }
+                labels: { type: array, items: { type: string } }
+          collection:
+            merge:
+              firstSeen: min
+              lastSeen: max
+              score: max
+              dateModified: conflict
+          lifecycle:
+            on_update:
+              set:
+                dateModified: { now: true }
+          ---
+    tests:
+      - name: a field declared min keeps the lesser of two changed values
+        id: merge.declared_min
+        since: 0.3.0-rc.5
+        covers: [merge.declared_strategies, merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            firstSeen: 2026-10-03
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            firstSeen: 2026-10-02
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            firstSeen: 2026-10-01
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            firstSeen: 2026-10-01
+            ---
+            Body.
+          conflicts: []
+      - name: a declaration replaces the max default of a lifecycle now field
+        id: merge.declaration_overrides_default
+        since: 0.3.0-rc.5
+        covers: [merge.declared_strategies, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            dateModified: 2026-10-01T00:00:00Z
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            dateModified: 2026-10-02T00:00:00Z
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            dateModified: 2026-10-03T00:00:00Z
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            dateModified: 2026-10-02T00:00:00Z
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: dateModified
+      - name: "max compares date-times with offsets as instants, not as text"
+        id: merge.max_compares_instants
+        since: 0.3.0-rc.5
+        covers: [merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            lastSeen: 2026-10-01T00:00:00Z
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            lastSeen: 2026-10-02T09:00:00+10:00
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            lastSeen: 2026-10-01T23:30:00Z
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            lastSeen: 2026-10-01T23:30:00Z
+            ---
+            Body.
+          conflicts: []
+      - name: max of a number and a string is a conflict
+        id: merge.max_incomparable_conflicts
+        since: 0.3.0-rc.5
+        covers: [merge.max_min_semantics, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 5
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: high
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 5
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: score
+      - name: under max a value survives a concurrent removal
+        id: merge.max_value_beats_removal
+        since: 0.3.0-rc.5
+        covers: [merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 3
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 3
+            ---
+            Body.
+          conflicts: []
+      - name: an array with uniqueItems merges as a set by default and keeps block style
+        id: merge.unique_items_default_union
+        since: 0.3.0-rc.5
+        covers: [merge.default_strategies, merge.union_semantics, merge.merge_format_fidelity]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+              - ann
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+              - ann
+              - bo
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+              - cy
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+              - bo
+              - cy
+            ---
+            Body.
+          conflicts: []
+      - name: an array without uniqueItems has the conflict default
+        id: merge.plain_array_conflicts
+        since: 0.3.0-rc.5
+        covers: [merge.default_strategies, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            labels: [x]
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            labels: [x, y]
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            labels: [x, z]
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            labels: [x, y]
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: labels
+      - name: union treats a removed key as an empty list and re-emits the result
+        id: merge.union_with_removed_key
+        since: 0.3.0-rc.5
+        covers: [merge.union_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            reviewers: [ann]
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            reviewers: [ann, bo]
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            reviewers: [bo]
+            ---
+            Body.
+          conflicts: []
+      - name: an empty union result with a removed key leaves the key missing
+        id: merge.union_empty_removes_key
+        since: 0.3.0-rc.5
+        covers: [merge.union_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            reviewers: [ann]
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            reviewers: []
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          conflicts: []
+      - name: a tags string reads as a one-item list
+        id: merge.tags_string_is_one_item
+        since: 0.3.0-rc.5
+        covers: [merge.union_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            tags: x
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            tags: [x, y]
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            tags: z
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            tags: [y, z]
+            ---
+            Body.
+          conflicts: []
+      - name: a key removed on one side and unchanged on the other is removed
+        id: merge.one_side_removes
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            note: old
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            note: old
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          conflicts: []
+      - name: a key added on both sides with different values is a conflict
+        id: merge.added_both_sides_differently
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            owner: ann
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            owner: bo
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            owner: ann
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: owner
+      - name: setting null and removing a key are different changes
+        id: merge.null_is_not_missing
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            owner: ann
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            owner: null
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            owner: null
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: owner
+      - name: a key added by the second side goes after the last entry and before trailing comments
+        id: merge.new_key_after_last_entry
+        since: 0.3.0-rc.5
+        covers: [merge.merge_format_fidelity]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item   # name
+            score: 1
+            # end of fields
+            ---
+            Body.
+          first: |
+            ---
+            title: Renamed   # name
+            score: 1
+            # end of fields
+            ---
+            Body.
+          second: |
+            ---
+            title: Item   # name
+            score: 1
+            owner: "bo"
+            # end of fields
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Renamed   # name
+            score: 1
+            owner: "bo"
+            # end of fields
+            ---
+            Body.
+          conflicts: []
+      - name: append-append inserts a line break after an append that lacks one
+        id: merge.append_without_final_newline
+        since: 0.3.0-rc.5
+        covers: [merge.append_append_union]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+          first: |-
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            c
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+            c
+          conflicts: []
+      - name: two insertions at the same place inside the body are a conflict
+        id: merge.interior_insertions_conflict
+        since: 0.3.0-rc.5
+        covers: [merge.body_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            z
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+            z
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            c
+            z
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+            z
+          conflicts:
+            - kind: body
+      - name: "when the first version is unchanged the merged version is the second, byte for byte"
+        id: merge.unchanged_first_takes_second_bytes
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.merge_format_fidelity]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          second: |
+            ---
+            # reviewed
+            title:   Item
+            score: 1
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            # reviewed
+            title:   Item
+            score: 1
+            ---
+            Body.
+          conflicts: []
+      - name: two identical edits merge to that edit
+        id: merge.identical_edits
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.body_three_way]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 2
+            ---
+            Body!
+          second: |
+            ---
+            title: Item
+            score: 2
+            ---
+            Body!
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 2
+            ---
+            Body!
+          conflicts: []
+      - name: a move on one side wins over an unchanged path
+        id: merge.path_one_side_moves
+        since: 0.3.0-rc.5
+        covers: [merge.path_merge]
+        operation: merge_records
+        input:
+          paths:
+            base: items/a.md
+            first: items/a.md
+            second: items/b.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 2
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 2
+            ---
+            Body.
+          conflicts: []
+          path: items/b.md
+      - name: two different moves are a path conflict
+        id: merge.path_two_moves_conflict
+        since: 0.3.0-rc.5
+        covers: [merge.path_merge, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          paths:
+            base: items/a.md
+            first: items/b.md
+            second: items/c.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          conflicts:
+            - kind: path
+          path: items/b.md
+      - name: frontmatter that is not a mapping merges as one unit
+        id: merge.non_mapping_frontmatter
+        since: 0.3.0-rc.5
+        covers: [merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            - x
+            ---
+            Body.
+          first: |
+            ---
+            - y
+            ---
+            Body.
+          second: |
+            ---
+            - z
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            - y
+            ---
+            Body.
+          conflicts:
+            - kind: frontmatter
+      - name: declared and default strategies for one record
+        id: merge.strategies_item
+        since: 0.3.0-rc.5
+        covers: [merge.default_strategies, merge.declared_strategies, collection_semantics.merge_declarations]
+        operation: merge_strategies
+        input:
+          path: items/a.md
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+        expect:
+          strategies:
+            firstSeen: min
+            lastSeen: max
+            score: max
+            dateModified: conflict
+            reviewers: union
+            tags: union
+            labels: conflict
+            title: conflict
+  - name: merge declarations across several matched types
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        alpha.md: |
+          ---
+          kind: mdbase.type
+          name: alpha
+          version: 1
+          match:
+            path_glob: "shared/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value: { type: object }
+          collection:
+            merge:
+              rank: max
+              note: union
+          ---
+        beta.md: |
+          ---
+          kind: mdbase.type
+          name: beta
+          version: 1
+          match:
+            path_glob: "shared/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value: { type: object }
+          collection:
+            merge:
+              rank: min
+              note: union
+          ---
+    tests:
+      - name: different declarations for one field from two matched types are a type_conflict
+        id: merge.declaration_type_conflict
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.merge_declarations]
+        operation: merge_strategies
+        input:
+          path: shared/x.md
+          document: |
+            ---
+            rank: 1
+            ---
+        expect:
+          error:
+            code: type_conflict
+            field: rank
+      - name: identical declarations from two matched types coalesce
+        id: merge.declaration_coalesce
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.merge_declarations]
+        operation: merge_strategies
+        input:
+          path: shared/x.md
+          document: |
+            ---
+            note: [a]
+            ---
+          fields: [note]
+        expect:
+          strategies:
+            note: union
