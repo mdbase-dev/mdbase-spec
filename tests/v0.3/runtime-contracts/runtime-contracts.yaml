@@ -2,7 +2,7 @@ name: "runtime companion profile 0.2 conformance"
 spec_version: "0.3.0"
 fixture_set: runtime_profile
 category: runtime
-spec_ref: "v0.3/13, v0.3/14, interop/0.1"
+spec_ref: "runtime/0.2, interop/0.1"
 
 groups:
   - name: "standard runtime pack artifacts"

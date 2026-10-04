@@ -13,7 +13,8 @@ export function parseMarkdownRecord(path: string, text: string): MarkdownRecord 
   if (!match) {
     return { path, frontmatter: {}, body: text };
   }
-  const parsed = parse(match[1] ?? "") as unknown;
+  // YAML integers stay CEL `int` values; other numbers become `double`.
+  const parsed = parse(match[1] ?? "", { intAsBigInt: true }) as unknown;
   if (parsed != null && !isPlainObject(parsed)) {
     throw new Error(`Frontmatter for ${path} must be an object.`);
   }

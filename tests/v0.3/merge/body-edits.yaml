@@ -1,0 +1,304 @@
+# Body edits (Chapters 12 and 12A), since 0.3.0-rc.5. Each apply_body_edits
+# case gives the base body, the record's current body, and the edits, whose
+# offsets count Unicode scalar values of the base. base_available: false
+# models an engine that has neither body_base_text nor a retained copy of the
+# base. Expect either the written body or the error and details.reason.
+name: body edits against a known base
+spec_version: "0.3.0"
+fixture_set: merge
+category: merge
+spec_ref: "v0.3/12, v0.3/12A"
+groups:
+  - name: apply and rebase body edits
+    tests:
+      - name: edits apply directly when the body is the base
+        id: body_edits.direct_replace
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 9
+              end: 15
+              text: costs
+        expect:
+          body: |
+            Agenda
+            - costs
+            - hiring
+      - name: every offset refers to the base body
+        id: body_edits.base_coordinates
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 0
+              end: 6
+              text: Plan
+            - start: 25
+              end: 25
+              text: |
+                - travel
+        expect:
+          body: |
+            Plan
+            - budget
+            - hiring
+            - travel
+      - name: "offsets count Unicode scalar values, not bytes or UTF-16 units"
+        id: body_edits.scalar_offsets
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            café 😀
+            bar
+          current: |
+            café 😀
+            bar
+          edits:
+            - start: 7
+              end: 10
+              text: baz
+        expect:
+          body: |
+            café 😀
+            baz
+      - name: an empty text deletes its range
+        id: body_edits.deletion
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 7
+              end: 16
+              text: ""
+        expect:
+          body: |
+            Agenda
+            - hiring
+      - name: edits rebase onto a concurrent change to other lines
+        id: body_edits.rebase_disjoint_lines
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda (Monday)
+            - budget
+            - hiring
+          edits:
+            - start: 18
+              end: 24
+              text: interviews
+        expect:
+          body: |
+            Agenda (Monday)
+            - budget
+            - interviews
+      - name: "an append rebases onto a concurrent append, current text first"
+        id: body_edits.rebase_append_append
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+            - rent
+          edits:
+            - start: 25
+              end: 25
+              text: |
+                - travel
+        expect:
+          body: |
+            Agenda
+            - budget
+            - hiring
+            - rent
+            - travel
+      - name: an edit to a line that changed concurrently is a conflict
+        id: body_edits.rebase_conflict_same_line
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget 2027
+            - hiring
+          edits:
+            - start: 9
+              end: 15
+              text: costs
+        expect:
+          error:
+            code: concurrent_modification
+            details:
+              reason: body_conflict
+      - name: a changed body without the base text cannot be rebased
+        id: body_edits.base_unavailable
+        since: "0.3.0-rc.5"
+        covers: [merge.body_edit_rebase, core_write.body_edits]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda (Monday)
+            - budget
+            - hiring
+          edits:
+            - start: 9
+              end: 15
+              text: costs
+          base_available: false
+        expect:
+          error:
+            code: concurrent_modification
+            details:
+              reason: body_base_unavailable
+      - name: an offset past the end of the base is invalid
+        id: body_edits.out_of_range
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 20
+              end: 99
+              text: x
+        expect:
+          error:
+            code: invalid_request
+            details:
+              reason: offset_out_of_range
+      - name: overlapping edits are invalid
+        id: body_edits.overlapping
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 0
+              end: 6
+              text: A
+            - start: 3
+              end: 8
+              text: B
+        expect:
+          error:
+            code: invalid_request
+            details:
+              reason: edits_overlap_or_unordered
+      - name: edits out of order are invalid
+        id: body_edits.unordered
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 9
+              end: 15
+              text: A
+            - start: 0
+              end: 6
+              text: B
+        expect:
+          error:
+            code: invalid_request
+            details:
+              reason: edits_overlap_or_unordered
+      - name: two insertions at one offset are invalid
+        id: body_edits.same_offset_insertions
+        since: "0.3.0-rc.5"
+        covers: [core_write.body_edits]
+        operation: apply_body_edits
+        input:
+          base: |
+            Agenda
+            - budget
+            - hiring
+          current: |
+            Agenda
+            - budget
+            - hiring
+          edits:
+            - start: 6
+              end: 6
+              text: A
+            - start: 6
+              end: 6
+              text: B
+        expect:
+          error:
+            code: invalid_request
+            details:
+              reason: edits_overlap_or_unordered

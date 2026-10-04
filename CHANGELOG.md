@@ -2,6 +2,241 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## 0.3.0-rc.5 (draft, untagged)
+
+The fifth release candidate specifies the data semantics that let several
+tools, devices, and people edit one collection at once: validity is reported
+rather than guaranteed, concurrent edits merge field by field, and writers
+change only the bytes they mean to change. Most changes relax write-time
+checks; the few tightenings are reported as diagnostics. Collections keep
+`spec_version: "0.3.0"`. Replication, logs, sequencers, conflict envelopes,
+and delete-versus-update policy remain implementation concerns. Release
+notes, including every provisional choice and every test whose expectation
+changed: [docs/releases/0.3.0-rc.5.md](./docs/releases/0.3.0-rc.5.md).
+
+rc.5 also ships the changes made since rc.4 to YAML document records and
+Bases, seed type upgrades, and saved-view identification.
+
+### Concurrent edits, reported validity, regex profile, and body edits
+
+#### Added
+
+- Chapter 12A, Concurrent Edits: record identity without IDs in files, move
+  detection, the three-way record merge, and the writer format fidelity rule.
+- `collection.merge` declares `conflict`, `max`, `min`, or `union` per
+  top-level field. Defaults: `max` for fields that lifecycle assigns with
+  `now` or `today`; `union` for `tags` and for arrays declared
+  `uniqueItems: true`; `conflict` otherwise.
+- Update accepts `add` and `remove` list operations, applied to the current
+  value instead of replacing the list.
+- Update accepts `body_edits`: text edits whose offsets count Unicode scalar
+  values of a base body identified by `body_base`, a SHA-256 digest. They
+  apply directly to an unchanged body and otherwise rebase with the
+  three-way body merge, failing with `body_conflict` or
+  `body_base_unavailable`. They are mutually exclusive with `body` and
+  `document`.
+- The mdbase regex profile (Chapter 10): RE2 syntax with ASCII-only `\d`,
+  `\w`, `\s`, `\b`, and case folding over Unicode scalar values, used by CEL
+  `matches()`, JSON Schema `pattern`, and `match.where` `matches`. Unicode
+  classes, backreferences, and look-around are `invalid_pattern`.
+- `collection.unique[].enforce: write | report`, defaulting to `report`.
+- Path equivalence: paths that are equal after NFC normalization and full
+  Unicode case folding name one record path. Explicit paths that collide fail
+  with `path_conflict`; derived paths and concurrently created records get a
+  deterministic ` (n)` suffix; discovered collisions report `path_collision`.
+- The `merge` conformance profile (requires `core_write`), in the profile
+  list and in `schemas/v0.3/conformance-claim.schema.json`; `collection.merge`
+  and `unique[].enforce` in `schemas/v0.3/type-file.schema.json`.
+- Diagnostic codes `path_collision`, `path_value_invalid`, `ambiguous_link`,
+  `link_target_type_mismatch`, `nondeterministic_match`, `invalid_pattern`,
+  and `duplicate_value` are listed as core codes.
+- The v0.3 suite gains 155 tests marked `since: 0.3.0-rc.5`, including the 13
+  merge fixtures of the mdbase-next prototype in a new `merge_records` format
+  and new `merge` and `watch` fixture sets. `scripts/check_v03_tests.py` runs
+  the 95 pure-function fixtures against an executable model
+  (`scripts/concurrent_edits_model.py`) in CI.
+
+#### Changed
+
+- Validity is reported, never guaranteed. Checks are split into request and
+  safety, single-record, and cross-record tiers. At level `error` only
+  single-record issues reject a write made through an engine; cross-record
+  issues (uniqueness in `report` mode, `validate_exists`, `target_type`,
+  ambiguous links, path collisions) are reported and never block, and a
+  successful write reports them as warnings.
+- Uniqueness scopes are exact: a rule governs records of its declaring type,
+  `scope` selects the records they must differ from, and raw values compare
+  without coercion. The default scope is `type`.
+- A `match.expr` that uses `now()`, `today()`, `file.mtime`, `file.ctime`, or
+  helpers that read other records loads with a `nondeterministic_match`
+  warning. It becomes an error that invalidates the type in 0.3.0 stable.
+- CEL is the one expression language. Obsidian Bases filters and formulas are
+  an adapter dialect that never affects membership, validation, lifecycle,
+  merge, or portable queries.
+- Writers re-emit only changed top-level frontmatter entries and keep flow or
+  block collection style, for Markdown records and YAML document records.
+- A taken derived path receives a ` (n)` suffix instead of failing.
+- `collection.path.pattern` values containing `/` or `\`, beginning with `.`,
+  empty, or not scalars fail with `path_value_invalid`.
+- An ambiguous configured ID resolves to null with `ambiguous_link` and no
+  filename fallback. Filename tiebreakers are required: referring directory,
+  then fewest path segments, then code-point order, and never scan or storage
+  order.
+- A rename with reference updating rewrites only the links that resolved
+  to the renamed record, including tiebreaker-selected filename matches, and
+  reports them in `references_updated`; ambiguous links are not rewritten.
+- `if_revision` is opt-in; transports and SDKs must not add it on a caller's
+  behalf.
+- Lifecycle states that it has no sequence provider; implementations may
+  offer one only under an `x-*` extension. v0.2 `generated: sequence` is
+  reported as unsupported by v0.2 migration.
+- Test `links.duplicate_id_ambiguous` now also expects the `ambiguous_link`
+  diagnostic.
+
+#### Clarified
+
+- `settings.id_field` has no default; engines that resolve through `id`
+  without configuration are non-conforming. It also serves as the
+  move-detection identity hint.
+
+#### Migration
+
+- Collections need no edit. Add `enforce: write` to uniqueness rules that must
+  keep blocking duplicate writes. Chapter 13 ("Changes Since rc.4") lists
+  every behavior change and how engines report the tightenings.
+
+### YAML document records and Bases as records
+
+- A record's format is fixed by its extension through a table in the
+  specification: `base` files are YAML document records whose whole file is
+  the frontmatter, with no body. Collections opt in through
+  `record_extensions`; `mdbase.yaml` and `mdbase.lock.yaml` are never records.
+- The `obsidian.base` record contract lets a type claim `.base` files, so Bases
+  are discovered, written, and authorized as ordinary records. Discovery
+  through `x-obsidian.bases.include` and the saved-view source operations for
+  Bases become transitional.
+
+### Seed type upgrades
+
+- A seed type resource may declare `upgrade_from`: one baseline or a list of
+  baselines, each a digest-pinned starter the publisher previously shipped
+  (`{ digest, document, version? }`), so a collection can upgrade from any
+  supported starter, not only the latest. The engine chooses the merge
+  baseline from the seed's origin and never guesses: an unedited seed equal to
+  any baseline is replaced with the exact desired bytes; an edited seed merges
+  against the baseline it descends from; a seed whose origin is unknown or not
+  listed is preserved with a reason rather than merged or made to conflict.
+  Competing changes still fail closed, publication is atomic, and the
+  assessment reports the baseline used. Engines that do not support the member
+  must reject the manifest. Records are never migrated this way.
+- The type-pack lock records a seed's `origin_digest`, the publisher document
+  its target descends from, set when the seed is created, upgraded, or already
+  matches the desired document, and otherwise carried forward. A seed's
+  installed digest describes the pack, not the target, and is never its origin.
+- Type-pack conformance adds seed-upgrade fixtures (`examples/v0.3/seed-upgrades`)
+  and `input.history` steps, with an executable model in
+  `scripts/type_pack_model.py`.
+
+### Saved views are identified through the `mdbase.view` contract
+
+#### Changed
+
+- A view record is a record whose matched type implements the new
+  `mdbase.view` 1.0.0 record contract, rather than a record whose type is named
+  `view`. Collections can implement the contract with any type name, match
+  rule, and field mapping; view-aware tools discover and execute views through
+  the contract view.
+- `view.schema.json` is the contract's record schema. `type` is no longer
+  required or fixed to `view`; it remains an optional string so the canonical
+  `view` type can validate its membership value.
+- `view_records` now requires `data_contracts`. A record that matches no type
+  implementing `mdbase.view` produces `view_not_found`; one matching several
+  implementing types produces `invalid_view`.
+
+#### Migration
+
+- Install the `mdbase.view` type pack, or add `implements: mdbase.view` to an
+  existing `_types/view.md`. Records with `type: view` frontmatter and no
+  implementing type are no longer listed or executed.
+
+## 0.3.0-rc.4 (2026-09-27)
+
+- Clarify that selected-type creation does not require explicit membership keys.
+  With inference-only configuration, final persisted fields and path must match
+  the selected type, and all applicable types remain subject to validation.
+- Add shared creation fixtures for inferred membership, ordinary `type` metadata,
+  auxiliary schemas, derived paths, and serialization-policy membership loss.
+
+### Spec review cleanup
+
+#### Changed
+
+- CEL expressions now follow standard CEL semantics. Field selection on null
+  and missing map keys are evaluation errors; each embedding context defines
+  how a top-level error is handled, and query filters exclude the failing
+  record with an `expression_evaluation_error` diagnostic. The CEL optional
+  types extension is required.
+- Replaced the `present` namespace with CEL `has()` and removed the `note`
+  alias for `record`.
+- Dates are RFC 3339 `full-date` strings, which CEL string comparison orders
+  chronologically; `today()` returns one. Schema fields with `format:
+  date-time` are CEL timestamps. Added `date()`, `startOfDay()`, and the date
+  methods `addDays`, `addMonths`, `addYears`, `daysUntil`, `year`, `month`,
+  `day`, and `dayOfWeek`. `duration()` is CEL's standard function. mdbase adds
+  no host types and overloads no standard function or operator.
+- Added the `lower()` and `upper()` string methods, with Unicode default case
+  mappings, for case-insensitive matching.
+- A null patch value persists explicit null. Update accepts `unset` to remove
+  keys; `fields` and `frontmatter` are no longer aliases of `patch`.
+- Batch is normative: batches are atomic by default and commit as one
+  recoverable transaction, `allow_partial` commits operations independently,
+  duplicate record paths are rejected, and results report every operation.
+- Defined `off`, `warn`, and `error` validation levels for reads, queries, and
+  writes. Non-mapping frontmatter reports `invalid_frontmatter`.
+- Hidden paths and `node_modules` are always excluded, `settings.exclude` adds
+  to them, and one portable glob syntax is defined. Removed
+  `settings.include_subfolders`.
+- Simple wikilinks resolve by filename; ID resolution applies only when
+  `settings.id_field` is configured, and duplicate IDs make ID resolution
+  ambiguous rather than invalidating records. Wikilinks with `./` or `../`
+  resolve from the containing folder and other wikilinks containing `/` from
+  the collection root. Undeclared frontmatter wikilinks are links, and
+  `file.backlinks` is defined.
+- Type `implements.version` accepts a version requirement. The portable
+  grammar, shared with interoperability requirements, is an npm `semver` subset:
+  exact, `^`, `~`, and space-separated comparators, with pre-releases inside
+  the bounds. `collection.display` no longer affects implementation digests.
+- Watch implementations that claim `data_contracts` report `contract_changed`.
+- Migration adds `!has(raw.field)` guards to generated-field lifecycle actions.
+  Chapter 13 now specifies configuration migration: v0.2 validation and
+  `id_field` defaults are written explicitly, `include_subfolders: false`
+  becomes `*/**`, exclusions become equivalent portable globs, and settings
+  without a v0.3 meaning move under `x-legacy-v0.2`.
+- A type may implement each contract ID only once.
+- Link values resolve relative to the record they were read from, including
+  `this` and records returned by `asFile()`. `file.links` and `file.embeds`
+  hold alias-free link values that resolve as the originals do, with body
+  wikilinks before body Markdown links.
+- Collection projections are the optional feature `collection_projections`.
+  Implementations without it still load the type and report
+  `unsupported_feature` instead of dropping projections silently.
+- The `@mdbase/cel-host` prototype now uses `@marcbachmann/cel-js` with optional
+  types and implements the revised host bindings and date functions.
+- Lifecycle events accept one action or an ordered action list, `set` always
+  assigns, and `on_delete` and `on_rename` were removed.
+- Data contracts moved from Core Read to a new `data_contracts` profile and
+  type packs moved from Core Write to a new `type_packs` profile. `cel_query`
+  and `watch` now require `collection_semantics`; `runtime/0.2` requires
+  `data_contracts`.
+- Moved the durable runtime chapters to `runtime/0.2.md` and the Obsidian Bases
+  adapter to `adapters/obsidian-bases.md`. `05-data-contracts.md` is now
+  `05a-data-contracts.md`; migrations and conformance are Chapters 13 and 14.
+
+#### Removed
+
+- Removed the undefined type `migrations` and `runtime` sections and the stale
+  runtime-contract and workflow conformance requirements.
+
 ## 2026-07-28 (standard field references)
 
 ### Added

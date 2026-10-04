@@ -55,15 +55,47 @@ Pipeline:
 4. apply lifecycle `on_create`
 5. verify type membership did not change as a lifecycle side effect
 6. validate JSON Schema
-7. run collection validators
-8. choose or validate path policy
+7. run collection validators, applying the validation tiers of Chapter 04
+8. choose or validate path policy; the final path's extension fixes the
+   record's format (Chapter 03), and a body is rejected when that format is a
+   YAML document
 9. write Markdown file
 10. update derived indexes
 11. emit watch/runtime events after state is consistent
 
+An explicit `path` whose path key (Chapter 02) equals that of an existing
+record fails with `path_conflict`. A path derived from `collection.path.pattern`
+never fails for that reason: it receives the first free suffixed path from
+Chapter 02, and the result reports the final path.
+
 Static JSON Schema defaults MAY be used by editor and create interfaces.
 Validation-time mutation occurs when the create operation explicitly copies a
 default into the draft.
+
+### Selected types and membership representation
+
+A request-level type selector identifies the type the caller intends to create;
+it is not itself a persisted frontmatter declaration. Contract selection MUST
+resolve and validate its designated implementing type before writing.
+
+When explicit declaration keys are configured, implementations MUST persist a
+selected type using those keys, preserving existing valid memberships. They
+MUST NOT hard-code `type` or `types` when those keys are not configured. A field
+outside the configured declaration keys remains ordinary application data.
+
+When `settings.explicit_type_keys` is empty, implementations MUST NOT add a type
+declaration field and MUST NOT reject a create solely because the list is empty.
+The selected type guides schema, lifecycle, and path policy. Membership is
+inferred from persisted frontmatter and the final canonical path. The selected
+(or contract-designated) type MUST be included in the final inferred membership;
+otherwise the operation MUST fail without writing a record. All applicable
+types participate in validation, not only the requested type. Matching errors
+MUST NOT be silently treated as non-matches.
+
+The pre-lifecycle membership freeze and final membership check still apply.
+Read defaults and projections are not persisted evidence of membership. A
+successful create guarantees membership for the written record under the
+current collection rules, not permanent membership after later user edits.
 
 ## Update
 
@@ -72,26 +104,150 @@ Update modifies an existing record.
 Pipeline:
 
 1. read existing raw frontmatter
-2. apply the requested patch
+2. apply the requested `patch`, `unset`, `add`, and `remove`, and the body
+   replacement or `body_edits`
 3. re-match and freeze types when type-affecting fields or path changed
 4. apply lifecycle `on_update`
 5. verify type membership did not change as a lifecycle side effect
 6. validate JSON Schema
-7. run collection validators
-8. write frontmatter and preserve body
+7. run collection validators, applying the validation tiers of Chapter 04
+8. write the changed frontmatter entries with format fidelity (Chapter 12A)
+   and preserve the body
 9. update derived indexes
 10. emit watch/runtime events
 
-If a patch sets a field to missing, the key is removed. If a patch sets a field
-to null, the key is persisted as null unless the operation policy says null
-means remove.
+A structured update accepts:
+
+- `patch`: an object whose top-level keys are set to the supplied values,
+  replacing any existing value; a null value persists an explicit null
+- `unset`: a list of field references, as defined in Chapter 07, whose keys are
+  removed from persisted frontmatter
+- `add`: an object mapping top-level field names to lists of items to add to
+  that field's list
+- `remove`: an object mapping top-level field names to lists of items to
+  remove from that field's list
+- `body`: optional replacement Markdown body; a non-empty body for a YAML
+  document record (Chapter 03) is `invalid_request`
+- `body_edits` with `body_base`: optional text edits to the body against a
+  known base body, as an alternative to `body`; see below
+
+Unsetting a key that is already missing is not an error. A request that names
+the same field in `patch` and `unset`, names a field inside a key that `patch`
+replaces, or uses an `unset` reference that selects an array item, is invalid
+and produces `invalid_request` before any write. When `unset` removes the last key of a
+nested object, the now-empty object remains.
+
+### List operations
+
+`add` and `remove` change a list field relative to its current value instead
+of replacing it, so "add tag `x`" from one writer and "add tag `y`" from
+another both take effect:
+
+```yaml
+path: tasks/a.md
+add:
+  tags: [urgent]
+remove:
+  tags: [someday]
+```
+
+They apply to the record's current persisted value when the update is
+applied, after `patch` and `unset`:
+
+- `add` appends each listed item that is not already present, in request
+  order. A missing or null field is treated as an empty list, so `add` creates
+  the field.
+- `remove` removes every item equal to a listed item. Removing from a missing
+  or null field, or removing an item that is absent, is not an error and
+  leaves the field unchanged.
+- Items are compared with the deep JSON equality used for uniqueness in
+  Chapter 07.
+- When the existing value is a string and the field is `tags`, it is treated
+  as a one-item list, matching how `file.tags` reads it. Any other non-list
+  existing value is `invalid_request`.
+
+A request is `invalid_request` before any write when it names a field in
+`add` or `remove` that it also names in `patch` or `unset`, when the same
+item appears in both `add` and `remove` for one field, or when an `add` or
+`remove` value is not a list. List operations work on any list field; they do
+not require `uniqueItems`. A list emptied by `remove` stays as an empty list.
+
+**Provisional (rc.5).** `add` and `remove` address top-level fields
+only, like `patch`, because the merge unit is the top-level field.
+
+### Body edits
+
+`body_edits` changes parts of the body instead of replacing all of it. It is
+what an editor buffer naturally produces, and it describes the writer's change
+precisely enough to combine with a concurrent edit:
+
+```yaml
+path: notes/meeting.md
+body_base: sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+body_edits:
+  - { start: 0, end: 5, text: "Agenda" }
+  - { start: 42, end: 42, text: "\n- follow up with Bo" }
+```
+
+- `body_base` identifies the body the edits were made against: `sha256:`
+  followed by the lowercase hexadecimal SHA-256 digest of the body's exact
+  UTF-8 bytes, as defined in Chapter 03 (everything after the closing
+  frontmatter delimiter, or the whole file without frontmatter).
+- `body_edits` is a list of edits. Each replaces the text from offset `start`
+  up to, but not including, offset `end` of the base body with `text`.
+  `start == end` is an insertion and an empty `text` is a deletion.
+- Offsets count Unicode scalar values from the start of the base body, so
+  every offset falls between two characters whatever the encoding.
+- Every offset refers to the base body, not to the body after earlier edits.
+  Edits are sorted by `start` and do not overlap: each edit's `end` is at most
+  the next edit's `start`, and two insertions at the same offset are one edit.
+- `body_base_text` optionally carries the complete base body. When present,
+  its digest MUST equal `body_base`.
+
+The update applies the edits as follows:
+
+1. If the record's current body has the digest `body_base`, the edits are
+   applied to it directly.
+2. Otherwise the implementation obtains the base body, from `body_base_text`
+   or from bodies it has retained, and rebases the edits onto the current
+   body with the three-way body merge of Chapter 12A, where the current body
+   is the first version and the base with the edits applied is the second.
+   A merged body is written. A body conflict fails the update with
+   `concurrent_modification`, `details.reason: body_conflict`, and the
+   conflict; nothing is written.
+3. If the base body cannot be obtained, the update fails with
+   `concurrent_modification` and `details.reason: body_base_unavailable`.
+   The caller can retry with `body_base_text` or against the current body.
+
+A request is `invalid_request` before any write when it combines `body_edits`
+with `body` or `document`, has `body_edits` without `body_base`, has an
+offset outside the base body, or has edits out of order or overlapping. Body
+edits for a YAML document record are `invalid_request`, because such a record
+has no body. Body edits combine with `patch`, `unset`, `add`, and `remove` in
+one update, and lifecycle runs once for the whole update.
+
+Body edits need no live-collaboration machinery. An implementation that only
+ever applies them directly, case 1 above, conforms, as long as it reports the
+other cases as specified.
+
+Conflicts are found at line granularity, because they come from the
+line-based body merge of Chapter 12A: two edits to different words of one line
+conflict. A later release may detect conflicts at a finer granularity; that
+is a compatible refinement, because it only turns some conflicts into merges.
+
+**Provisional (rc.5).** Offsets are Unicode scalar values, the unit that
+regular expressions and `.` match over. Byte offsets could fall inside a
+character, and UTF-16 code units, which JavaScript editors use, are
+specific to one platform; adapters convert at their boundary. Retaining old
+bodies is optional.
 
 As an alternative to a frontmatter patch and body replacement, Update accepts
-`document` containing the complete candidate Markdown source. A document
-replacement MUST NOT be combined with `patch`, `fields`, `frontmatter`, or
-`body`. The candidate is parsed and passes through the same type matching,
-lifecycle, validation, concurrency, and atomic-write pipeline as a structured
-update. When lifecycle policy does not alter the candidate, the exact supplied
+`document` containing the complete candidate source in the record's format:
+Markdown source for a Markdown record, or the whole YAML document for a YAML
+document record. A document
+replacement MUST NOT be combined with `patch`, `unset`, or `body`. The
+candidate is parsed and passes through the same type matching, lifecycle,
+validation, concurrency, and atomic-write pipeline as a structured update. When lifecycle policy does not alter the candidate, the exact supplied
 source MUST be preserved. If policy changes persisted values, the authoritative
 post-policy source MAY be reserialized and is returned when source was
 requested.
@@ -110,27 +266,104 @@ Delete is a Core Write operation and MAY emit an event for workflow runtimes.
 
 ## Rename
 
-Rename moves a record within the collection.
+Rename moves a record within the collection. It accepts `from` and `to`
+collection-relative paths, optional `if_revision`, and optional `update_refs`.
 
-Tools MUST reject target paths that escape the collection root.
+Tools MUST reject target paths that escape the collection root. A target whose
+path key equals that of a different existing record fails with
+`path_conflict`. A target whose path key equals the source's own path key only
+changes the path's spelling, such as its case, and is not a conflict.
 
-If reference updating is enabled, link updates SHOULD preserve link style,
-alias, and anchor where possible. ID-based links SHOULD not be rewritten if the
-target ID did not change.
+If reference updating is enabled, the rename updates the links that
+reference the renamed record: the links that, before the rename, resolve to it
+under Chapter 08, including a simple link whose filename match was selected by
+the tiebreakers. Each such link that would no longer resolve to the record
+after the move MUST be rewritten so that it resolves to the record at its new
+path. An ID-based link whose target ID did not change still resolves and
+SHOULD NOT be rewritten. A rename MUST NOT rewrite links that resolve to
+another record, are unresolved, or are ambiguous; in particular, a link whose
+configured ID is ambiguous resolves to no record and is not rewritten, even
+when it matches the renamed record's filename. Link updates SHOULD preserve
+link style, alias, and anchor where possible.
 
-Atomic reference updates across all affected files belong to a transaction
-profile.
+The rename result lists each rewritten link in `references_updated`, with the
+referring record's `path`, the `field` that held the link (or
+`location: body`), `old_value`, and `new_value`, ordered by referring path.
+
+A rename keeps the record's identity: internal identity, history, and merge
+bases follow the record to its new path, as for a move detected under Chapter
+12A, and a tool that reports watch notifications reports it as
+`record_renamed`.
+
+An implementation MAY commit a rename and its reference updates as one atomic
+batch. Otherwise reference updates are applied after the rename, and failed
+reference updates are reported per file.
 
 ## Batch
 
-Batch operations group operations for validation and reporting.
+Batch applies a list of create, update, delete, and rename operations as one
+request:
 
-Recommended behavior:
+```yaml
+operations:
+  - kind: update
+    input:
+      path: tasks/a.md
+      patch: { status: done }
+      if_revision: sha256:opaque
+  - kind: rename
+    input:
+      from: tasks/b.md
+      to: archive/b.md
+dry_run: false
+allow_partial: false
+```
 
-- validate every operation before writing unless `allow_partial` is true
-- support dry-run with full diagnostics
-- report per-operation result and diagnostics
-- stop on first error unless configured otherwise
+Each item names its operation `kind` and that operation's `input`. A request
+that names one record path more than once, through `path`, `from`, or `to`,
+fails with `duplicate_batch_path` before any operation is prepared, so the
+items of one batch never depend on each other.
+
+**Atomic execution** is the default. The implementation prepares every
+operation, including lifecycle, type membership, schema and collection
+validation, path policy, and `if_revision`, against a staged copy of the
+collection. If any operation fails, nothing is written. Otherwise all changes
+commit as one recoverable transaction: after a failure or crash, recovery
+restores either the complete pre-batch state or the complete committed state
+before normal collection operations resume.
+
+**Partial execution** is selected with `allow_partial: true`. Each operation is
+prepared and committed independently in request order, and a failed operation
+does not prevent the others. A host that can commit only one atomic transaction
+per request, such as a durable runtime action, MAY reject `allow_partial` with
+`invalid_request`.
+
+**Dry runs** with `dry_run: true` prepare every operation and report the
+results without changing files, indexes, runtime state, or revisions.
+
+The result lists every operation in request order:
+
+```yaml
+operations:
+  - index: 0
+    kind: update
+    valid: true
+    result: {}
+    diagnostics: []
+succeeded: 1
+failed: 0
+preflight: false
+dry_run: false
+```
+
+`result` holds the operation's own result on success. `preflight` is true when
+the operations ran only against the staged copy, which happens for a dry run or
+a failed atomic batch. The envelope's `valid` is false when any operation
+failed.
+
+Watch notifications and runtime events for an atomic batch are delivered after
+the whole batch commits. For a partial batch they follow each committed
+operation.
 
 ## Saved Views
 
@@ -242,13 +475,26 @@ delete returns `path` and `deleted: true`.
 Write-capable tools SHOULD detect external modification between read and write
 using mtime, content hash, version token, or platform-specific file identity.
 
-On conflict, tools MUST preserve the current file and report a concurrency
-diagnostic.
-
 Successful reads MUST return a stable `revision` token derived from the raw
 file state. Write operations MUST accept an optional `if_revision` token and
 fail with `concurrent_modification` when it no longer matches. The token format
 is implementation-defined and opaque to callers.
+
+`if_revision` is an opt-in compare-and-swap for callers that need
+read-modify-write semantics, such as a counter or a workflow state
+transition. Implementations MUST NOT supply `if_revision` on a caller's
+behalf.
+
+A write without `if_revision` describes its own change: the keys it sets or
+removes, its list operations, and its body edit. When the record changed after
+the caller read it, an implementation either applies that change to the
+current record, as the update pipeline above does, or reconciles the two
+versions with the three-way record merge of Chapter 12A. It MUST NOT discard
+the other change silently. A conflict found by the merge is reported; how it
+is held, shown, and resolved is implementation behavior.
+
+On a failed `if_revision` check, tools MUST preserve the current file and
+report a concurrency diagnostic.
 
 ## Operation Result Envelope
 
@@ -280,6 +526,8 @@ runtime state, or revisions.
 
 ## Events
 
-After a successful mutation, tools MAY emit watch/runtime events. Events MUST be
+After a successful mutation, tools MAY emit watch/runtime events. A tool that
+reports moves of files edited outside it uses the move detection of Chapter
+12A. Events MUST be
 delivered after the derived read/query state is consistent. Watch consumers and
 workflow runtimes may subscribe to the same stream.

@@ -11,6 +11,9 @@ artifact-level tests that can run directly in this repository:
 - YAML documents parse and optionally validate against schemas
 - simple YAML pointer presence checks
 - the TaskNotes migration prototype can satisfy fixture report assertions
+- merge, path, and move-detection fixtures (0.3.0-rc.5) match the executable
+  model in scripts/concurrent_edits_model.py
+- the conformance claim schema lists exactly the manifest's profiles
 
 Adapter-target tests for core collection behavior, lifecycle, CEL, and runtime
 execution are shape-checked but not executed here.
@@ -22,6 +25,7 @@ import argparse
 import glob
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
@@ -38,6 +42,9 @@ except ImportError:
     print("jsonschema is required. Install with: pip install jsonschema", file=sys.stderr)
     sys.exit(1)
 
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import concurrent_edits_model  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEST_ROOT = REPO_ROOT / "tests" / "v0.3"
@@ -58,16 +65,21 @@ EXECUTABLE_OPERATIONS = {
     "data_contract_digest",
     "data_contract_implementation_digest",
     "data_contract_registry_validate",
-}
+} | concurrent_edits_model.FIXTURE_OPERATIONS
+
+RELEASE_MARKER = re.compile(r"^0\.3\.0-rc\.[0-9]+$")
 
 CONFORMANCE_PROFILES = {
     "core_read",
     "collection_semantics",
+    "data_contracts",
     "cel",
     "cel_match",
     "cel_query",
     "links",
     "core_write",
+    "merge",
+    "type_packs",
     "lifecycle",
     "event_action_interop/0.1",
     "runtime/0.2",
@@ -136,6 +148,8 @@ def main() -> int:
                 f"{manifest_path}: coverage_complete profile {profile_id} has uncovered requirements: {missing}"
             )
 
+    check_claim_schema_profiles(errors)
+
     if errors:
         print("\n".join(errors), file=sys.stderr)
         print(f"v0.3 suite check failed: {len(errors)} error(s), {executed} executable test(s), {skipped} adapter-target test(s)", file=sys.stderr)
@@ -143,6 +157,16 @@ def main() -> int:
 
     print(f"v0.3 suite ok: {executed} executable test(s), {skipped} adapter-target test(s)")
     return 0
+
+
+def check_claim_schema_profiles(errors: list[str]) -> None:
+    claim = load_json("schemas/v0.3/conformance-claim.schema.json")
+    listed = set(claim["$defs"]["profile"]["enum"])
+    if listed != CONFORMANCE_PROFILES:
+        errors.append(
+            "schemas/v0.3/conformance-claim.schema.json profiles differ from the suite: "
+            f"missing {sorted(CONFORMANCE_PROFILES - listed)}, extra {sorted(listed - CONFORMANCE_PROFILES)}"
+        )
 
 
 def validate_manifest(
@@ -275,6 +299,11 @@ def validate_suite_shape(
             for key in ["name", "operation", "input", "expect"]:
                 if key not in test:
                     errors.append(f"{path}: test {test_index} in group {group.get('name', group_index)!r} missing {key}")
+            for marker in ("since", "changed"):
+                if marker in test and not RELEASE_MARKER.match(str(test[marker])):
+                    errors.append(
+                        f"{path}: test {test.get('id', test_index)!r} {marker} must name a 0.3.0 release candidate"
+                    )
             covers = test.get("covers")
             if covers is None:
                 continue
@@ -332,6 +361,10 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
     input_data = test.get("input") or {}
     expect = test.get("expect") or {}
     setup = setup or {}
+
+    if operation in concurrent_edits_model.FIXTURE_OPERATIONS:
+        concurrent_edits_model.run_fixture(test, setup)
+        return
 
     if operation == "json_schema_meta_validate":
         for path in expand_paths(input_data.get("paths", [])):
@@ -424,7 +457,7 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
             entry
             for entry in type_file.get("implements", []) or []
             if entry.get("contract") == contract.get("id")
-            and entry.get("version") == contract.get("version")
+            and version_satisfies(str(contract.get("version")), str(entry.get("version")))
         ]
         if len(matching) != 1:
             raise AssertionError("type must have one exact implementation")
@@ -529,6 +562,9 @@ def run_apply_type_pack_test(
     """Simulate the normative preflight/diff/atomicity rules without an engine."""
     manifest_path = resolve(input_data["pack"])
     manifest = load_yaml(manifest_path)
+    if uses_seed_model(input_data, manifest):
+        run_seed_pack_test("apply_type_pack", input_data, expect, setup)
+        return
     resources = manifest.get("resources", []) or []
     live = {
         str(target): str(content).encode()
@@ -651,6 +687,9 @@ def run_assess_type_pack_test(
     """Exercise the structured managed-resource conflict shape used before apply."""
     manifest_path = resolve(input_data["pack"])
     manifest = load_yaml(manifest_path)
+    if uses_seed_model(input_data, manifest):
+        run_seed_pack_test("assess_type_pack", input_data, expect, setup)
+        return
     resources = manifest.get("resources", []) or []
     live: dict[str, bytes] = {}
     installed: dict[str, str] = {}
@@ -691,6 +730,105 @@ def run_assess_type_pack_test(
     )
 
 
+def uses_seed_model(input_data: dict[str, Any], manifest: dict[str, Any]) -> bool:
+    return "history" in input_data or any(
+        resource.get("mode") == "seed" or "upgrade_from" in resource
+        for resource in manifest.get("resources", []) or []
+    )
+
+
+def run_seed_pack_test(
+    operation: str, input_data: dict[str, Any], expect: dict[str, Any], setup: dict[str, Any]
+) -> None:
+    """Run seed-upgrade fixtures against the executable model in type_pack_model."""
+    import type_pack_model as model  # type: ignore[import-not-found]
+
+    collection = model.Collection(
+        files={str(path): str(content).encode() for path, content in (setup.get("files") or {}).items()}
+    )
+    for step in input_data.get("history", []) or []:
+        if "apply" in step:
+            applied = collection.apply(model.load_pack(resolve(step["apply"])))
+            if not applied.applicable:
+                raise AssertionError(f"history step {step} did not apply")
+        elif "write" in step:
+            collection.files[step["write"]["path"]] = str(step["write"]["content"]).encode()
+        elif "replace" in step:
+            path, old, new = step["replace"]["path"], step["replace"]["old"], step["replace"]["new"]
+            current = collection.files[path].decode()
+            if current.count(old) != 1:
+                raise AssertionError(f"history replace in {path} must match exactly once")
+            collection.files[path] = current.replace(old, new).encode()
+        else:
+            raise AssertionError(f"unsupported history step: {step}")
+    before = dict(collection.files)
+
+    try:
+        pack = model.load_pack(resolve(input_data["pack"]))
+    except model.PackInvalid as invalid:
+        assert_subset({"valid": False, "error": {"code": "invalid_type_pack", "message": str(invalid)}}, expect)
+        return
+
+    def summary(assessment: Any) -> dict[str, Any]:
+        return {
+            "valid": True,
+            "status": assessment.status,
+            "applicable": assessment.applicable,
+            "actions": [item.action for item in assessment.resources],
+        }
+
+    if operation == "assess_type_pack":
+        first = collection.assess(pack)
+        actual: dict[str, Any] = summary(first)
+    else:
+        runs = []
+        first = None
+        for _ in range(int(input_data.get("repeat", 1))):
+            assessment = collection.apply(pack)
+            first = first or assessment
+            runs.append({**summary(assessment), "valid": assessment.applicable})
+        actual = {"valid": runs[-1]["valid"], "runs": runs}
+    assert_subset(actual, {key: value for key, value in expect.items() if key in actual})
+
+    for expected in expect.get("resources", []) or []:
+        item = next((item for item in first.resources if item.target == expected["target"]), None)
+        if item is None:
+            raise AssertionError(f"no planned resource for {expected['target']}")
+        if "action" in expected and item.action != expected["action"]:
+            raise AssertionError(f"{item.target}: expected {expected['action']}, got {item.action}")
+        if "upgrade_baseline_version" in expected and (
+            item.baseline is None or item.baseline.version != expected["upgrade_baseline_version"]
+        ):
+            raise AssertionError(f"{item.target}: wrong upgrade baseline {item.baseline}")
+        if "reason" in expected and bool(item.reason) != expected["reason"]:
+            raise AssertionError(f"{item.target}: reason presence {bool(item.reason)}, expected {expected['reason']}")
+    for target, source in (expect.get("target_matches_source") or {}).items():
+        if collection.files.get(target) != resolve(source).read_bytes():
+            raise AssertionError(f"{target} does not match {source}")
+    for target in expect.get("target_unchanged", []) or []:
+        if collection.files.get(target) != before.get(target):
+            raise AssertionError(f"{target} changed")
+    for target, pointers in (expect.get("target_frontmatter") or {}).items():
+        frontmatter, _ = model.split_document(collection.files[target])
+        for pointer, value in pointers.items():
+            current: Any = frontmatter
+            for token in pointer.strip("/").split("/"):
+                current = current[token.replace("~1", "/").replace("~0", "~")]
+            if current != value:
+                raise AssertionError(f"{target}{pointer}: expected {value!r}, got {current!r}")
+    for target, texts in (expect.get("target_body_contains") or {}).items():
+        _, body = model.split_document(collection.files[target])
+        for text in texts:
+            if text not in body:
+                raise AssertionError(f"{target} body lacks {text!r}")
+    for target, source in (expect.get("lock_origin") or {}).items():
+        entries = [receipt["resources"].get(target) for receipt in collection.lock.values()]
+        origin = next((entry.get("origin_digest") for entry in entries if entry), None)
+        wanted = None if source == "absent" else model.digest(resolve(source).read_bytes())
+        if origin != wanted:
+            raise AssertionError(f"{target}: lock origin {origin}, expected {wanted}")
+
+
 def run_data_contract_implementation_test(
     input_data: dict[str, Any], expect: dict[str, Any]
 ) -> None:
@@ -718,11 +856,19 @@ def run_data_contract_implementation_test(
     if binding_schema is not None:
         Draft202012Validator.check_schema(binding_schema)
 
-    matching = [
+    for_contract = [
         entry
         for entry in type_file.get("implements", []) or []
         if entry.get("contract") == contract.get("id")
-        and entry.get("version") == contract.get("version")
+    ]
+    if len(for_contract) > 1:
+        failures.append(f"type implements data contract {contract.get('id')} more than once")
+        assert_expected_validation_result(failures, expect)
+        return
+    matching = [
+        entry
+        for entry in for_contract
+        if version_satisfies(str(contract.get("version")), str(entry.get("version")))
     ]
     if len(matching) != 1:
         failures.append(
@@ -814,6 +960,12 @@ def data_contract_implementation_digest(
         for key in ("name", "version", "match", "schema", "collection", "lifecycle")
         if key in type_file
     }
+    collection = type_semantics.get("collection")
+    if isinstance(collection, dict) and "display" in collection:
+        # Advisory display metadata never changes implementation identity.
+        type_semantics["collection"] = {
+            key: value for key, value in collection.items() if key != "display"
+        }
     payload = {
         "contract_digest": data_contract_digest(contract, contract_path),
         "type": type_semantics,
@@ -827,6 +979,62 @@ def data_contract_implementation_digest(
         separators=(",", ":"),
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+SEMVER = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+    r"(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
+
+
+def parse_semver(value: str) -> tuple[int, int, int, str | None]:
+    match = SEMVER.match(value)
+    if match is None:
+        raise AssertionError(f"invalid semantic version {value!r}")
+    return int(match[1]), int(match[2]), int(match[3]), match[4]
+
+
+def version_satisfies(version: str, requirement: str) -> bool:
+    """Apply the portable version requirement grammar (Chapter 05A)."""
+    actual = semver_key(parse_semver(version))
+    return all(check(actual, bound) for check, bound in requirement_bounds(requirement))
+
+
+def requirement_bounds(requirement: str) -> list[tuple[Any, tuple]]:
+    import operator
+
+    ops = {">=": operator.ge, "<=": operator.le, ">": operator.gt, "<": operator.lt, "=": operator.eq}
+    if requirement[:1] in ("^", "~"):
+        major, minor, patch, pre = parse_semver(requirement[1:])
+        lower = semver_key((major, minor, patch, pre))
+        if requirement[0] == "~":
+            upper = (major, minor + 1, 0, "0")
+        elif major > 0:
+            upper = (major + 1, 0, 0, "0")
+        elif minor > 0:
+            upper = (0, minor + 1, 0, "0")
+        else:
+            upper = (0, 0, patch + 1, "0")
+        return [(ops[">="], lower), (ops["<"], semver_key(upper))]
+    bounds = []
+    for comparator in requirement.split(" "):
+        match = re.fullmatch(r"(>=|<=|>|<|=)?(.+)", comparator)
+        op = match[1] or "="
+        bounds.append((ops[op], semver_key(parse_semver(match[2]))))
+    return bounds
+
+
+def semver_key(version: tuple[int, int, int, str | None]) -> tuple:
+    major, minor, patch, pre = version
+    if pre is None:
+        return (major, minor, patch, 1, ())
+    return (major, minor, patch, 0, semver_prerelease_key(pre))
+
+
+def semver_prerelease_key(value: str) -> tuple[tuple[int, int | str], ...]:
+    return tuple(
+        (0, int(part)) if part.isdigit() else (1, part) for part in value.split(".")
+    )
 
 
 def contract_schema_fields(contract_type: Any) -> tuple[str, ...]:
@@ -1014,9 +1222,22 @@ def load_json(path: str | Path) -> Any:
         return json.load(handle)
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """Reject duplicate mapping keys, which PyYAML otherwise silently overwrites."""
+
+    def construct_mapping(self, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise ValueError(f"duplicate key {key!r} at line {key_node.start_mark.line + 1}")
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
-        loaded = yaml.safe_load(handle)
+        loaded = yaml.load(handle, Loader=UniqueKeyLoader)
     if not isinstance(loaded, dict):
         raise ValueError(f"{path}: expected YAML mapping")
     return loaded

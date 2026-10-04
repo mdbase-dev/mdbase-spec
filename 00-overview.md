@@ -62,7 +62,8 @@ this specification:
    `view_records` feature.
 8. **Performs record operations** with validation, reference handling, and
    lifecycle-managed values.
-9. **Loads runtime contracts and workflows** when it supports active behavior.
+9. **Exchanges events and actions and runs durable workflows** when it claims
+   the corresponding companion profiles.
 
 Conformance profiles define the expected behavior for each capability and its
 dependencies.
@@ -71,6 +72,16 @@ dependencies.
 
 **Files are the source of truth.** Tools read from and write to the filesystem.
 Indexes, caches, and derived databases can be rebuilt from collection state.
+
+**Plain Markdown.** A collection never requires mdbase metadata in a user's
+files. Record identity, revisions, merge state, and other engine bookkeeping
+live outside records, so a file written by any editor is a complete record.
+
+**Validity is reported, not guaranteed.** Files are edited by tools that know
+nothing about types. A conforming tool reads, indexes, and reports every record
+whatever its validity. Engines may reject an invalid write made through them,
+as feedback to the writer, but only for checks within that single record.
+Chapter 04 defines the principle and its three tiers.
 
 **Human-readable first.** Persistent collection data uses open text formats. A
 user with a text editor can read and modify every record and type file.
@@ -148,6 +159,9 @@ schema:
         maximum: 5
       assignee:
         type: string
+      due:
+        type: string
+        format: date
       tags:
         type: array
         items: { type: string }
@@ -218,28 +232,48 @@ limit: 20
 ```
 
 CEL expressions can access frontmatter values, file metadata, dates, lists,
-and resolved links:
+and resolved links. Dates are RFC 3339 date strings, so they compare
+chronologically:
 
 ```cel
 status == "open" && "urgent" in tags
-due_date < today()
-assignee.asFile().team == "engineering"
+due != null && due < today().addDays(7)
+assignee != null && assignee.asFile().team == "engineering"
 ```
+
+Expressions follow standard CEL semantics. A filter that raises an error for
+a record, for example by reading through a broken link, excludes that record
+and reports a diagnostic.
 
 ### View records save reusable queries
 
-A collection can define the ordinary `view` type and store one or more named
-queries in a Markdown record. Shared query scope, named-view filters,
+A collection can install the `mdbase.view` contract and a type that implements
+it, then store one or more named queries in a Markdown record. Shared query scope, named-view filters,
 projections, ordering, grouping, and summaries remain machine-readable, while
 the Markdown body documents the view for people. Optional presentation metadata
 can select a renderer without changing query results.
 
-### Validation is progressive
+### Validation is progressive and reported
 
 Files in a collection can remain untyped records. Types can be added
 incrementally, and validation severity is configurable as `off`, `warn`, or
 `error`. JSON Schema controls field shape and unknown-property handling.
 Collection rules add checks that depend on other records or paths.
+
+Validity is a property reported when records are read. At level `error`, a
+write made through an engine fails when the resulting record breaks one of
+its own checks. Checks that span records, such as link existence and
+uniqueness, are reported and never block a write, unless a uniqueness rule
+explicitly opts into `enforce: write`.
+
+### Concurrent edits merge field by field
+
+When two edits to one record meet, for example an application update and an
+edit made in a text editor, a tool that reconciles them uses the three-way
+record merge of Chapter 12A. Different fields merge, timestamps take the
+later value, set-like lists take the union, appends to the body are both kept,
+and only real disagreements are conflicts. How a tool surfaces a conflict, and
+whether it replicates collections at all, is outside this specification.
 
 ### Links connect records across the collection
 
@@ -255,19 +289,20 @@ during create and update operations. Lifecycle runs before final validation, so
 managed fields participate in the same schema and collection checks as supplied
 frontmatter.
 
-### Runtime contracts describe active behavior
+### Companion profiles add active behavior
 
-Optional runtime records describe providers, events, actions, capabilities,
-policies, workflows, runs, and checkpoints. A runtime host loads these
-contracts, validates their data, and connects declared workflows to available
-event and action implementations.
+Event and action interfaces are ordinary data contracts. The optional
+event/action interoperability profile defines how live event sources and action
+providers declare and exchange them. The optional durable runtime profile adds
+workflow records, admission, authorization, and recoverable execution. Opening
+a collection never activates executable behavior.
 
 ### Conformance is profile-based
 
 Implementations claim the profiles they support, such as Core Read, Collection
-Semantics, Links, Query, Core Write, Lifecycle, Runtime Contracts, Workflow,
-and Watch. Profile dependencies keep those claims precise and independently
-testable.
+Semantics, Data Contracts, Links, Query, Core Write, Type Packs, Lifecycle,
+Event/Action Interoperability, Durable Runtime, and Watch. Profile dependencies
+keep those claims precise and independently testable.
 
 ## Specification Structure
 
@@ -278,7 +313,7 @@ testable.
 | [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing and YAML value semantics |
 | [04-configuration.md](./04-configuration.md) | The `mdbase.yaml` configuration file |
 | [05-type-files.md](./05-type-files.md) | JSON Schema type wrappers and metadata |
-| [05-data-contracts.md](./05-data-contracts.md) | versioned data contracts, type implementations, and transactional type packs |
+| [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts, type implementations, and transactional type packs |
 | [06-json-schema-profile.md](./06-json-schema-profile.md) | Supported JSON Schema vocabulary and reference rules |
 | [07-collection-semantics.md](./07-collection-semantics.md) | Matching, defaults, uniqueness, links, and paths |
 | [08-links.md](./08-links.md) | Link syntax, resolution, traversal, and backlinks |
@@ -286,10 +321,18 @@ testable.
 | [10-cel-profile.md](./10-cel-profile.md) | Portable expressions and host bindings |
 | [11-querying.md](./11-querying.md) | Filters, ordering, projection, and result envelopes |
 | [12-operations.md](./12-operations.md) | Read and write operations, concurrency, and diagnostics |
-| [13-runtime-contracts.md](./13-runtime-contracts.md) | Providers, events, actions, capabilities, and policy |
-| [14-workflows.md](./14-workflows.md) | Workflow records and execution semantics |
-| [15-migrations-and-compatibility.md](./15-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
-| [16-conformance.md](./16-conformance.md) | Profiles, claims, fixtures, and runners |
+| [12a-concurrent-edits.md](./12a-concurrent-edits.md) | Record identity, move detection, three-way merge, and writer format fidelity |
+| [13-migrations-and-compatibility.md](./13-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
+| [14-conformance.md](./14-conformance.md) | Profiles, claims, fixtures, and runners |
+
+Companion documents are versioned or scoped independently of the core
+chapters:
+
+| Document | Description |
+| --- | --- |
+| [interop/0.1.md](./interop/0.1.md) | Event and action interoperability profile 0.1 |
+| [runtime/0.2.md](./runtime/0.2.md) | Durable runtime companion profile 0.2: standard pack, authorization, admission, execution, and recovery |
+| [adapters/obsidian-bases.md](./adapters/obsidian-bases.md) | Obsidian Bases saved-view adapter |
 
 The [portable interoperability testbed](/testbed/) runs neutral contract,
 event/action, and durable-runtime scenarios through black-box adapters. Its
@@ -298,19 +341,40 @@ directly comparable without making one product's internal API normative.
 
 ## Versioning
 
-This specification uses semantic versioning. The current version is **0.3.0**.
+This specification uses semantic versioning. The current version is **0.3.0**,
+in its fifth release candidate (`0.3.0-rc.5`). 0.3.0 is declared stable once
+implementations pass the conformance suite.
 Collections declare their specification version with `spec_version` in
 `mdbase.yaml`. Tools declare the profiles and versions they implement.
 
-The optional runtime-contract and workflow vocabulary has an independent
-profile version. The runtime profile defined by this specification is **0.2**.
+Companion profiles, artifacts, and schemas carry their own versions:
+
+| Versioned thing | Declared by | Current | Format |
+| --- | --- | --- | --- |
+| collection specification | `spec_version` in `mdbase.yaml` | `0.3.0` | semantic version |
+| event/action interoperability profile | conformance claim `interop_profile_version` | `0.1` | major.minor |
+| durable runtime profile | conformance claim `runtime_profile_version` | `0.2` | major.minor |
+| interoperability testbed protocol | testbed evidence | `0.1` | major.minor |
+| canonical schemas | `$id` path segment, such as `/schemas/v0.3/` | matches the owning specification or profile | `v` plus major.minor |
+| type definition | type file `version` | author-defined | positive integer |
+| data contract | contract file `version` | author-defined | semantic version |
+| type pack | pack manifest `version` | author-defined | semantic version |
+
+A type version identifies revisions of one local type. Contract and pack
+versions follow semantic versioning because other artifacts depend on them
+through version requirements.
 
 ## Normative Language
 
 The keywords `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are to be
 interpreted as described in RFC 2119.
 
-Draft notes use ordinary prose and are non-normative.
+Draft notes use ordinary prose and are non-normative. A paragraph that begins
+with **Provisional (rc.5).** records a choice made where the design input
+left a detail open. It is normative in the release candidate and may change
+before 0.3.0 is declared stable. The
+[0.3.0-rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every such
+choice.
 
 ## License
 

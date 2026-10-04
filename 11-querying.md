@@ -13,7 +13,7 @@ context:
     path: projects/alpha.md
 projections:
   is_overdue:
-    expr: 'present.record.due && due < today() && status != "done"'
+    expr: 'due != null && due < today() && status != "done"'
 where: 'status != "done" && priority >= 3'
 select:
   - title
@@ -99,7 +99,7 @@ filter:
 ```yaml
 projections:
   is_overdue:
-    expr: 'present.record.due && due < today() && status != "done"'
+    expr: 'due != null && due < today() && status != "done"'
   urgency:
     expr: 'priority + (projection.is_overdue ? 10 : 0)'
 ```
@@ -110,8 +110,8 @@ summaries, and presentation mappings.
 
 Implementations MUST resolve projection dependencies deterministically and
 reject direct or indirect cycles before evaluating candidates. A projection
-evaluation error produces null for that candidate and a per-record diagnostic;
-it does not abort evaluation of other candidates.
+evaluation error produces null for that candidate's projection value and a
+per-record diagnostic; it does not abort evaluation of other candidates.
 
 Named query projections are effective query values. They are not persisted and
 do not replace raw or effective frontmatter fields with the same name.
@@ -122,8 +122,8 @@ do not replace raw or effective frontmatter fields with the same name.
 named projections. The expression result includes the record only when it is
 boolean true.
 
-Evaluation errors MUST produce null for that record, exclude it, and report a
-diagnostic according to query options.
+An evaluation error MUST exclude that record and report a diagnostic. It does
+not abort evaluation of other candidates.
 
 ## Selection
 
@@ -292,13 +292,23 @@ requested selection values and is omitted when `select` is omitted.
 requested. Without grouping, summaries appear in one group whose `values` is an
 empty object.
 
+### Evaluation Diagnostics
+
+Per-candidate evaluation errors are reported in `diagnostics` with severity
+`warning`, code `expression_evaluation_error`, and the expression location in
+`details.expression`. An implementation MAY aggregate diagnostics that share
+code, expression location, and message into one diagnostic whose `details`
+contains `count` and up to 10 sample record `paths`. Aggregation never hides a
+distinct message or expression location.
+
 ## Saved View Records
 
-A saved view is an ordinary Markdown record matched by the `view` type. The
-canonical query object above supplies its execution semantics, and the view
-record provides a portable persisted container. The canonical record schema is
-`schemas/v0.3/view.schema.json`; a collection can materialize the corresponding
-`_types/view.md` type file.
+A saved view is an ordinary Markdown record whose matched type implements the
+`mdbase.view` record contract (Chapter 05). The canonical query object above
+supplies its execution semantics, and the view record provides a portable
+persisted container. The contract's record schema is
+`schemas/v0.3/view.schema.json`. The example below uses the canonical `view`
+type, which maps each contract field to the same-named frontmatter field.
 
 One view record contains a shared canonical query fragment and one or more
 named views. The shared fragment is nested under `query` so its `types` member
@@ -315,7 +325,7 @@ query:
   types: [task]
   projections:
     urgency:
-      expr: 'priority + (due < today() ? 10 : 0)'
+      expr: 'priority + (due != null && due < today() ? 10 : 0)'
 
 views:
   - id: today
@@ -341,7 +351,17 @@ A named view is addressed by the view record path or stable record ID plus the
 named-view ID. Human-readable names are not identifiers. Duplicate named-view
 IDs make the view record invalid.
 
-To derive an executable query:
+A tool resolves a view record through its contract view:
+
+1. the record MUST match exactly one type that implements `mdbase.view`; a
+   record that matches none is not a view and produces `view_not_found`, and a
+   record that matches several produces `invalid_view`
+2. the tool constructs the `mdbase.view` contract view through that type's
+   field mapping and validates it as Chapter 05A requires; an invalid contract
+   view produces `invalid_view`
+
+All remaining steps read the contract view, not raw frontmatter. To derive an
+executable query:
 
 1. inherit `query.types` unless the named view supplies `types`
 2. combine `query.where` and named-view `where` with AND
@@ -426,11 +446,13 @@ request for rendered output reports `unsupported_presentation` when neither the
 requested renderer nor its declared fallback is available.
 
 Source syntax, renderer configuration, and round-trip data use `x-*`
-extensions. Chapter 15 defines the adapter contract for Obsidian Bases sources.
+extensions. The [Obsidian Bases adapter](./adapters/obsidian-bases.md) defines
+the adapter contract for Obsidian `.base` sources.
 
 ### Optional support
 
-Core Read implementations treat a canonical view file as an ordinary typed
-record. A tool advertises `view_records` in its `optional_features` claim when
-it resolves, lists, and executes named views with the semantics in this
-chapter.
+Core Read implementations treat a view record as an ordinary typed record. A
+tool advertises `view_records` in its `optional_features` claim when it
+resolves, lists, and executes named views with the semantics in this chapter.
+Because views are identified through the `mdbase.view` contract, a tool that
+advertises `view_records` also claims `data_contracts`.

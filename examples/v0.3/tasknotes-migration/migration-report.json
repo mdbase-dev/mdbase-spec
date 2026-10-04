@@ -42,11 +42,14 @@
     },
     {
       "from": "fields.dateCreated.generated",
-      "to": "lifecycle.on_create.set.dateCreated"
+      "to": "lifecycle.on_create[0].set.dateCreated"
     },
     {
       "from": "fields.dateModified.generated",
-      "to": "lifecycle.on_update.set.dateModified"
+      "to": [
+        "lifecycle.on_create[1].set.dateModified",
+        "lifecycle.on_update[0].set.dateModified"
+      ]
     },
     {
       "from": "fields.projects.items.type",

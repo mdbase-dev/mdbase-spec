@@ -563,7 +563,6 @@ groups:
         input:
           path: "tasks/null-status.md"
         expect:
-          valid: true
           effective_frontmatter:
             status: null
 
@@ -599,7 +598,7 @@ groups:
           resolved_links:
             parent: "tasks/valid.md"
 
-      - name: "collection links enforce validate_exists"
+      - name: "collection links report validate_exists"
         operation: validate
         input:
           path: "tasks/broken-parent.md"

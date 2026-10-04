@@ -60,16 +60,25 @@ Core v0.3 JSON Schema support includes:
 Tools MAY support more of JSON Schema 2020-12. The required profile defines the
 portable baseline for Core Read conformance.
 
+## Pattern Dialect
+
+`pattern`, and `patternProperties` where a tool supports it, use the mdbase
+regex profile defined in Chapter 10: RE2 syntax with ASCII-only `\d`, `\w`,
+`\s`, `\b`, and case-insensitive matching, over Unicode scalar values and
+unanchored. A pattern outside the profile, such as one using `\p{L}`, a
+backreference, or look-around, makes the type file invalid with an `invalid_pattern`
+diagnostic.
+
+**Provisional (rc.5).** JSON Schema 2020-12 recommends ECMA-262 regular
+expressions. The profile departs from it so that one engine serves schema
+validation, matching, and CEL. The two agree on `\d`, `\w`, and `\b` for
+patterns without the ECMA-262 `u` flag; they differ on `\s`, which ECMA-262
+defines over Unicode white space, and on look-around and backreferences,
+which ECMA-262 supports.
+
 ## Discriminated Unions
 
 v0.3 uses ordinary JSON Schema constructs for discriminated unions.
-
-JSON Schema validation diagnostics use `schema_<keyword>`, where the JSON
-Schema keyword is converted to lower snake_case. For example, `required`
-produces `schema_required`, `additionalProperties` produces
-`schema_additional_properties`, and `unevaluatedProperties` produces
-`schema_unevaluated_properties`. Implementations MUST NOT place camelCase JSON
-Schema keyword names into the canonical diagnostic `code` field.
 
 Example:
 
@@ -114,6 +123,15 @@ Effective read defaults belong in `collection.read_defaults`.
 Dynamic defaults such as `now`, `uuid`, `ulid`, and `slugify` belong in
 `lifecycle`.
 
+## Merge Annotations
+
+Merge strategies are mdbase collection semantics and are declared in
+`collection.merge` (Chapter 07), not as JSON Schema keywords. A JSON Schema
+`uniqueItems: true` on a top-level array property selects the `union` merge
+strategy by default, as Chapter 07 defines. Implementation-specific keywords
+such as `x-merge` inside `schema.value` are annotations with no portable
+meaning.
+
 ## Format
 
 JSON Schema `format` is an annotation in the base dialect. The mdbase v0.3
@@ -146,7 +164,7 @@ Nested file-to-file `$ref` references use the optional feature identifier
 `optional_features` in its claim document. Such references use the containing
 schema document as their base URI, obey the same owning-root boundary, detect
 cycles, and produce `schema_ref_unresolved` or `schema_ref_cycle` diagnostics.
-Implementations that do not support the feature report `unsupported_profile`
+Implementations that do not support the feature report `unsupported_feature`
 before invoking a resolver.
 
 Core tools MUST NOT fetch network references during collection validation.
@@ -165,10 +183,11 @@ Normative mdbase schemas have stable `$id` values under:
 https://mdbase.dev/schemas/v0.3/
 ```
 
-Runtime profile schemas use their independently versioned namespace:
+Companion profile schemas use their independently versioned namespaces:
 
 ```text
-https://mdbase.dev/schemas/runtime/v0.1/
+https://mdbase.dev/schemas/interop/v0.1/
+https://mdbase.dev/schemas/runtime/v0.2/
 ```
 
 Implementations MUST validate against the canonical schema contents associated
@@ -190,6 +209,13 @@ issue SHOULD include:
 
 Tools SHOULD preserve native JSON Schema diagnostic detail when exposing
 machine-readable results.
+
+JSON Schema validation diagnostics use `schema_<keyword>`, where the JSON
+Schema keyword is converted to lower snake_case. For example, `required`
+produces `schema_required`, `additionalProperties` produces
+`schema_additional_properties`, and `unevaluatedProperties` produces
+`schema_unevaluated_properties`. Implementations MUST NOT place camelCase JSON
+Schema keyword names into the canonical diagnostic `code` field.
 
 ## Additional Properties
 

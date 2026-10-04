@@ -78,8 +78,7 @@ const SPEC_FILES = [
   { file: '03-records-and-frontmatter.md', num: '03', title: 'Records & Frontmatter', id: 'section-03' },
   { file: '04-configuration.md',          num: '04', title: 'Configuration',        id: 'section-04' },
   { file: '05-type-files.md',             num: '05', title: 'Type Files',           id: 'section-05' },
-  { file: '05-data-contracts.md',         num: '05A', title: 'Contracts',           id: 'section-05a' },
-  { file: 'interop/0.1.md',               num: '05B', title: 'Event & Action Interoperability', id: 'section-05b' },
+  { file: '05a-data-contracts.md',        num: '05A', title: 'Data Contracts',      id: 'section-05a' },
   { file: '06-json-schema-profile.md',    num: '06', title: 'JSON Schema Profile',  id: 'section-06' },
   { file: '07-collection-semantics.md',   num: '07', title: 'Collection Semantics', id: 'section-07' },
   { file: '08-links.md',                  num: '08', title: 'Links',                id: 'section-08' },
@@ -87,10 +86,12 @@ const SPEC_FILES = [
   { file: '10-cel-profile.md',            num: '10', title: 'CEL Profile',          id: 'section-10' },
   { file: '11-querying.md',               num: '11', title: 'Querying',             id: 'section-11' },
   { file: '12-operations.md',             num: '12', title: 'Operations',           id: 'section-12' },
-  { file: '13-runtime-contracts.md',      num: '13', title: 'Runtime Contracts',    id: 'section-13' },
-  { file: '14-workflows.md',              num: '14', title: 'Workflows',            id: 'section-14' },
-  { file: '15-migrations-and-compatibility.md', num: '15', title: 'Migrations & Compatibility', id: 'section-15' },
-  { file: '16-conformance.md',            num: '16', title: 'Conformance',          id: 'section-16' },
+  { file: '12a-concurrent-edits.md',      num: '12A', title: 'Concurrent Edits',    id: 'section-12a' },
+  { file: '13-migrations-and-compatibility.md', num: '13', title: 'Migrations & Compatibility', id: 'section-13' },
+  { file: '14-conformance.md',            num: '14', title: 'Conformance',          id: 'section-14' },
+  { file: 'interop/0.1.md',               num: 'I',  title: 'Event & Action Interoperability', id: 'companion-interop', group: 'Companion Profiles' },
+  { file: 'runtime/0.2.md',               num: 'R',  title: 'Durable Runtime',      id: 'companion-runtime', group: 'Companion Profiles' },
+  { file: 'adapters/obsidian-bases.md',   num: 'O',  title: 'Obsidian Bases Adapter', id: 'companion-obsidian-bases', group: 'Companion Profiles' },
 ];
 
 const LEGACY_SPEC_FILES = [
@@ -174,8 +175,8 @@ renderer.code = function ({ text, lang }) {
 renderer.link = function ({ href, title, text }) {
   let resolvedHref = href;
 
-  // Turn ./XX-foo.md into #section-XX
-  const mdMatch = href.match(/^\.?\/?(\d{2})-[\w-]+\.md$/);
+  // Turn ./XX-foo.md, ./05a-foo.md, or ../XX-foo.md into #section-XX
+  const mdMatch = href.match(/^(?:\.\.?\/)?(\d{2}a?)-[\w-]+\.md(?:#[\w-]*)?$/);
   if (mdMatch) {
     resolvedHref = `#section-${mdMatch[1]}`;
   }
@@ -186,8 +187,14 @@ renderer.link = function ({ href, title, text }) {
     resolvedHref = `#appendix-${appMatch[1]}`;
   }
 
-  if (href === './interop/0.1.md') {
-    resolvedHref = '#section-05b';
+  const companions = {
+    'interop/0.1.md': '#companion-interop',
+    'runtime/0.2.md': '#companion-runtime',
+    'adapters/obsidian-bases.md': '#companion-obsidian-bases',
+  };
+  const companionPath = href.replace(/^(?:\.\.?\/)+/, '');
+  if (companions[companionPath]) {
+    resolvedHref = companions[companionPath];
   }
 
   const titleAttr = title ? ` title="${title}"` : '';
@@ -238,7 +245,7 @@ function build() {
     entries: SPEC_FILES,
     output: 'spec.html',
     title: 'Specification',
-    version: 'v0.3.0',
+    version: 'v0.3.0-rc.5',
     switchLink: '<a href="spec-v0.2.html">v0.2 archive</a>',
   });
   buildSpec({

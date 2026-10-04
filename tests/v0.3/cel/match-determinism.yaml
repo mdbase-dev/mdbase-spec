@@ -1,0 +1,121 @@
+# Deterministic matching (Chapters 07 and 10): a match.expr that depends on the
+# clock, file timestamps, or other records loads with a nondeterministic_match
+# warning. Queries may use those bindings freely.
+name: "deterministic match expressions"
+spec_version: "0.3.0"
+fixture_set: cel
+category: cel
+spec_ref: "v0.3/07, v0.3/10"
+
+groups:
+  - name: "nondeterministic match expressions are reported"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        overdue.md: |
+          ---
+          kind: mdbase.type
+          name: overdue
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+            expr:
+              $expr: 'has(raw.due) && raw.due < today()'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+        recent.md: |
+          ---
+          kind: mdbase.type
+          name: recent
+          version: 1
+          match:
+            path_glob: "inbox/**/*.md"
+            expr:
+              $expr: 'file.mtime > now() - duration("24h")'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+        child.md: |
+          ---
+          kind: mdbase.type
+          name: child
+          version: 1
+          match:
+            expr:
+              $expr: 'has(raw.parent) && link(raw.parent).asFile() != null'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+        open_task.md: |
+          ---
+          kind: mdbase.type
+          name: open_task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+            expr:
+              $expr: 'has(raw.status) && raw.status == "open"'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        tasks/a.md: |
+          ---
+          status: open
+          due: "2020-01-01"
+          ---
+    tests:
+      - name: "nondeterministic match expressions load with a warning"
+        id: cel_match.nondeterministic_match_warning
+        since: 0.3.0-rc.5
+        covers: [cel_match.deterministic_match]
+        operation: load_types
+        input: {}
+        expect:
+          valid: true
+          diagnostics_contain:
+            - code: nondeterministic_match
+              severity: warning
+              type: overdue
+              details: { binding: today }
+            - code: nondeterministic_match
+              severity: warning
+              type: recent
+              details: { binding: file.mtime }
+            - code: nondeterministic_match
+              severity: warning
+              type: child
+              details: { binding: asFile }
+
+      - name: "both deterministic and reported match expressions still match"
+        id: cel_match.match_deterministic_ok
+        since: 0.3.0-rc.5
+        covers: [cel_match.deterministic_match]
+        operation: get_types
+        input:
+          path: "tasks/a.md"
+        expect:
+          valid: true
+          types: [open_task, overdue]
+
+      - name: "queries may still use today()"
+        id: cel_match.query_today_allowed
+        since: 0.3.0-rc.5
+        covers: [cel_match.deterministic_match]
+        operation: query
+        input:
+          where: 'has(raw.due) && raw.due < today()'
+        expect:
+          valid: true
+          results:
+            - path: "tasks/a.md"

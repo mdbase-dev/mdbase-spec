@@ -9,7 +9,6 @@ settings:
     - node_modules
     - .mdbase
     - attachments/**
-  include_subfolders: true
   explicit_type_keys:
     - type
     - types

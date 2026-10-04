@@ -1,4 +1,4 @@
-# 05A. First-Class Contracts
+# 05A. Data Contracts
 
 ## Why Data Contracts Exist
 
@@ -112,21 +112,33 @@ The body explains the interface to people. Portable behavior is defined by the
 frontmatter schemas.
 ```
 
-`id` is a lower-case namespaced identifier. `version` is an exact semantic
-version. A type implementation never names a version range.
+`id` is a lower-case namespaced identifier. `version` is the artifact's exact
+semantic version.
 
-`record_schema` validates the normalized contract view produced from a record.
-`binding_schema`, when present, validates implementation-specific semantic
-configuration. Both use the same JSON Schema profile and reference rules as
-type schemas.
+### Version Requirements
 
-An event contract instead requires `data_schema` and may declare
-`source_schema`. An action contract requires `input_schema` and may declare
-`output_schema`, `error_schema`, `provider_schema`, and `behavior`. Subject
-fields belonging to another `contract_type` are invalid.
+Type implementations and interoperability requirements name the contract
+versions they support with a version requirement. The portable grammar is a
+subset of the npm `semver` range syntax:
 
-Contract files are control files, not records. They do not participate in
-ordinary record scans, queries, links, or runtime workflow discovery.
+| Form | Satisfied by |
+| --- | --- |
+| `1.4.2` or `=1.4.2` | exactly `1.4.2` |
+| `^1.4.2` | `>=1.4.2 <2.0.0-0` |
+| `^0.4.2` | `>=0.4.2 <0.5.0-0` |
+| `^0.0.4` | `>=0.0.4 <0.0.5-0` |
+| `~1.4.2` | `>=1.4.2 <1.5.0-0` |
+| `>=1.2.0 <2.0.0` | every comparator: one or more of `>`, `>=`, `<`, `<=`, or `=` followed by a version, separated by single spaces |
+
+Versions compare by SemVer 2.0.0 precedence, so a pre-release sorts before its
+release and `2.0.0-0` is the lowest version with major `2`. A pre-release
+version satisfies a requirement whenever it lies within these bounds. Build
+metadata is ignored. Other range syntaxes, such as `x` wildcards, hyphen
+ranges, and `||` alternatives, are not portable.
+
+A requirement resolves to the highest registered version of that contract ID
+that satisfies it. Resolution is deterministic for a given contract registry
+and is repeated whenever the registry changes.
 
 ## Contract Registry
 
@@ -137,7 +149,8 @@ During collection load, a data-contract-aware implementation:
 3. resolves and compiles the schemas selected by `contract_type`
 4. registers each contract by the exact pair `(id, version)`
 5. computes its contract digest
-6. validates every type `implements` entry against the resulting registry
+6. resolves every type `implements` requirement to one exact contract version
+7. validates every type `implements` entry against its resolved contract
 
 Several versions of one contract ID may coexist. Two artifacts with the same
 ID and version are valid only when their contract digests are identical.
@@ -173,7 +186,7 @@ Each implementation contains:
 | Key | Meaning |
 | --- | --- |
 | `contract` | exact contract ID |
-| `version` | exact contract semantic version |
+| `version` | contract version requirement |
 | `fields` | contract field reference to record field reference mapping |
 | `binding` | optional configuration validated by the contract's `binding_schema` |
 
@@ -191,8 +204,7 @@ example, a task implementation can expose the local status value unchanged
 while declaring several values in `binding.completed_values`. This preserves
 the user's vocabulary and avoids inventing an ambiguous reverse mapping.
 
-A type MUST NOT contain two implementations of the same contract ID and
-version. Field mappings MUST address fields declared by the resolved
+A type MUST NOT contain two implementations of the same contract ID. Field mappings MUST address fields declared by the resolved
 `record_schema` and the resolved type schema. Every unconditional top-level
 field named by the contract's `record_schema.required` array MUST be mapped,
 either by the matching one-segment field path or by the matching one-token JSON
@@ -275,10 +287,16 @@ The implementation digest is SHA-256 over RFC 8785 bytes for:
 }
 ```
 
-Absent optional members are omitted. This deliberately includes membership,
-shape, defaults, links, paths, and lifecycle behavior. A consumer that pinned
-an implementation can detect any portable change that may alter the records or
-values it observes.
+`contract_digest` is the digest of the contract version the implementation's
+requirement resolved to. `collection` omits `collection.display`, and
+`implementation` is the `implements` entry. Absent optional members are omitted.
+
+This deliberately includes membership, shape, defaults, links, paths,
+projections, lifecycle behavior, and the resolved contract. A consumer that
+pinned an implementation can detect any portable change that may alter the
+records or values it observes. Advisory presentation metadata, the type's
+Markdown body, and `x-*` sections do not affect the digest, so editing an icon
+or description never invalidates an approval.
 
 Digest strings use `sha256:` followed by 64 lower-case hexadecimal characters.
 
@@ -350,15 +368,81 @@ resources:
 updated or retired by a later pack version only while its live bytes still
 match the installed digest. A `seed` resource is created only when its target
 is absent and becomes user-owned immediately; later pack versions neither
-replace nor delete it.
+replace nor delete it unless an explicit seed-type upgrade is declared below.
+
+A seed **type** resource MAY declare `upgrade_from`: one baseline, or a
+non-empty list of baselines. A baseline is `{ digest, document }` with an
+optional integer `version`. `document` is the exact bytes of a starter the
+publisher previously shipped for this resource, pinned by SHA-256 in `digest`;
+it is not an assertion that the user's current document is unchanged. `version`,
+when present, is the `version` that document declares and is only for
+presentation. A single baseline is equivalent to a list containing it. Listing
+every previously shipped starter that remains supported lets a collection
+upgrade from any of them, not only from the most recent. This declaration is
+part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
+Engines that do not support this member MUST reject the manifest.
+
+The manifest is invalid (`invalid_type_pack`) when `upgrade_from` appears on a
+resource that is not a seed type, when it is an empty list, when a baseline lacks
+`digest` or `document`, when a baseline's digest is not the SHA-256 of
+its document, when two baselines share a digest, when a baseline's digest equals
+the resource's own digest, when a baseline document's frontmatter `kind` or
+`name` differs from the desired document's, or when a baseline's `version`
+differs from the `version` its document's frontmatter declares.
+
+A seed's **origin** is the publisher document its live target descends from.
+The lock records it (see Pack Identity And Portable Provenance). When the target
+exists, is not an intentionally preserved seed target, and the resource declares
+`upgrade_from`, the engine plans exactly one of these, in order:
+
+1. The live bytes equal the desired document: `preserve`.
+2. The live bytes equal a baseline's document: `update`, writing the desired
+   document byte-for-byte. Byte equality proves the origin, whatever the lock
+   records.
+3. The origin is the desired document: `preserve`. The seed was already upgraded
+   and has been edited since.
+4. The origin is a baseline: `update` by a three-way merge of that baseline, the
+   live type, and the desired type.
+5. Otherwise, because the origin is unknown or is not a listed baseline:
+   `preserve`, with a `reason` stating that no upgrade baseline applies. The
+   type is left as it is; it does not make the pack conflict.
+
+An engine MUST NOT choose a merge baseline any other way. In particular, it MUST
+NOT merge against a baseline the seed is not known to descend from, because the
+differences between that baseline and the seed's actual origin would be applied
+as if they were the user's edits. The assessment reports, for every seed
+`update`, the baseline used as `upgrade_baseline: { digest, version? }`.
+
+A three-way merge is conservative. The type kind and name MUST match. Unchanged publisher
+settings retain live customizations; unchanged live settings accept publisher
+changes. Object settings merge recursively. Contract implementations merge by
+contract ID only when unambiguous, retaining customized field mappings and
+bindings while updating exact version references. Competing changes (including
+ambiguous implementation lists) MUST fail closed. Other arrays are indivisible.
+Missing values and explicit null are distinct. Top-level setting removal
+requires separate manual review. The live Markdown body and unrelated YAML
+nodes MUST be preserved. Reformatting a changed YAML node is permitted.
+
+The merged resource digest MUST appear in the assessment. Normal assessment
+and collection revision guards still apply. The upgrade, contract resources,
+and provenance MUST publish atomically only after validating the staged
+collection. A remaining reference to a removed exact contract MUST block the
+whole upgrade; implementations MUST NOT rewrite additional types implicitly.
+Record documents MUST NOT be migrated by this mechanism. An intentionally
+preserved seed target MUST NOT be upgraded.
+
+This is not version negotiation or grant migration. Callers coordinating
+applications must retain old contracts and implementations when supported
+applications still require them, or arrange a separately reviewed coordinated
+upgrade. Existing grants never acquire the new contract version implicitly.
 
 Resource digests are SHA-256 over the exact resource bytes. Source and target
 paths are relative, forward-slash paths without traversal.
 A directory, archive, repository, or package that distributes a pack MUST
 preserve those bytes exactly, including line endings. Rewriting a text resource
 from LF to CRLF therefore creates a different resource and MUST fail digest
-verification. This repository fixes text checkouts to LF so its example pack
-has identical bytes on every supported platform.
+verification. Distributors that store packs in version control SHOULD disable
+line-ending conversion for pack resources.
 
 Type packs are installation units, not record types and not permission grants.
 A pack may include several contracts, several implementing or auxiliary types,
@@ -380,13 +464,29 @@ mode, canonical source, resolved target, and installed digest of every resource.
 deterministically and users MAY inspect or version it. Tools MUST NOT infer
 ownership from filenames, application names, or `x-*` metadata.
 
+A seed resource's entry also records `origin_digest`, the digest of the
+publisher document its target descends from, when that is known. Because a seed
+becomes user-owned, the installed digest of a seed describes the pack, not the
+target, and MUST NOT be used as its origin. An apply sets `origin_digest` to the
+desired resource digest when it creates the seed, when it upgrades it (by exact
+replacement or by merge), and whenever the target's live bytes equal the desired
+document, whatever else applies. Otherwise it carries the previous entry's
+`origin_digest` for that target forward unchanged, or omits it when there is
+none. A seed target that existed before the pack was installed, and an
+intentionally preserved seed target, therefore have no origin unless their bytes
+equal the desired document. A lock entry without `origin_digest` means the
+origin is unknown. Locks written before `origin_digest` existed carry none, so
+an edited seed under such a lock is preserved with a reason rather than merged
+until it is upgraded or recreated; an unedited seed still upgrades, because its
+bytes prove its origin. `origin_digest` is defined only for seed resources and
+MUST NOT appear on a managed resource. An apply that changes only seed origins leaves the pack's
+status `current`; it is not a reconfiguration.
+
 Full collection snapshots, authority transfers, and unscoped synchronization
-MUST carry `mdbase.lock.yaml` as a `lock` resource when it exists. A scoped
-application projection MAY omit it to avoid disclosing unrelated pack metadata.
-The lock is connector-generated and protocol-bounded; a hosted provider MAY
-count its bytes toward aggregate storage, but MUST NOT reject it against a
-user-authored per-document size quota that the collection owner cannot
-remediate.
+MUST carry `mdbase.lock.yaml` when it exists. A scoped application projection
+MAY omit it to avoid disclosing unrelated pack metadata. A storage provider
+MUST NOT reject the lock under a per-document limit that the collection owner
+cannot remediate, because tools generate it.
 
 An absent lock means no resource is pack-managed, including resources created
 by older one-shot installers. Adopting existing files into managed ownership is
@@ -483,9 +583,9 @@ Data-contract-aware tools use these codes:
 | Code | Meaning |
 | --- | --- |
 | `invalid_data_contract` | contract frontmatter or schema is invalid |
-| `data_contract_not_found` | an implementation references no local exact contract |
+| `data_contract_not_found` | no registered contract has the referenced ID |
 | `data_contract_conflict` | one ID and version resolve to different contract digests |
-| `data_contract_version_mismatch` | a consumer requirement has no compatible exact version |
+| `data_contract_version_mismatch` | no registered version satisfies an implementation or consumer requirement |
 | `data_contract_binding_invalid` | implementation binding fails its binding schema |
 | `data_contract_field_invalid` | a mapped contract or record field is missing or incompatible |
 | `data_contract_record_invalid` | a projected contract view fails the contract schema |
@@ -493,5 +593,5 @@ Data-contract-aware tools use these codes:
 | `type_pack_conflict` | ownership, live bytes, or an untracked target prevents a safe apply |
 | `type_pack_apply_failed` | transactional commit or recovery did not complete normally |
 
-Diagnostics use the canonical shape from Chapter 16 and identify the contract
+Diagnostics use the canonical shape from Chapter 14 and identify the contract
 ID, exact version, type name, and relevant field mapping in `details`.

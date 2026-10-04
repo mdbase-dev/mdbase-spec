@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A type file connects three parts of the mdbase model:
+A type file connects four parts of the mdbase model:
 
 - a rule for selecting records
 - a JSON Schema for validating their persisted frontmatter
@@ -143,10 +143,8 @@ The following top-level sections are defined by v0.3:
 | Section | Purpose |
 | --- | --- |
 | `match` | select records for inferred type membership |
-| `collection` | define Markdown-aware collection semantics |
+| `collection` | define Markdown-aware collection semantics, including merge strategies |
 | `lifecycle` | assign managed values during mutations |
-| `runtime` | attach runtime annotations to the type |
-| `migrations` | declare explicit type-version migration steps |
 | `implements` | declare exact, schema-validated data contract implementations |
 
 Portable type-file validation accepts the core sections and `x-*` extension
@@ -185,16 +183,24 @@ The built-in schema is authoritative during bootstrap. A materialized
 
 ## View Type
 
-Saved views use the ordinary `view` type defined by
-`schemas/v0.3/view.schema.json`. A collection that stores portable view records
-SHOULD materialize `_types/view.md` with `match.where.type: view` and a local
-reference to that schema. The repository's `_types/view.md` is the canonical
-materialization.
+Saved views are records whose type implements the `mdbase.view` record
+contract (Chapter 05A). The contract's record schema is
+`schemas/v0.3/view.schema.json`. The repository's `_contracts/mdbase.view/1.0.0.md`
+and `_types/view.md` are the canonical contract and implementing type; the
+implementing type matches `type: view` and maps every contract field to the
+same-named frontmatter field.
+
+A collection that stores portable view records SHOULD install that contract and
+a type implementing it, normally through the `mdbase.view` type pack. A
+collection MAY instead implement the contract with its own type name, match
+rule, and field mapping.
 
 Unlike the meta type, the view type is not required for bootstrap and is not a
 built-in control-file category. A view file remains an ordinary Markdown record
 and participates in normal reads, validation, links, writes, and type matching.
-View-aware execution is the optional behavior defined in Chapter 11.
+A record whose frontmatter says `type: view` but that matches no type
+implementing `mdbase.view` is not a saved view. View-aware execution is the
+optional behavior defined in Chapter 11.
 
 ## Type Membership
 
@@ -217,11 +223,12 @@ only when all of those validations pass.
 Collection behavior composes as follows:
 
 - uniqueness rules are additive and are each evaluated in the type that
-  declared them
+  declared them, with that rule's own `enforce` mode
 - identical read defaults, link rules, path policies, lifecycle assignments,
-  and projections coalesce
+  projections, and merge strategies coalesce
 - different values for the same read-default field, link selector, path policy,
-  lifecycle event and field, or projection name produce `type_conflict`
+  lifecycle event and field, projection name, or `collection.merge` field
+  produce `type_conflict`
 - display metadata remains associated with its declaring type; a flattened
   display uses the first explicit type or first canonical inferred type
 

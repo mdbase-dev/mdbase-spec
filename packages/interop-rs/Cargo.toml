@@ -1,6 +1,6 @@
 [package]
 name = "mdbase-interop"
-version = "0.1.0-rc.2"
+version = "0.1.0-rc.3"
 edition = "2021"
 license = "MIT"
 description = "Rust models and validation for mdbase event/action interoperability profile 0.1."

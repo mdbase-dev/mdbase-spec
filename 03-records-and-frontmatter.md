@@ -1,5 +1,23 @@
 # 03. Records And Frontmatter
 
+## Record Formats
+
+A record's format is fixed by its file extension:
+
+| Extension | Format |
+| --- | --- |
+| `base` | YAML document record |
+| any other record extension | Markdown record |
+
+The table is part of this specification, not collection configuration, so every
+tool reads a file the same way from its path alone. A row is added when a file
+type has a consumer, per file type rather than per syntax: a future JSON
+format would name the file type it serves (for example `canvas`), never every
+`.json` file. A collection opts into a format by listing the extension in
+`settings.record_extensions` (Chapter 04). Every format yields the same record
+model: persisted frontmatter, a body, and file metadata. Types, contracts,
+validation, queries, links, and operations apply to every format alike.
+
 ## Markdown Record Structure
 
 A Markdown record may begin with YAML frontmatter delimited by `---` on the
@@ -21,6 +39,27 @@ the file has no frontmatter and the full file is body text.
 Whitespace or a blank line before the opening delimiter means there is no
 frontmatter.
 
+## YAML Document Record Structure
+
+The whole file of a YAML document record is its frontmatter. There are no
+delimiters and no body:
+
+```yaml
+filters:
+  and:
+    - 'status == "open"'
+views:
+  - type: table
+    name: Open tasks
+```
+
+An empty file is an empty mapping. The body is always the empty string.
+
+YAML document records let a collection type and query files that another
+application owns, such as Obsidian `.base` files (see the
+[Obsidian Bases adapter](./adapters/obsidian-bases.md)), without a second
+storage, discovery, or authorization model.
+
 ## Frontmatter Value
 
 Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
@@ -28,8 +67,12 @@ Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
 If frontmatter is absent, the persisted frontmatter object is `{}`.
 
 If frontmatter parses to a scalar, sequence, or other non-mapping value, the
-record is invalid at validation level `error`. At validation level `warn`, tools
-SHOULD treat it as empty frontmatter and report a warning.
+record's persisted frontmatter is treated as `{}` and the record reports an
+`invalid_frontmatter` validation issue with `details.reason` set to
+`non_mapping_frontmatter`, whose severity follows the validation level in
+Chapter 04. A structured update of such a record fails with
+`invalid_frontmatter` at every validation level, so that the original value is
+never silently discarded; an explicit `document` replacement can repair it.
 
 ## Missing, Null, And Empty
 
@@ -100,8 +143,8 @@ frontmatter object, not against effective read defaults.
 
 ## Body
 
-The body is the Markdown content after the closing frontmatter delimiter. The
-body is not validated by JSON Schema unless a type explicitly models it through
+The body of a Markdown record is the content after the closing frontmatter
+delimiter. A YAML document record has no body. The body is not validated by JSON Schema unless a type explicitly models it through
 a separate mdbase feature.
 
 The body may participate in queries through `file.body` when body indexing is
@@ -128,19 +171,32 @@ explicitly maps it to ordinary fields.
 
 ## Serialization
 
-Write-capable tools SHOULD preserve unrelated body text and line ending style.
+Write-capable tools MUST preserve unrelated body text and SHOULD preserve the
+line ending style.
 
-When serializing frontmatter, tools SHOULD:
+A YAML document record serializes as its frontmatter mapping alone. A create or
+update that supplies a non-empty body for a YAML document record fails with
+`invalid_request` before any write. A whole-document `document` replacement
+(Chapter 12) is written exactly as supplied.
 
-- omit missing values; bare nulls represent explicit null values
+A write that changes some frontmatter keys of an existing record follows the
+format fidelity rule of Chapter 12A: it re-emits only the changed top-level
+entries, keeps every other entry byte-identical, including comments, quoting,
+blank lines, and order, and keeps a changed entry's collection style. The rule
+applies to Markdown records and YAML document records alike.
+
+When serializing frontmatter, tools MUST:
+
+- write an explicit null value for a key whose value is null
+- omit keys that are missing
 - quote empty strings
-- preserve array/object structure
-- produce deterministic key ordering when the operation rewrites a generated
-  file
 
-When updating a field to null, tools MAY either persist explicit null or remove
-the key depending on operation policy. The operation result MUST make the chosen
-behavior explicit.
+Tools SHOULD produce deterministic key ordering when an operation writes a new
+record or rewrites a generated file. New keys added to an existing record are
+appended after its existing entries.
+
+A null value in written frontmatter always means explicit null. Removing a key
+is a distinct operation; Chapter 12 defines how an update requests it.
 
 ## YAML Profile
 

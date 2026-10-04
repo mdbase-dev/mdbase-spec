@@ -31,7 +31,7 @@
     },
     "profile": {
       "enum": [
-        "core_read",
+        "data_contracts",
         "event_action_interop/0.1",
         "runtime/0.2"
       ]

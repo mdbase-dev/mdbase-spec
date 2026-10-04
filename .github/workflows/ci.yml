@@ -18,7 +18,7 @@ jobs:
         run: python -m pip install PyYAML==6.0.3 jsonschema==4.26.0
       - name: Legacy conformance level guardrail
         run: python scripts/check_test_levels.py
-      - name: Validate v0.3 fixture manifest and coverage
+      - name: Validate v0.3 fixture manifest, coverage, and executable fixtures
         run: python scripts/check_v03_tests.py
       - name: Verify migration fixture
         run: python scripts/prototype_tasknotes_v03_migration.py --check-fixture

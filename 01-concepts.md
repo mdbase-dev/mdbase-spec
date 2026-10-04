@@ -22,6 +22,12 @@ or data contract file, and not another reserved collection file. A record has:
 The persisted frontmatter object is the raw record value. Effective read values
 may additionally include `collection.read_defaults`.
 
+A record is identified by its path. A record carries no required mdbase
+metadata: no ID, revision, or merge state is ever required in the file.
+Implementations MAY keep internal record identities outside the collection's
+records and follow a record across moves with the move detection of Chapter
+12A.
+
 ## Type
 
 A type is a Markdown file, usually under `_types/`, whose frontmatter has
@@ -49,8 +55,8 @@ separate implementations of several contracts.
 In v0.3, "schema" means JSON Schema 2020-12 unless explicitly qualified.
 
 `schema.value` validates persisted frontmatter object shape. mdbase-specific
-sections such as `match`, `collection`, `lifecycle`, and `runtime` are outside
-the JSON Schema payload.
+sections such as `match`, `collection`, `lifecycle`, and `implements` are
+outside the JSON Schema payload.
 
 ## Match
 
@@ -62,13 +68,26 @@ record matches multiple types, it is valid only if it validates against every
 matched type's JSON Schema and every matched type's mdbase collection
 validators.
 
+Membership should be a deterministic function of the record's path, its
+persisted frontmatter, and the type registry, independent of the current time
+and of other records. Chapter 07 defines the diagnostic for match rules that
+break this.
+
+## Validity
+
+Validity is a property reported when a record is read, never a guarantee.
+Any tool can write any bytes to a file, so a collection may always contain
+invalid records. Conforming tools read, index, and query them, and report
+their issues. Chapter 04 defines which checks may reject a write made through
+an engine.
+
 ## Collection Semantics
 
 Collection semantics are rules that require knowledge of the file tree or
 runtime context. Examples:
 
 - link parsing and target resolution
-- cross-file uniqueness
+- cross-record uniqueness
 - effective read defaults
 - path generation
 - display metadata
@@ -86,20 +105,30 @@ simple transforms.
 Lifecycle policy is deterministic operation behavior within Core Write. It runs
 from type policy during the active mutation.
 
+## Merge
+
+A merge combines two concurrent edits of one record against their common base
+version. Each top-level frontmatter field has a merge strategy, declared in
+`collection.merge` or derived from the type, and the body merges line by line.
+Chapter 12A defines the merge function. When and where merges happen is an
+implementation concern.
+
 ## Expression
 
-Portable v0.3 expressions use the mdbase CEL profile. Expressions appear in
-queries, projections, runtime conditions, workflow input templates, and optional
-lifecycle guards.
+mdbase has one expression language: the mdbase CEL profile. Expressions appear
+in `match.expr`, queries, projections, lifecycle guards, runtime conditions,
+and workflow input templates.
 
-`match.where` uses the standalone structured predicate language defined in
-Chapter 07.
+`match.where` is a structured predicate written as YAML data, not an
+expression language; Chapter 07 defines it. Other expression syntaxes, such
+as Obsidian Bases formulas, are adapter dialects (Chapter 10).
 
 ## View
 
-A view is an ordinary Markdown record whose matched type is `view`. It stores
-shared query scope and one or more named queries, with optional advisory
-presentation metadata.
+A view is an ordinary Markdown record whose matched type implements the
+`mdbase.view` record contract. It stores shared query scope and one or more
+named queries, with optional advisory presentation metadata. The type name is
+not significant; the contract implementation is.
 
 Views do not introduce a second query engine. A view-aware tool resolves a
 named view to the query model from Chapter 11 and executes it through the Query
@@ -108,7 +137,8 @@ view files as ordinary typed records.
 
 View records are passive collection data. Rendering a view, registering a
 renderer, or connecting user interaction to actions may be tool- or
-runtime-specific, but the record itself is not a runtime contract.
+runtime-specific, but the record itself declares no event, action, or
+executable behavior.
 
 ## Link
 
@@ -122,25 +152,14 @@ declares link meaning, target type, and existence requirements.
 ## Runtime
 
 A runtime is a process, plugin, daemon, CLI, CI job, or agent that executes
-runtime-profile behavior for a collection.
+companion-profile behavior for a collection.
 
-The core collection model is runtime-neutral. Runtime records make active
-behavior portable and inspectable without making every implementation a runtime.
+The core collection model is runtime-neutral. Event and action interfaces are
+ordinary data contracts with `contract_type: event` or `contract_type: action`.
+Live event sources and action providers declare the exact contracts they
+implement through the event/action interoperability profile. The durable
+runtime profile stores workflows, policies, runs, and related state as ordinary
+records whose types implement the standard runtime record contracts.
 
-## Runtime Contract
-
-A runtime contract is a typed record or virtual registry entry describing the
-interface of a provider, event, action, capability, policy, run, checkpoint,
-diagnostic, or workflow.
-
-Runtime contracts describe the interfaces used by action handlers, event
-sources, watchers, schedulers, agents, and provider APIs supplied by a runtime.
-
-## Explicit And Implicit Runtime Contracts
-
-Explicit contracts are ordinary Markdown records in a collection or installed
-pack.
-
-Implicit contracts are supplied by a conforming runtime, for example built-in
-file events or core record actions. A runtime may materialize implicit
-contracts as Markdown records for inspection or offline tooling.
+Installing a contract, type, or pack never runs code or grants authority. A
+host admits a live declaration under its own policy before that code can act.

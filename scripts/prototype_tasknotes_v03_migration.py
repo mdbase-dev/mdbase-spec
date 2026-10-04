@@ -263,14 +263,21 @@ def convert_field(selector: str, field_def: dict[str, Any]) -> tuple[dict[str, A
 
 
 def add_generated_lifecycle(lifecycle: dict[str, Any], field_name: str, strategy: str) -> None:
-    if strategy == "now":
-        lifecycle.setdefault("on_create", {}).setdefault("set", {})[field_name] = {"now": True}
-    elif strategy == "now_on_write":
-        lifecycle.setdefault("on_update", {}).setdefault("set", {})[field_name] = {"now": True}
-    elif strategy == "uuid":
-        lifecycle.setdefault("on_create", {}).setdefault("set", {})[field_name] = {"uuid": True}
-    elif strategy == "ulid":
-        lifecycle.setdefault("on_create", {}).setdefault("set", {})[field_name] = {"ulid": True}
+    providers = {"now": {"now": True}, "uuid": {"uuid": True}, "ulid": {"ulid": True}}
+    if strategy == "now_on_write":
+        # v0.2 now_on_write sets the field on every write, including create.
+        lifecycle.setdefault("on_create", []).append({"set": {field_name: {"now": True}}})
+        lifecycle.setdefault("on_update", []).append({"set": {field_name: {"now": True}}})
+    elif strategy in providers:
+        # v0.2 generated values apply only when the field is missing; v0.3
+        # lifecycle `set` always assigns, so the guard preserves that rule.
+        lifecycle.setdefault("on_create", []).append(
+            {"if": f"!has(raw.{field_name})", "set": {field_name: providers[strategy]}}
+        )
+
+
+def lifecycle_sets(lifecycle: dict[str, Any], event: str, field_name: str) -> bool:
+    return any(field_name in action.get("set", {}) for action in lifecycle.get(event, []))
 
 
 def migrate_path_policy(path_pattern: str | None) -> dict[str, Any]:
@@ -297,9 +304,9 @@ def build_report(old: dict[str, Any], migrated: dict[str, Any]) -> dict[str, Any
     lifecycle = migrated.get("lifecycle", {})
     links = migrated.get("collection", {}).get("links", {})
     generated = []
-    if lifecycle.get("on_create", {}).get("set", {}).get("dateCreated"):
+    if lifecycle_sets(lifecycle, "on_create", "dateCreated"):
         generated.append("dateCreated")
-    if lifecycle.get("on_update", {}).get("set", {}).get("dateModified"):
+    if lifecycle_sets(lifecycle, "on_update", "dateModified"):
         generated.append("dateModified")
 
     return {
@@ -320,8 +327,8 @@ def build_report(old: dict[str, Any], migrated: dict[str, Any]) -> dict[str, Any
             {"from": "fields.status.values", "to": "schema.value.properties.status.enum"},
             {"from": "fields.status.default", "to": ["schema.value.properties.status.default", "collection.read_defaults.status", "implements.0.binding.status.default"]},
             {"from": "fields.status.tn_completed_values", "to": "implements.0.binding.status.completed_values"},
-            {"from": "fields.dateCreated.generated", "to": "lifecycle.on_create.set.dateCreated"},
-            {"from": "fields.dateModified.generated", "to": "lifecycle.on_update.set.dateModified"},
+            {"from": "fields.dateCreated.generated", "to": "lifecycle.on_create[0].set.dateCreated"},
+            {"from": "fields.dateModified.generated", "to": ["lifecycle.on_create[1].set.dateModified", "lifecycle.on_update[0].set.dateModified"]},
             {"from": "fields.projects.items.type", "to": ["schema.value.properties.projects.items.type", "collection.links.projects[]"]},
             {"from": "fields.blockedBy.items.fields.uid.type", "to": ["schema.value.properties.blockedBy.items.properties.uid.type", "collection.links.blockedBy[].uid"]},
             {"from": "display_name_key", "to": "collection.display.name_field"},

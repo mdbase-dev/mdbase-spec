@@ -16,7 +16,7 @@ yet published package artifacts.
 | `query.schema.json` | portable query input objects |
 | `query-result.schema.json` | query results plus optional context, view, grouping, and summary metadata |
 | `record-document.schema.json` | complete authoritative record documents returned by read and successful mutations |
-| `view.schema.json` | ordinary `type: view` record frontmatter |
+| `view.schema.json` | the `mdbase.view` record contract view of saved-view records |
 | `conformance-claim.schema.json` | machine-readable implementation profile claims and evidence |
 | `runtime/provider.schema.json` | provider contract records |
 | `runtime/workflow.schema.json` | workflow records |

@@ -12,7 +12,7 @@ query:
       on_missing: view
   projections:
     urgency:
-      expr: 'priority + (present.record.due && due < today() ? 10 : 0)'
+      expr: 'priority + (due != null && due < today() ? 10 : 0)'
 
 properties:
   title:

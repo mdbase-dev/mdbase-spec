@@ -13,4 +13,4 @@ resources:
     mode: managed
     source: _types/task.md
     target: _types/task.md
-    digest: sha256:da2e044d3448c53dd2197e0ad1926fd6c797eb5810bfc896e3eda81203b94b74
+    digest: sha256:a514a968739b742a81a953d191cb92526a36a811573c9a84d7c2f8bd12c78e94

@@ -173,12 +173,14 @@ collection:
 
 lifecycle:
   on_create:
-    set:
-      dateCreated: { now: true }
-      dateModified: { now: true }
+    - if: '!has(raw.dateCreated)'
+      set:
+        dateCreated: { now: true }
+    - set:
+        dateModified: { now: true }
   on_update:
-    set:
-      dateModified: { now: true }
+    - set:
+        dateModified: { now: true }
 
 implements:
   - contract: tasknotes.task

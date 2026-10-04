@@ -9,29 +9,43 @@ runtime.
 
 ## Events
 
-Lifecycle policy may run on:
+Lifecycle policy runs on:
 
-- `on_create`
-- `on_update`
-- `on_delete`
-- `on_rename`
+- `on_create`, during a create operation
+- `on_update`, during an update operation, including an update that only
+  changes the body
 
-v0.3 core standardizes `on_create` and `on_update`. Other lifecycle hooks are
-optional until a profile defines them.
+Rename and delete do not run lifecycle policy. Behavior triggered by those
+operations belongs to workflows.
 
-## Example
+## Actions
+
+The value of each event is one action or a non-empty list of actions. An action
+contains a `set` mapping and an optional CEL guard `if`:
 
 ```yaml
 lifecycle:
   on_create:
-    set:
-      id: { ulid: true }
-      dateCreated: { now: true }
-      dateModified: { now: true }
+    - if: '!has(raw.id)'
+      set:
+        id: { ulid: true }
+    - set:
+        dateCreated: { now: true }
+        dateModified: { now: true }
   on_update:
     set:
       dateModified: { now: true }
 ```
+
+Each key of `set` is a field reference as defined in Chapter 07, and each value
+is a value provider. `set` always assigns: it replaces a value that the caller
+supplied or that already exists. A guard such as `'!has(raw.id)'` limits an
+assignment to records where the field is missing.
+
+Actions run in list order. Each guard evaluates against the draft as modified by
+the preceding actions. All providers in one `set` read the draft as it was
+before that action, and its assignments then apply together. When two actions
+of one type assign the same field, the later assignment wins.
 
 ## Standard Value Providers
 
@@ -39,49 +53,80 @@ Core lifecycle providers:
 
 | Provider | Meaning |
 | --- | --- |
-| `{ now: true }` | current timestamp |
-| `{ today: true }` | current date |
-| `{ uuid: true }` | random UUID |
-| `{ ulid: true }` | random ULID |
-| `{ slugify: fieldName }` | slugified value of another field |
-| `{ copy: fieldName }` | copy another field |
-| `{ literal: value }` | set a literal value |
+| `{ now: true }` | current instant as an RFC 3339 date-time in UTC with `Z` |
+| `{ today: true }` | current date in the operation timezone, as an RFC 3339 `full-date` |
+| `{ uuid: true }` | random UUID in lower-case canonical form |
+| `{ ulid: true }` | random ULID in upper-case Crockford Base32 |
+| `{ slugify: fieldRef }` | slug of another field's string value |
+| `{ copy: fieldRef }` | copy of another field's value |
+| `{ literal: value }` | the literal value |
 
-Tools MUST document timestamp precision and timezone behavior.
+`now` and `today` use the operation's captured instant, so every provider in one
+operation observes the same time. The operation timezone follows the same
+precedence as the query timezone in Chapter 11.
+
+Lifecycle has no counter or sequence provider. A dense sequence such as
+"largest existing value plus one" depends on every other record, so two tools
+or devices creating records concurrently allocate the same number unless every
+create is coordinated. Collections use `ulid` or `uuid` for identifiers.
+An implementation MAY offer a sequence provider under an `x-*` extension; such
+a provider is not portable, and its allocation and coordination are
+implementation behavior.
+
+`slugify` lowercases the value, transliterates it to ASCII where a
+transliteration exists, replaces each run of other characters with `-`, and
+trims leading and trailing `-`. A missing, null, or non-string source value
+produces null. `copy` of a missing field removes the target key.
 
 ## Guards
 
-Lifecycle actions MAY have CEL guards:
+Lifecycle guards use the lifecycle CEL context from Chapter 10:
 
-```yaml
-lifecycle:
-  on_update:
-    - if: 'old.status != status'
-      set:
-        dateModified: { now: true }
-```
-
-Lifecycle guards use the mdbase CEL profile with these bindings:
-
-- current draft frontmatter fields
+- current draft frontmatter fields at top level, and as `record` and `raw`
 - `old` for the previous raw frontmatter on update
 - `file` for file metadata
 - `operation` for operation metadata
 
+`old` is a map, so a guard that reads a field that may be missing from the
+previous record uses `has()` or optional selection:
+
+```yaml
+lifecycle:
+  on_update:
+    - if: 'old.?status.orValue(null) != status && status == "done"'
+      set:
+        completedDate: { today: true }
+```
+
+A guard that fails to compile invalidates the type definition. A guard that
+raises an evaluation error fails the operation with
+`lifecycle_expression_error`. A guard that evaluates to anything other than
+boolean `true` skips its action.
+
+## Merge Defaults
+
+A top-level field that a matched type's lifecycle assigns with `{ now: true }`
+or `{ today: true }` merges with the `max` strategy by default (Chapter 07),
+so two concurrent updates that both refresh `dateModified` keep the later
+value instead of conflicting. A merge does not run lifecycle: lifecycle values
+in a merged record come from the two sides through their merge strategies
+(Chapter 12A).
+
 ## Validation Order
 
-For mutating operations:
+For create and update:
 
 1. parse input
-2. match target types
-3. build a draft frontmatter object
-4. apply lifecycle policy
-5. validate JSON Schema
-6. run collection validators
-7. write the file
+2. build a draft frontmatter object
+3. determine and freeze type membership from the draft and target path
+4. apply the lifecycle actions of every matched type
+5. re-evaluate membership and fail with `type_membership_changed` if it differs
+6. validate JSON Schema
+7. run collection validators
+8. write the file
 
 Lifecycle MUST run before final validation so generated IDs and timestamps can
-satisfy required schema fields.
+satisfy required schema fields. Chapters 05 and 12 define membership freezing.
 
 Read defaults MUST NOT run as lifecycle policy unless a write operation
 explicitly asks to materialize them.
@@ -98,18 +143,13 @@ agent work belong in workflows.
 
 ## Conflicts
 
-If multiple matched types define lifecycle policy for the same field and event,
-the operation MUST be deterministic.
+When several matched types define lifecycle policy for the same event, each
+type's actions run as one unit and types run in matched-type order. The result
+MUST NOT depend on that order:
 
-Normative rule:
-
-- identical normalized assignments are allowed and execute once
-- conflicting assignments are `type_conflict` errors before write
+- identical normalized assignments to the same field from different types are
+  allowed and execute once
+- different assignments to the same field from different types are
+  `type_conflict` errors before any write, whether or not their guards would
+  run
 - diagnostics MUST report the type names and lifecycle paths involved
-
-v0.3 core MUST report the conflict. Future pack composition may define explicit
-precedence.
-
-A lifecycle guard that fails to compile or raises an evaluation error fails the
-operation with `lifecycle_expression_error`. A guard that evaluates normally to
-false or null skips that action.

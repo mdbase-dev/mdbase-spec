@@ -30,9 +30,6 @@
     "lifecycle": {
       "$ref": "#/$defs/lifecycle"
     },
-    "migrations": {
-      "$ref": "#/$defs/migrations"
-    },
     "implements": {
       "$ref": "#/$defs/implementations"
     }
@@ -66,7 +63,7 @@
       "pattern": "^(/([^/~]|~0|~1)*)*$"
     },
     "fieldReference": {
-      "description": "A legacy mdbase field path or a non-root RFC 6901 JSON Pointer.",
+      "description": "An mdbase field path or a non-root RFC 6901 JSON Pointer.",
       "oneOf": [
         {
           "$ref": "#/$defs/fieldPath"
@@ -236,6 +233,9 @@
         },
         "projections": {
           "$ref": "#/$defs/projections"
+        },
+        "merge": {
+          "$ref": "#/$defs/mergeStrategies"
         }
       },
       "patternProperties": {
@@ -319,6 +319,10 @@
           "path_glob": {
             "type": "string",
             "minLength": 1
+          },
+          "enforce": {
+            "enum": ["report", "write"],
+            "default": "report"
           }
         },
         "allOf": [
@@ -362,6 +366,20 @@
       },
       "additionalProperties": false
     },
+    "mergeStrategies": {
+      "description": "Per-field merge strategies for top-level frontmatter fields (Chapter 07).",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "anyOf": [
+          { "$ref": "#/$defs/fieldName" },
+          { "pattern": "^/([^/~]|~0|~1)+$" }
+        ]
+      },
+      "additionalProperties": {
+        "enum": ["conflict", "max", "min", "union"]
+      }
+    },
     "projections": {
       "type": "object",
       "propertyNames": {
@@ -389,12 +407,6 @@
           "$ref": "#/$defs/lifecycleEvent"
         },
         "on_update": {
-          "$ref": "#/$defs/lifecycleEvent"
-        },
-        "on_delete": {
-          "$ref": "#/$defs/lifecycleEvent"
-        },
-        "on_rename": {
           "$ref": "#/$defs/lifecycleEvent"
         }
       },
@@ -507,46 +519,6 @@
         }
       ]
     },
-    "migrations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["from", "to"],
-        "properties": {
-          "from": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "to": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "steps": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "minProperties": 1,
-              "additionalProperties": true
-            }
-          },
-          "action": {
-            "$ref": "#/$defs/identifier"
-          },
-          "description": {
-            "type": "string"
-          }
-        },
-        "oneOf": [
-          {
-            "required": ["steps"]
-          },
-          {
-            "required": ["action"]
-          }
-        ],
-        "additionalProperties": false
-      }
-    },
     "implementations": {
       "type": "array",
       "minItems": 1,
@@ -562,7 +534,7 @@
           "$ref": "#/$defs/contractId"
         },
         "version": {
-          "$ref": "#/$defs/semanticVersion"
+          "$ref": "#/$defs/semanticVersionRequirement"
         },
         "fields": {
           "type": "object",
@@ -589,6 +561,10 @@
       "minLength": 3,
       "maxLength": 128,
       "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)+$"
+    },
+    "semanticVersionRequirement": {
+      "type": "string",
+      "pattern": "^(?:[\\^~=]?(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?|(?:>=|<=|>|<|=)(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?: (?:>=|<=|>|<|=)(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?)*)$"
     },
     "semanticVersion": {
       "type": "string",

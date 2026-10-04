@@ -9,7 +9,7 @@ match:
 
 schema:
   dialect: json-schema-2020-12
-  ref: "../../../../../schemas/v0.3/type-file.schema.json"
+  ref: "../schemas/v0.3/type-file.schema.json"
 ---
 
 # Meta
