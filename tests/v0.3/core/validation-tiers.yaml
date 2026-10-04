@@ -246,7 +246,7 @@ groups:
           path: "tasks/active/a.md"
         expect:
           valid: false
-          issues:
+          issues_contain:
             - code: duplicate_value
               field: code
               details: { paths: ["notes/n.md"] }

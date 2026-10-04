@@ -333,6 +333,12 @@ fields. Values are converted to strings without expression evaluation: a
 string is used as written, and a number or boolean uses its JSON
 representation. A missing or null value produces `path_value_missing`.
 
+**Provisional (rc.5).** The JSON representation of a number is the one RFC
+8785 (JSON Canonicalization Scheme) specifies, which is ECMAScript's
+`Number.prototype.toString`: an integer-valued number has no fraction
+(`42.0` gives `42`), and exponents are written `1e+21` and `1e-7`. CEL's
+`string(double)` uses the same text (Chapter 10).
+
 A placeholder value always stays within one path component. A converted
 value is invalid, and the operation fails with `path_value_invalid` naming the
 field, when it:

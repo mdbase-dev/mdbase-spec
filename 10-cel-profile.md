@@ -175,6 +175,13 @@ The durable runtime profile defines when each workflow expression is evaluated.
 
 ## Record Values
 
+**Provisional (rc.5).** CEL maps are unordered, but comprehensions over a
+map (`all`, `exists`, `exists_one`, `map`, `filter`) visit its keys, and
+`map` and `filter` return lists in that order. Maps iterate in insertion
+order: frontmatter maps in the order of their keys in the source, map
+literals in the order written. `string(double)` writes the RFC 8785 number
+text of Chapter 07 (`1e+21`, `0.3333333333333333`, and `0` for negative zero).
+
 Frontmatter is converted to CEL values after the JSON data-model conversion in
 Chapter 06:
 
@@ -291,7 +298,9 @@ profile adds two string methods:
 | `s.lower()` | `s` with every character mapped to lowercase |
 | `s.upper()` | `s` with every character mapped to uppercase |
 
-Both use the Unicode default full case mappings without locale tailoring, so
+Both use the Unicode default full case mappings without locale tailoring,
+including the context-dependent final sigma rule, from the same Unicode
+version as path keys (Chapter 02, provisionally 17.0.0), so
 `"Éclair".lower()` is `"éclair"` and `"Straße".upper()` is `"STRASSE"`. A
 case-insensitive search lowercases the text it searches:
 
@@ -330,7 +339,31 @@ profile keeps that syntax and removes Unicode classes from it.
 - the flags `i`, `m`, `s`, and `x`, set as `(?flags)` or `(?flags:...)`
 
 A pattern that uses anything else is invalid. In particular, Unicode classes
-such as `\p{L}` and `\pN`, backreferences, and look-around are invalid.
+such as `\p{L}` and `\pN`, backreferences, and look-around are invalid, and
+so are constructs that `regex-lite` accepts beyond this list: `\b{start}` and
+the other `\b{...}` boundaries, `(?<name>...)` (use `(?P<name>...)`), the
+`U` and `R` flags, escapes of letters or digits other than those listed (such
+as `\a` and `\u0041`), nested bracket classes, and class set operations
+(`&&`, `--`, `~~`). A `{` that does not begin a valid repetition, and a `]` or
+`}` outside a class, are invalid too; escape them. `\<` and `\>` are
+literal `<` and `>`, as the escape rule above says, although `regex-lite`
+itself reads them as word boundaries.
+
+**Limits.** Every tool accepts and rejects the same patterns:
+
+- a pattern longer than 8,192 bytes is invalid;
+- groups nested deeper than 64 are invalid;
+- a repetition count above 1,000 in `{n}`, `{n,}`, or `{n,m}` is invalid, as
+  in RE2;
+- a pattern whose **program size** exceeds 100,000 is invalid. The size is: 1
+  for a literal, `.`, a bracket class, or a Perl class; 0 for an anchor or
+  boundary; the sum for a concatenation; the sum plus 1 per `|` for an
+  alternation; the inner size plus 1 for a group; twice the operand for `*`,
+  `+`, and `?`; and the operand times `max(n, m, 1) + 1` for `{n}`, `{n,}`,
+  and `{n,m}`.
+
+`regex-lite`'s own size limit depends on the platform's pointer width, so it
+cannot be the portable limit.
 
 **Semantics.** Matching runs over Unicode scalar values, and a match is
 unanchored unless the pattern anchors it, as in RE2 and JSON Schema. Among

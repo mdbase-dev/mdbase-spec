@@ -95,6 +95,23 @@ Bases, seed type upgrades, and saved-view identification.
 
 #### Clarified
 
+- Errata from the first implementation (provisional; details in the release
+  notes):
+  - YAML 1.2 core scalar resolution;
+  - which lines belong to a frontmatter entry;
+  - the pinned Myers body alignment;
+  - a `type_conflict` during a merge merges as `conflict`;
+  - conflict order;
+  - append-append onto a base without a final line break, with separators in
+    the body's line-ending style;
+  - portable paths: a normative path-safety rule set (Chapter 02);
+  - regex `\<`/`\>`, `regex-lite`-only syntax and portable limits;
+  - Unicode 17.0.0 for path keys and case mappings;
+  - RFC 8785 number text;
+  - CEL map iteration order.
+
+  The executable model follows each, and all `cel/cel-profile.yaml` tests now
+  have ids.
 - `settings.id_field` has no default; engines that resolve through `id`
   without configuration are non-conforming. It also serves as the
   move-detection identity hint.

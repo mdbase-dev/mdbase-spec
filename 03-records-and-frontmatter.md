@@ -210,3 +210,31 @@ data model before JSON Schema validation. Non-JSON YAML values such as NaN,
 Infinity, binary values, and timestamps with parser-specific objects MUST be
 handled by the mdbase YAML profile before schema validation or rejected with a
 clear diagnostic.
+
+### Scalar Resolution
+
+Plain (unquoted) scalars resolve with the YAML 1.2 core schema. A tool MUST
+read a plain scalar as follows, and MUST NOT apply YAML 1.1 resolution:
+
+| Plain scalar | Value |
+| --- | --- |
+| empty, `~`, `null`, `Null`, `NULL` | null |
+| `true`, `True`, `TRUE`, `false`, `False`, `FALSE` | boolean |
+| `[-+]?[0-9]+`, `0o[0-7]+`, `0x[0-9a-fA-F]+` | integer |
+| `[-+]?(\.[0-9]+\|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?` | number |
+| anything else | string |
+
+So `yes`, `no`, `on`, and `off` are strings, `0777` is the integer 777,
+`1_000` and `1:20` are strings, timestamps such as `2026-10-01` and
+`2026-10-01T09:00:00Z` are strings, and `<<` is an ordinary key. Quoted and
+block scalars are always strings. `.inf`, `.nan`, and decimal numbers whose
+value is not a finite double are outside the JSON data model and are read as
+the string as written.
+
+A writer that has no existing style to keep SHOULD quote a string that a YAML
+1.1 parser would read as another type (for example `"yes"` or
+`"2026-10-01"`), so tools that still use YAML 1.1 read the same value.
+
+**Provisional (rc.5).** This table resolves an ambiguity of earlier release
+candidates, which asked for "a safe YAML parser" without naming a schema. It
+matches Obsidian and the current engines.

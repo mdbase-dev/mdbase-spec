@@ -1596,6 +1596,216 @@ groups:
           conflicts:
             - kind: path
           path: items/b.md
+      - name: "a column-0 comment inside a block sequence belongs to the entry"
+        id: merge.column0_comment_inside_sequence
+        since: 0.3.0-rc.5
+        covers: [merge.merge_format_fidelity]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+            - ann
+            # reviewed in round two
+            - bo
+            ---
+            Body.
+          first: |
+            ---
+            title: Renamed
+            score: 1
+            reviewers:
+            - ann
+            # reviewed in round two
+            - bo
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            reviewers:
+            - ann
+            # reviewed in round two
+            - bo
+            - cy
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Renamed
+            score: 1
+            reviewers:
+            - ann
+            # reviewed in round two
+            - bo
+            - cy
+            ---
+            Body.
+          conflicts: []
+      - name: "append-append onto a base without a final line break adds no empty line"
+        id: merge.append_unterminated_base
+        since: 0.3.0-rc.5
+        covers: [merge.append_append_union]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |-
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            c
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            a
+            b
+            c
+          conflicts: []
+      - name: "append-append in a CRLF body inserts a CRLF separator"
+        id: merge.append_separator_crlf
+        since: 0.3.0-rc.5
+        covers: [merge.append_append_union]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\n"
+          first: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nb"
+          second: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nc\r\n"
+        expect:
+          document: "---\r\ntitle: Item\r\nscore: 1\r\n---\r\na\r\nb\r\nc\r\n"
+          conflicts: []
+      - name: "the body alignment is the pinned Myers alignment"
+        id: merge.body_alignment_pinned
+        since: 0.3.0-rc.5
+        covers: [merge.body_three_way]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            - milk
+            - bread
+            - eggs
+          first: |
+            ---
+            title: Item
+            score: 1
+            ---
+            - milk
+            - bread
+          second: |
+            ---
+            title: Item
+            score: 1
+            ---
+            - eggs
+            - bread
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            ---
+            - eggs
+            - bread
+          conflicts: []
+      - name: "plain scalars use the YAML 1.2 core schema: 0777 is decimal"
+        id: merge.yaml_core_schema_decimal
+        since: 0.3.0-rc.5
+        covers: [merge.max_min_semantics]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 0777
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 600
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 0777
+            ---
+            Body.
+          conflicts: []
+      - name: "plain scalars use the YAML 1.2 core schema: yes is a string"
+        id: merge.yaml_core_schema_yes
+        since: 0.3.0-rc.5
+        covers: [merge.field_three_way, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: items/a.md
+          base: |
+            ---
+            title: Item
+            score: 1
+            ---
+            Body.
+          first: |
+            ---
+            title: Item
+            score: 1
+            flag: yes
+            ---
+            Body.
+          second: |
+            ---
+            title: Item
+            score: 1
+            flag: true
+            ---
+            Body.
+        expect:
+          document: |
+            ---
+            title: Item
+            score: 1
+            flag: yes
+            ---
+            Body.
+          conflicts:
+            - kind: field
+              field: flag
       - name: frontmatter that is not a mapping merges as one unit
         id: merge.non_mapping_frontmatter
         since: 0.3.0-rc.5
@@ -1715,3 +1925,30 @@ groups:
         expect:
           strategies:
             note: union
+      - name: "a type_conflict between declarations merges the field as a conflict"
+        id: merge.declaration_type_conflict_in_merge
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.merge_declarations, merge.conflict_reporting]
+        operation: merge_records
+        input:
+          path: shared/x.md
+          base: |
+            ---
+            rank: 1
+            ---
+          first: |
+            ---
+            rank: 2
+            ---
+          second: |
+            ---
+            rank: 3
+            ---
+        expect:
+          document: |
+            ---
+            rank: 2
+            ---
+          conflicts:
+            - kind: field
+              field: rank

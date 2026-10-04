@@ -67,6 +67,13 @@ conformance claim. `manifest.yaml` records its non-normative `coverage_targets`;
 verified claims must use `schemas/v0.3/conformance-claim.schema.json` and provide
 evidence for every claimed profile.
 
+**Comparing issue and diagnostic lists.** `expect.issues` and
+`expect.diagnostics` list *every* issue or diagnostic the operation reports,
+compared as a set: same length, each expected entry matching a distinct
+actual one, order ignored. An expected entry matches when every key it gives
+matches; extra keys in the actual entry are ignored. `issues_contain` and
+`diagnostics_contain` require only that each listed entry is present.
+
 `input` and `expect` form an adapter-facing semantic assertion DSL. They are not
 the native API or wire shape. Adapters may normalize a language-specific API
 into this shape; an implementation's v0.3 operation surface must still use the
@@ -165,7 +172,9 @@ are pure functions of their input and the group's `setup.types`, so
 `update` with `add` and `remove`, and `load_types` to return type-loading
 diagnostics. Tests that create two files differing only in case, such as
 `paths.discovered_collision`, need a case-sensitive file system; an adapter on
-a case-insensitive one reports them as skipped.
+a case-insensitive one reports them as skipped. An adapter for an engine that
+resolves discovered collisions by the collision rule (Chapter 02) also reports
+`paths.discovered_collision` as skipped.
 
 ### `rename` with `update_refs` (since rc.5)
 

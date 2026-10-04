@@ -128,6 +128,11 @@ The result is a **merged version** and a possibly empty list of
 **conflicts**. A conflict has a `kind`: `field` for one top-level frontmatter
 field, which it names in `field`; `frontmatter` for a whole frontmatter
 block; `body`; or `path`. It carries the base, first, and second values.
+
+Conflicts are listed in this order: field conflicts in key order (the first
+version's keys in its order, then keys only the second version has, in its
+order, then keys only the base has, in its order), then a `frontmatter`
+conflict, then a `body` conflict, then a `path` conflict.
 Where a conflict exists, the merged version holds the first version's value.
 A tool that writes a merged version with conflicts MUST NOT discard the second
 version's conflicting values silently: how it keeps and surfaces them is
@@ -159,7 +164,10 @@ standing for that key's state in each:
 3. Otherwise, if `F` equals `B`, the result is `S`: only the second side
    changed the key.
 4. Otherwise both sides changed the key differently, and the key's strategy
-   decides.
+   decides. When the matched types declare different strategies for the key
+   (a `type_conflict`, Chapter 05), the key uses `conflict`: a merge never
+   fails and never drops a value it cannot decide. Reading the merged record
+   still reports the `type_conflict`.
 
 | Strategy | Result when both sides changed the key differently |
 | --- | --- |
@@ -223,10 +231,21 @@ standing for the three bodies:
    the result is `S`.
 2. **Append-append.** If `F` and `S` both begin with all of `B`, so that both
    sides only appended text at the end, the result is `B`, then `F`'s
-   appended text, then `S`'s appended text. When `F`'s appended text is not
-   empty and does not end with a line terminator, a `\n` is inserted between
-   the two. Journals, logs, and checklists grow this way, and appending to
-   them concurrently is not a conflict.
+   appended text, then `S`'s appended text, joined as follows:
+   - when `B` is not empty and does not end with a line terminator, and both
+     appended texts begin with one, the line terminator at the start of
+     `S`'s text is dropped: `F`'s text already ended `B`'s last line;
+   - then, when `F`'s appended text is not empty and does not end with a line
+     terminator, and `S`'s remaining text does not begin with one, a line
+     terminator is inserted between the two, in the body's line-ending style:
+     the style of `B`'s first line terminator, or when `B` has none, of the
+     first line terminator in `F`'s and then `S`'s appended text, and `\n`
+     when there is none at all. A merge therefore never mixes `\n` and
+     `\r\n` in a body that used one style.
+
+   So no empty line appears between the two appends. Journals, logs, and
+   checklists grow this way, and appending to them concurrently is not a
+   conflict.
 3. Otherwise the bodies merge as a three-way line merge (diff3). The lines of
    `B` that are aligned with unchanged lines in both `F` and `S` divide the
    bodies into stable regions and changed chunks. For each changed chunk, the
@@ -236,13 +255,29 @@ standing for the three bodies:
 
 When the body is in conflict, the merged body is `F` as a whole and the
 conflict carries the three bodies. The alignment of `B` with each side is a
-longest common subsequence of lines.
+longest common subsequence of lines, chosen as follows, so that every
+implementation splits chunks the same way:
 
-**Provisional (rc.5).** When several longest common subsequences exist, this
-release candidate does not fix which one is used, so two implementations can
-split some changed chunks differently. Implementations SHOULD use the Myers
-difference algorithm. Conformance fixtures use bodies whose alignment is
-unique.
+1. Lines common to the start of both sequences are aligned, then lines
+   common to their end.
+2. The remaining middle parts are split at the **middle snake** of Myers'
+   linear-space algorithm (E. Myers, "An O(ND) Difference Algorithm and Its
+   Variations", 1986, section 4b), in the formulation of diff-match-patch's
+   `bisect`: for each edit distance `d` the forward search runs before the
+   reverse search; on each diagonal a search continues from the neighbouring
+   diagonal with the larger furthest-reaching value, and from the lower
+   diagonal (a deletion) when they are equal; the split point is the forward
+   search's furthest-reaching point on the diagonal where the searches first
+   overlap.
+3. Each part is aligned recursively with these rules.
+
+The executable model (`scripts/concurrent_edits_model.py`, `_lcs_pairs`)
+is the reference for this procedure.
+
+**Provisional (rc.5).** Earlier drafts left the choice among several longest
+common subsequences open. The procedure above is the one the reference model
+and the first engine implement. A later release may name a simpler canonical
+alignment if one proves as fast.
 
 **Provisional (rc.5).** Append-append applies only to appends at the end
 of the body. Two insertions at the same place inside the body remain a
@@ -285,8 +320,12 @@ document records alike.
 
 A frontmatter source consists of **top-level entries** and the lines between
 them. An entry is a line that begins a top-level key at column 0, together
-with every following line that belongs to that key's value. Blank lines and
-comment lines at column 0 between entries are not part of any entry.
+with every following line up to the last line of that key's value, and then
+any directly following blank and indented comment lines up to the last
+indented comment line. Lines inside the value belong to the entry even when
+they are blank or column-0 comments, such as a comment between two `- ` items
+of a block sequence at column 0. Blank lines and comment lines at column 0
+after the value are not part of any entry.
 
 1. An entry whose key the write does not change MUST stay byte-identical,
    including its comments, quoting, indentation, and position.

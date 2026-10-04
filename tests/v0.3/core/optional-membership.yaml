@@ -139,13 +139,12 @@ groups:
           frontmatter: {title: Milk}
         expect:
           valid: false
-  - name: Serialization policy cannot erase membership
+  - name: An empty list is persisted and establishes membership
     setup:
       config: |
         spec_version: "0.3.0"
         settings:
           explicit_type_keys: []
-          write_empty_lists: false
           default_validation: error
       types:
         task.md: |
@@ -159,11 +158,13 @@ groups:
             value: {type: object}
           ---
     tests:
-      - name: omitted empty list cannot establish persisted membership
+      - name: an empty list is written and establishes membership
+        id: membership.empty_list_persisted
+        changed: 0.3.0-rc.5
         operation: create
         input:
           type: task
           path: no.md
           frontmatter: {markers: []}
         expect:
-          valid: false
+          valid: true
