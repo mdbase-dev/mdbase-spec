@@ -143,7 +143,7 @@ The following top-level sections are defined by v0.3:
 | Section | Purpose |
 | --- | --- |
 | `match` | select records for inferred type membership |
-| `collection` | define Markdown-aware collection semantics |
+| `collection` | define Markdown-aware collection semantics, including merge strategies |
 | `lifecycle` | assign managed values during mutations |
 | `implements` | declare exact, schema-validated data contract implementations |
 
@@ -223,11 +223,12 @@ only when all of those validations pass.
 Collection behavior composes as follows:
 
 - uniqueness rules are additive and are each evaluated in the type that
-  declared them
+  declared them, with that rule's own `enforce` mode
 - identical read defaults, link rules, path policies, lifecycle assignments,
-  and projections coalesce
+  projections, and merge strategies coalesce
 - different values for the same read-default field, link selector, path policy,
-  lifecycle event and field, or projection name produce `type_conflict`
+  lifecycle event and field, projection name, or `collection.merge` field
+  produce `type_conflict`
 - display metadata remains associated with its declaring type; a flattened
   display uses the first explicit type or first canonical inferred type
 

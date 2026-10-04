@@ -55,13 +55,18 @@ Pipeline:
 4. apply lifecycle `on_create`
 5. verify type membership did not change as a lifecycle side effect
 6. validate JSON Schema
-7. run collection validators
+7. run collection validators, applying the validation tiers of Chapter 04
 8. choose or validate path policy; the final path's extension fixes the
    record's format (Chapter 03), and a body is rejected when that format is a
    YAML document
 9. write Markdown file
 10. update derived indexes
 11. emit watch/runtime events after state is consistent
+
+An explicit `path` whose path key (Chapter 02) equals that of an existing
+record fails with `path_conflict`. A path derived from `collection.path.pattern`
+never fails for that reason: it receives the first free suffixed path from
+Chapter 02, and the result reports the final path.
 
 Static JSON Schema defaults MAY be used by editor and create interfaces.
 Validation-time mutation occurs when the create operation explicitly copies a
@@ -99,13 +104,14 @@ Update modifies an existing record.
 Pipeline:
 
 1. read existing raw frontmatter
-2. apply the requested `patch` and `unset`
+2. apply the requested `patch`, `unset`, `add`, and `remove`
 3. re-match and freeze types when type-affecting fields or path changed
 4. apply lifecycle `on_update`
 5. verify type membership did not change as a lifecycle side effect
 6. validate JSON Schema
-7. run collection validators
-8. write frontmatter and preserve body
+7. run collection validators, applying the validation tiers of Chapter 04
+8. write the changed frontmatter entries with format fidelity (Chapter 12A)
+   and preserve the body
 9. update derived indexes
 10. emit watch/runtime events
 
@@ -115,6 +121,10 @@ A structured update accepts:
   replacing any existing value; a null value persists an explicit null
 - `unset`: a list of field references, as defined in Chapter 07, whose keys are
   removed from persisted frontmatter
+- `add`: an object mapping top-level field names to lists of items to add to
+  that field's list
+- `remove`: an object mapping top-level field names to lists of items to
+  remove from that field's list
 - `body`: optional replacement Markdown body; a non-empty body for a YAML
   document record (Chapter 03) is `invalid_request`
 
@@ -123,6 +133,44 @@ the same field in `patch` and `unset`, names a field inside a key that `patch`
 replaces, or uses an `unset` reference that selects an array item, is invalid
 and produces `invalid_request` before any write. When `unset` removes the last key of a
 nested object, the now-empty object remains.
+
+### List operations
+
+`add` and `remove` change a list field relative to its current value instead
+of replacing it, so "add tag `x`" from one writer and "add tag `y`" from
+another both take effect:
+
+```yaml
+path: tasks/a.md
+add:
+  tags: [urgent]
+remove:
+  tags: [someday]
+```
+
+They apply to the record's current persisted value when the update is
+applied, after `patch` and `unset`:
+
+- `add` appends each listed item that is not already present, in request
+  order. A missing or null field is treated as an empty list, so `add` creates
+  the field.
+- `remove` removes every item equal to a listed item. Removing from a missing
+  or null field, or removing an item that is absent, is not an error and
+  leaves the field unchanged.
+- Items are compared with the deep JSON equality used for uniqueness in
+  Chapter 07.
+- When the existing value is a string and the field is `tags`, it is treated
+  as a one-item list, matching how `file.tags` reads it. Any other non-list
+  existing value is `invalid_request`.
+
+A request is `invalid_request` before any write when it names a field in
+`add` or `remove` that it also names in `patch` or `unset`, when the same
+item appears in both `add` and `remove` for one field, or when an `add` or
+`remove` value is not a list. List operations work on any list field; they do
+not require `uniqueItems`. A list emptied by `remove` stays as an empty list.
+
+**Provisional (rc.5).** `add` and `remove` address top-level fields
+only, like `patch`, because the merge unit is the top-level field.
 
 As an alternative to a frontmatter patch and body replacement, Update accepts
 `document` containing the complete candidate source in the record's format:
@@ -152,7 +200,10 @@ Delete is a Core Write operation and MAY emit an event for workflow runtimes.
 Rename moves a record within the collection. It accepts `from` and `to`
 collection-relative paths, optional `if_revision`, and optional `update_refs`.
 
-Tools MUST reject target paths that escape the collection root.
+Tools MUST reject target paths that escape the collection root. A target whose
+path key equals that of a different existing record fails with
+`path_conflict`. A target whose path key equals the source's own path key only
+changes the path's spelling, such as its case, and is not a conflict.
 
 If reference updating is enabled, link updates SHOULD preserve link style,
 alias, and anchor where possible. ID-based links SHOULD not be rewritten if the
@@ -338,13 +389,26 @@ delete returns `path` and `deleted: true`.
 Write-capable tools SHOULD detect external modification between read and write
 using mtime, content hash, version token, or platform-specific file identity.
 
-On conflict, tools MUST preserve the current file and report a concurrency
-diagnostic.
-
 Successful reads MUST return a stable `revision` token derived from the raw
 file state. Write operations MUST accept an optional `if_revision` token and
 fail with `concurrent_modification` when it no longer matches. The token format
 is implementation-defined and opaque to callers.
+
+`if_revision` is an opt-in compare-and-swap for callers that need
+read-modify-write semantics, such as a counter or a workflow state
+transition. Implementations MUST NOT supply `if_revision` on a caller's
+behalf.
+
+A write without `if_revision` describes its own change: the keys it sets or
+removes, its list operations, and its body edit. When the record changed after
+the caller read it, an implementation either applies that change to the
+current record, as the update pipeline above does, or reconciles the two
+versions with the three-way record merge of Chapter 12A. It MUST NOT discard
+the other change silently. A conflict found by the merge is reported; how it
+is held, shown, and resolved is implementation behavior.
+
+On a failed `if_revision` check, tools MUST preserve the current file and
+report a concurrency diagnostic.
 
 ## Operation Result Envelope
 
@@ -376,6 +440,8 @@ runtime state, or revisions.
 
 ## Events
 
-After a successful mutation, tools MAY emit watch/runtime events. Events MUST be
+After a successful mutation, tools MAY emit watch/runtime events. A tool that
+reports moves of files edited outside it uses the move detection of Chapter
+12A. Events MUST be
 delivered after the derived read/query state is consistent. Watch consumers and
 workflow runtimes may subscribe to the same stream.

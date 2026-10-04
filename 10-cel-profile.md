@@ -2,9 +2,12 @@
 
 ## Purpose
 
-Portable v0.3 expressions use the
-[Common Expression Language](https://github.com/google/cel-spec) (CEL). This
-chapter defines the values an mdbase host binds, the mdbase host functions and
+mdbase has one expression language: the
+[Common Expression Language](https://github.com/google/cel-spec) (CEL) with the
+host bindings of this profile. Matching, lifecycle guards, collection
+projections, queries, views, and workflows all use it, so one parser, one set
+of semantics, and one conformance suite serve every context. This chapter
+defines the values an mdbase host binds, the mdbase host functions and
 types, limits, and how each embedding context handles evaluation errors.
 
 mdbase does not change CEL's language semantics. Operators, macros, error
@@ -51,11 +54,18 @@ CEL appears in:
 - lifecycle guards
 - workflow variables, conditions, inputs, iteration, and run policy
 
-`match.where` uses the structured predicate language from Chapter 07.
+`match.where` is a structured predicate written as YAML data (Chapter 07). It
+has no expression syntax.
 
-Tools may translate another user-interface expression language to CEL before
-writing portable records. A stored alternate dialect uses an `x-*` extension
-whose owner defines its semantics.
+Other expression syntaxes are **adapter dialects**. The Obsidian Bases
+filter and formula language is one: it is evaluated only by the
+[Obsidian Bases adapter](./adapters/obsidian-bases.md) for records that
+implement the `obsidian.base` contract. An adapter dialect is stored only in a
+source format that its adapter owns or under an `x-*` extension whose owner
+defines its semantics. A dialect expression never decides type membership,
+validation, lifecycle, merge, or the meaning of a portable query. Tools MAY
+translate a dialect to CEL before writing portable members, and MAY translate
+CEL back for a user interface.
 
 ## Evaluation Contexts
 
@@ -127,6 +137,12 @@ file.inFolder("tasks") && has(raw.tags) && tags.exists(t, t == "task")
 
 Read defaults and projections enter after matching and are absent from this
 context.
+
+Matching should be deterministic (Chapter 07). Using `now()`, `today()`,
+`file.mtime`, `file.ctime`, or a helper that reads another record, such as
+`asFile()`, `file.backlinks`, or `file.hasLink()`, in this context reports a
+`nondeterministic_match` warning when the type loads. In 0.3.0 stable it is
+an error that invalidates the type.
 
 ### Lifecycle Context
 

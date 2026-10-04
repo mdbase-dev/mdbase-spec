@@ -107,6 +107,15 @@ Effective read defaults belong in `collection.read_defaults`.
 Dynamic defaults such as `now`, `uuid`, `ulid`, and `slugify` belong in
 `lifecycle`.
 
+## Merge Annotations
+
+Merge strategies are mdbase collection semantics and are declared in
+`collection.merge` (Chapter 07), not as JSON Schema keywords. A JSON Schema
+`uniqueItems: true` on a top-level array property selects the `union` merge
+strategy by default, as Chapter 07 defines. Implementation-specific keywords
+such as `x-merge` inside `schema.value` are annotations with no portable
+meaning.
+
 ## Format
 
 JSON Schema `format` is an annotation in the base dialect. The mdbase v0.3

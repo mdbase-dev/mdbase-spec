@@ -171,14 +171,19 @@ explicitly maps it to ordinary fields.
 
 ## Serialization
 
-Write-capable tools SHOULD preserve unrelated body text and line ending style.
+Write-capable tools MUST preserve unrelated body text and SHOULD preserve the
+line ending style.
 
 A YAML document record serializes as its frontmatter mapping alone. A create or
 update that supplies a non-empty body for a YAML document record fails with
-`invalid_request` before any write. Structured writes re-emit the mapping and
-need not preserve comments, key order, or quoting style; a whole-document
-`document` replacement (Chapter 12) is written exactly as supplied. Tools that
-edit files another application owns SHOULD use whole-document replacement.
+`invalid_request` before any write. A whole-document `document` replacement
+(Chapter 12) is written exactly as supplied.
+
+A write that changes some frontmatter keys of an existing record follows the
+format fidelity rule of Chapter 12A: it re-emits only the changed top-level
+entries, keeps every other entry byte-identical, including comments, quoting,
+blank lines, and order, and keeps a changed entry's collection style. The rule
+applies to Markdown records and YAML document records alike.
 
 When serializing frontmatter, tools MUST:
 
@@ -186,8 +191,9 @@ When serializing frontmatter, tools MUST:
 - omit keys that are missing
 - quote empty strings
 
-Tools SHOULD preserve array and object structure and SHOULD produce
-deterministic key ordering when an operation rewrites a generated file.
+Tools SHOULD produce deterministic key ordering when an operation writes a new
+record or rewrites a generated file. New keys added to an existing record are
+appended after its existing entries.
 
 A null value in written frontmatter always means explicit null. Removing a key
 is a distinct operation; Chapter 12 defines how an update requests it.
