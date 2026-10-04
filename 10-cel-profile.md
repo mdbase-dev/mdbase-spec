@@ -37,6 +37,7 @@ Hosts MUST support:
   selection syntax, `optional.of`, `optional.none`, `hasValue()`, `value()`,
   `or()`, and `orValue()`
 - the mdbase host functions and bindings defined in this chapter
+- the mdbase regex profile below for `matches()`
 
 mdbase adds functions only under names that the CEL standard library does not
 define, so hosts never need to overload a standard function or operator.
@@ -297,6 +298,69 @@ case-insensitive search lowercases the text it searches:
 ```cel
 file.body.lower().contains("mission body")
 ```
+
+## Regular Expressions
+
+mdbase has one regular-expression flavor, the **mdbase regex profile**. It
+applies to CEL `matches()`, to JSON Schema `pattern` (Chapter 06), and to the
+`matches` operator of `match.where` (Chapter 07). Every tool evaluates a
+pattern the same way on every platform, which matters because a tool that
+replays or re-verifies a write must reach the same result as the tool that
+made it.
+
+The profile is RE2 syntax with ASCII-only character classes, the semantics of
+the Rust `regex-lite` crate. CEL specifies RE2 syntax for `matches()`; the
+profile keeps that syntax and removes Unicode classes from it.
+
+**Syntax.** A pattern may use:
+
+- literal characters; `\` before any ASCII punctuation character, such as
+  `\.` or `\\`; and the escapes `\n`, `\t`, `\r`, `\f`, `\v`, `\xHH`, and
+  `\x{H...}` for any Unicode scalar value
+- `.`, which matches any one Unicode scalar value except `\n` (any scalar
+  value with the `s` flag)
+- bracket classes such as `[a-z]`, `[^0-9]`, and ASCII class names such as
+  `[[:alpha:]]`
+- the Perl classes `\d`, `\w`, `\s`, and their negations `\D`, `\W`, `\S`
+- the anchors `^`, `$`, `\A`, `\z`, and the word boundaries `\b` and `\B`
+- groups `(...)`, non-capturing groups `(?:...)`, and named groups
+  `(?P<name>...)`
+- alternation `|`, and the repetitions `*`, `+`, `?`, `{n}`, `{n,}`,
+  `{n,m}`, each optionally followed by `?` for lazy matching
+- the flags `i`, `m`, `s`, and `x`, set as `(?flags)` or `(?flags:...)`
+
+A pattern that uses anything else is invalid. In particular, Unicode classes
+such as `\p{L}` and `\pN`, backreferences, and look-around are invalid.
+
+**Semantics.** Matching runs over Unicode scalar values, and a match is
+unanchored unless the pattern anchors it, as in RE2 and JSON Schema. Among
+matches at the same position, the leftmost-first (Perl) alternative wins.
+Classes and case folding are ASCII only:
+
+| Construct | Matches |
+| --- | --- |
+| `\d` | `[0-9]` |
+| `\w` | `[0-9A-Za-z_]` |
+| `\s` | `[\t\n\v\f\r ]` |
+| `\b` | a boundary between a `\w` character and a non-`\w` character or the text edge |
+| `(?i)` | ASCII letters case-insensitively; every other scalar value only as itself |
+
+So `"é".matches("^\\w$")` is false, `"café".matches("caf\\b")` is true,
+`"١".matches("^\\d$")` is false, and `"É".matches("(?i)é")` is false. A
+Unicode-aware case-insensitive search lowercases its text first, for example
+`title.lower().matches("^éclair")`, and a pattern that needs non-ASCII letters
+lists them, as in `[a-zà-ÿ]`.
+
+**Errors.** An invalid pattern written as a CEL string literal is an
+`expression_compile_error` when the expression compiles. A pattern computed
+during evaluation that turns out invalid raises an evaluation error. An
+invalid JSON Schema `pattern` or `match.where` pattern makes its type file
+invalid.
+
+**Provisional (rc.5).** The profile follows `regex-lite` because it keeps the
+WebAssembly runtime about 740 KB smaller than a Unicode-table engine and can
+run identically everywhere. Patterns that depend on Unicode classes behave
+differently from rc.4 engines that used a Unicode-aware engine.
 
 ## File And Link Helpers
 

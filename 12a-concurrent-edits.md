@@ -248,6 +248,15 @@ unique.
 of the body. Two insertions at the same place inside the body remain a
 conflict.
 
+### Body edits
+
+An update with `body_edits` (Chapter 12) is a body merge whose second version
+is built from the request: the base body with the edits applied. The current
+body is the first version. Append-append applies as usual, so an edit that
+only appends to the end of the base combines with a concurrent append, the
+current text first. An edit range that overlaps a concurrent change to the
+same lines is a body conflict.
+
 ### Path
 
 When the first and second versions have different paths, the path merges like

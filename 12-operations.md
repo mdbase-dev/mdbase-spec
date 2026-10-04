@@ -104,7 +104,8 @@ Update modifies an existing record.
 Pipeline:
 
 1. read existing raw frontmatter
-2. apply the requested `patch`, `unset`, `add`, and `remove`
+2. apply the requested `patch`, `unset`, `add`, and `remove`, and the body
+   replacement or `body_edits`
 3. re-match and freeze types when type-affecting fields or path changed
 4. apply lifecycle `on_update`
 5. verify type membership did not change as a lifecycle side effect
@@ -127,6 +128,8 @@ A structured update accepts:
   remove from that field's list
 - `body`: optional replacement Markdown body; a non-empty body for a YAML
   document record (Chapter 03) is `invalid_request`
+- `body_edits` with `body_base`: optional text edits to the body against a
+  known base body, as an alternative to `body`; see below
 
 Unsetting a key that is already missing is not an error. A request that names
 the same field in `patch` and `unset`, names a field inside a key that `patch`
@@ -171,6 +174,72 @@ not require `uniqueItems`. A list emptied by `remove` stays as an empty list.
 
 **Provisional (rc.5).** `add` and `remove` address top-level fields
 only, like `patch`, because the merge unit is the top-level field.
+
+### Body edits
+
+`body_edits` changes parts of the body instead of replacing all of it. It is
+what an editor buffer naturally produces, and it describes the writer's change
+precisely enough to combine with a concurrent edit:
+
+```yaml
+path: notes/meeting.md
+body_base: sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+body_edits:
+  - { start: 0, end: 5, text: "Agenda" }
+  - { start: 42, end: 42, text: "\n- follow up with Bo" }
+```
+
+- `body_base` identifies the body the edits were made against: `sha256:`
+  followed by the lowercase hexadecimal SHA-256 digest of the body's exact
+  UTF-8 bytes, as defined in Chapter 03 (everything after the closing
+  frontmatter delimiter, or the whole file without frontmatter).
+- `body_edits` is a list of edits. Each replaces the text from offset `start`
+  up to, but not including, offset `end` of the base body with `text`.
+  `start == end` is an insertion and an empty `text` is a deletion.
+- Offsets count Unicode scalar values from the start of the base body, so
+  every offset falls between two characters whatever the encoding.
+- Every offset refers to the base body, not to the body after earlier edits.
+  Edits are sorted by `start` and do not overlap: each edit's `end` is at most
+  the next edit's `start`, and two insertions at the same offset are one edit.
+- `body_base_text` optionally carries the complete base body. When present,
+  its digest MUST equal `body_base`.
+
+The update applies the edits as follows:
+
+1. If the record's current body has the digest `body_base`, the edits are
+   applied to it directly.
+2. Otherwise the implementation obtains the base body, from `body_base_text`
+   or from bodies it has retained, and rebases the edits onto the current
+   body with the three-way body merge of Chapter 12A, where the current body
+   is the first version and the base with the edits applied is the second.
+   A merged body is written. A body conflict fails the update with
+   `concurrent_modification`, `details.reason: body_conflict`, and the
+   conflict; nothing is written.
+3. If the base body cannot be obtained, the update fails with
+   `concurrent_modification` and `details.reason: body_base_unavailable`.
+   The caller can retry with `body_base_text` or against the current body.
+
+A request is `invalid_request` before any write when it combines `body_edits`
+with `body` or `document`, has `body_edits` without `body_base`, has an
+offset outside the base body, or has edits out of order or overlapping. Body
+edits for a YAML document record are `invalid_request`, because such a record
+has no body. Body edits combine with `patch`, `unset`, `add`, and `remove` in
+one update, and lifecycle runs once for the whole update.
+
+Body edits need no live-collaboration machinery. An implementation that only
+ever applies them directly, case 1 above, conforms, as long as it reports the
+other cases as specified.
+
+Conflicts are found at line granularity, because they come from the
+line-based body merge of Chapter 12A: two edits to different words of one line
+conflict. A later release may detect conflicts at a finer granularity; that
+is a compatible refinement, because it only turns some conflicts into merges.
+
+**Provisional (rc.5).** Offsets are Unicode scalar values, the unit that
+regular expressions and `.` match over. Byte offsets could fall inside a
+character, and UTF-16 code units, which JavaScript editors use, are
+specific to one platform; adapters convert at their boundary. Retaining old
+bodies is optional.
 
 As an alternative to a frontmatter patch and body replacement, Update accepts
 `document` containing the complete candidate source in the record's format:

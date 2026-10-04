@@ -60,6 +60,22 @@ Core v0.3 JSON Schema support includes:
 Tools MAY support more of JSON Schema 2020-12. The required profile defines the
 portable baseline for Core Read conformance.
 
+## Pattern Dialect
+
+`pattern`, and `patternProperties` where a tool supports it, use the mdbase
+regex profile defined in Chapter 10: RE2 syntax with ASCII-only `\d`, `\w`,
+`\s`, `\b`, and case-insensitive matching, over Unicode scalar values and
+unanchored. A pattern outside the profile, such as one using `\p{L}`, a
+backreference, or look-around, makes the type file invalid with an `invalid_pattern`
+diagnostic.
+
+**Provisional (rc.5).** JSON Schema 2020-12 recommends ECMA-262 regular
+expressions. The profile departs from it so that one engine serves schema
+validation, matching, and CEL. The two agree on `\d`, `\w`, and `\b` for
+patterns without the ECMA-262 `u` flag; they differ on `\s`, which ECMA-262
+defines over Unicode white space, and on look-around and backreferences,
+which ECMA-262 supports.
+
 ## Discriminated Unions
 
 v0.3 uses ordinary JSON Schema constructs for discriminated unions.

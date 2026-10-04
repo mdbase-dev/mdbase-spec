@@ -151,7 +151,8 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `projection_shadowed`, `link_not_found`, `link_target_type_mismatch`,
 `ambiguous_link`, `duplicate_value`, `path_conflict`, `path_collision`,
 `type_conflict`, `type_membership_changed`, `path_value_missing`,
-`path_value_invalid`, `nondeterministic_match`, `schema_ref_forbidden`,
+`path_value_invalid`, `nondeterministic_match`, `invalid_pattern`,
+`schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
 `lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
 `context_not_found`, `context_required`, `context_type_mismatch`,
@@ -180,6 +181,8 @@ Core Read implementations MUST:
 - validate embedded JSON Schema against the v0.3 profile
 - select explicit types and evaluate structured inferred match rules
 - validate raw frontmatter independently against every matched schema
+- evaluate JSON Schema `pattern` and `match.where` `matches` with the mdbase
+  regex profile
 - reject a type that requires an unsupported optional profile with
   `unsupported_profile`
 - report diagnostics in the canonical machine-readable shape
@@ -247,6 +250,8 @@ CEL implementations MUST:
   timezone behavior
 - provide the `lower()` and `upper()` text helpers with Unicode default case
   mappings
+- evaluate `matches()` with the mdbase regex profile: RE2 syntax with
+  ASCII-only classes and case folding
 - enforce and report expression, evaluation, and traversal limits
 - distinguish compilation diagnostics from evaluation diagnostics
 
@@ -368,6 +373,9 @@ Core Write implementations MUST:
 - preserve unrelated Markdown body content
 - follow the writer format fidelity rule of Chapter 12A
 - apply `add` and `remove` list operations to the current value
+- apply `body_edits` directly when the body matches `body_base`, rebase them
+  with the Chapter 12A body merge when the base body is available, and report
+  `body_conflict` and `body_base_unavailable` otherwise
 - reject paths that escape the collection root
 - reject an explicit path that collides under path equivalence with
   `path_conflict`, give a colliding derived path the first free suffix, and

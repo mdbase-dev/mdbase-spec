@@ -128,9 +128,10 @@ null. Ordering evaluates to false for incomparable values. `neq` also evaluates
 to false for a missing field. A predicate with an operand of the wrong type
 evaluates to false.
 
-`matches` uses the same portable regular-expression subset as JSON Schema
-`pattern`: Unicode-aware matching without backreferences or look-around. An
-unsupported or invalid pattern is a type-file diagnostic.
+`matches` uses the mdbase regex profile (Chapter 10), the same flavor as JSON
+Schema `pattern` and CEL `matches()`: RE2 syntax with ASCII-only classes and
+case folding. An unsupported or invalid pattern makes the type file invalid
+with an `invalid_pattern` diagnostic.
 
 ### CEL Matching
 

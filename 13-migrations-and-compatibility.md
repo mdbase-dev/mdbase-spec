@@ -30,7 +30,8 @@ worked under rc.4 stops loading.
 | a successful write with cross-record issues | not applicable | returns `valid: true` with `warning` diagnostics | nothing |
 | concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (Chapter 12A); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
 | lifecycle `now` and `today` fields, `tags`, `uniqueItems` arrays | no merge semantics | merge as `max`, `union`, and `union` by default | declare `conflict` in `collection.merge` |
-| update | `patch`, `unset`, `body`, `document` | adds `add` and `remove` list operations | nothing |
+| update | `patch`, `unset`, `body`, `document` | adds `add` and `remove` list operations, and `body_edits` against a `body_base` digest | nothing |
+| regular expressions in CEL `matches()`, JSON Schema `pattern`, and `match.where` | engine-dependent; Unicode-aware classes were implied | one profile everywhere: RE2 syntax with ASCII-only `\d`, `\w`, `\s`, `\b`, and case folding (Chapter 10); `\p{...}` is invalid | none; list non-ASCII characters explicitly, or lowercase text before matching |
 | derived path already taken | `path_conflict` | the first free suffixed path | supply an explicit path to get an error instead |
 | structured writes to Markdown frontmatter | only array and object structure SHOULD be preserved | MUST re-emit only changed entries | nothing |
 | structured writes to YAML document records | could re-emit the whole mapping | follow writer format fidelity | nothing |
@@ -44,6 +45,7 @@ worked under rc.4 stops loading.
 | a `collection.path.pattern` value may not contain `/` or `\`, begin with `.`, or be empty (Chapter 07) | existing records are unaffected, whatever their paths; only a create that would derive such a path fails, with `path_value_invalid` naming the field. rc.4 already called such values invalid, but engines created folders from them |
 | paths equal under case folding and NFC name one record path (Chapter 02) | existing files that collide stay records and each reports a `warning` with code `path_collision` and `details.paths`; an explicit create or rename onto an equivalent path fails with `path_conflict` |
 | an ambiguous configured ID does not fall back to filename resolution (Chapter 08) | the link resolves to null and the referring record reports an `ambiguous_link` warning with `details.candidates`. rc.4 already required this; engines that fell back are non-conforming |
+| a pattern may not use Unicode classes such as `\p{L}`, backreferences, or look-around (Chapter 10) | a type whose JSON Schema `pattern` or `match.where` pattern does so is invalid with `invalid_pattern`; a CEL literal pattern is an `expression_compile_error`. Patterns that only use `\w`, `\d`, `\s`, `\b`, or `(?i)` stay valid but match only ASCII in those constructs, so an rc.4 engine with Unicode classes diverges on non-ASCII text |
 | `settings.id_field` has no default (Chapter 04) | rc.4 already required this; an engine that resolved through `id` without configuration is non-conforming. A collection that relies on ID resolution adds `id_field: id` |
 
 ### What needs no change
@@ -65,6 +67,8 @@ An engine moving from rc.4 to rc.5:
 - stops rejecting writes for cross-record issues, other than
   `enforce: write` uniqueness rules, and reports those issues as warnings on
   successful writes
+- evaluates every pattern with the mdbase regex profile
+- implements `body_edits`, at least the direct case
 - implements `add` and `remove`, path keys and the collision rule,
   `path_value_invalid`, and the writer format fidelity rule
 - stops supplying `if_revision` on a caller's behalf
