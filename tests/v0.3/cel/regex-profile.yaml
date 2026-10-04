@@ -259,6 +259,11 @@ groups:
           label: café
           code: café
           ---
+        words/mixed.md: |
+          ---
+          label: cafe
+          code: café
+          ---
     tests:
       - name: "CEL matches() uses ASCII-only \\w"
         id: regex.cel_matches_ascii
@@ -289,7 +294,7 @@ groups:
         covers: [core_read.regex_profile]
         operation: validate
         input:
-          path: words/accented.md
+          path: words/mixed.md
         expect:
           valid: false
           issues:

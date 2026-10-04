@@ -181,6 +181,13 @@ collides, whatever file system it runs on:
   Read reports a `path_collision` warning on every record of the group, with
   `details.paths` listing the group in code-point order.
 
+  **Provisional (rc.5).** A tool that keeps records in a log or replicates
+  them across file systems cannot hold two records with one path key. It
+  MAY resolve a discovered group instead, by the collision rule below: with
+  no other order, the path that is smaller in code-point order keeps it, and
+  each other record moves to its first free suffixed path. It reports the
+  moves as `record_renamed` and no `path_collision` warning remains.
+
 Path globs (above) remain case-sensitive and match paths as written.
 
 **Provisional (rc.5).** Case folding uses the full mappings, so `ß` and
