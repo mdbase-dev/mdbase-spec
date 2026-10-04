@@ -2,7 +2,104 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
-## Unreleased
+## 0.3.0-rc.5 (draft, untagged)
+
+The fifth release candidate specifies the data semantics that let several
+tools, devices, and people edit one collection at once: validity is reported
+rather than guaranteed, concurrent edits merge field by field, and writers
+change only the bytes they mean to change. Most changes relax write-time
+checks; the few tightenings are reported as diagnostics. Collections keep
+`spec_version: "0.3.0"`. Replication, logs, sequencers, conflict envelopes,
+and delete-versus-update policy remain implementation concerns. Release
+notes, including every provisional choice and every test whose expectation
+changed: [docs/releases/0.3.0-rc.5.md](./docs/releases/0.3.0-rc.5.md).
+
+rc.5 also ships the changes made since rc.4 to YAML document records and
+Bases, seed type upgrades, and saved-view identification.
+
+### Concurrent edits, reported validity, regex profile, and body edits
+
+#### Added
+
+- Chapter 12A, Concurrent Edits: record identity without IDs in files, move
+  detection, the three-way record merge, and the writer format fidelity rule.
+- `collection.merge` declares `conflict`, `max`, `min`, or `union` per
+  top-level field. Defaults: `max` for fields that lifecycle assigns with
+  `now` or `today`; `union` for `tags` and for arrays declared
+  `uniqueItems: true`; `conflict` otherwise.
+- Update accepts `add` and `remove` list operations, applied to the current
+  value instead of replacing the list.
+- Update accepts `body_edits`: text edits whose offsets count Unicode scalar
+  values of a base body identified by `body_base`, a SHA-256 digest. They
+  apply directly to an unchanged body and otherwise rebase with the
+  three-way body merge, failing with `body_conflict` or
+  `body_base_unavailable`. They are mutually exclusive with `body` and
+  `document`.
+- The mdbase regex profile (Chapter 10): RE2 syntax with ASCII-only `\d`,
+  `\w`, `\s`, `\b`, and case folding over Unicode scalar values, used by CEL
+  `matches()`, JSON Schema `pattern`, and `match.where` `matches`. Unicode
+  classes, backreferences, and look-around are `invalid_pattern`.
+- `collection.unique[].enforce: write | report`, defaulting to `report`.
+- Path equivalence: paths that are equal after NFC normalization and full
+  Unicode case folding name one record path. Explicit paths that collide fail
+  with `path_conflict`; derived paths and concurrently created records get a
+  deterministic ` (n)` suffix; discovered collisions report `path_collision`.
+- The `merge` conformance profile (requires `core_write`), in the profile
+  list and in `schemas/v0.3/conformance-claim.schema.json`; `collection.merge`
+  and `unique[].enforce` in `schemas/v0.3/type-file.schema.json`.
+- Diagnostic codes `path_collision`, `path_value_invalid`, `ambiguous_link`,
+  `link_target_type_mismatch`, `nondeterministic_match`, `invalid_pattern`,
+  and `duplicate_value` are listed as core codes.
+- The v0.3 suite gains 147 tests marked `since: 0.3.0-rc.5`, including the 13
+  merge fixtures of the mdbase-next prototype in a new `merge_records` format
+  and new `merge` and `watch` fixture sets. `scripts/check_v03_tests.py` runs
+  the 95 pure-function fixtures against an executable model
+  (`scripts/concurrent_edits_model.py`) in CI.
+
+#### Changed
+
+- Validity is reported, never guaranteed. Checks are split into request and
+  safety, single-record, and cross-record tiers. At level `error` only
+  single-record issues reject a write made through an engine; cross-record
+  issues (uniqueness in `report` mode, `validate_exists`, `target_type`,
+  ambiguous links, path collisions) are reported and never block, and a
+  successful write reports them as warnings.
+- Uniqueness scopes are exact: a rule governs records of its declaring type,
+  `scope` selects the records they must differ from, and raw values compare
+  without coercion. The default scope is `type`.
+- A `match.expr` that uses `now()`, `today()`, `file.mtime`, `file.ctime`, or
+  helpers that read other records loads with a `nondeterministic_match`
+  warning. It becomes an error that invalidates the type in 0.3.0 stable.
+- CEL is the one expression language. Obsidian Bases filters and formulas are
+  an adapter dialect that never affects membership, validation, lifecycle,
+  merge, or portable queries.
+- Writers re-emit only changed top-level frontmatter entries and keep flow or
+  block collection style, for Markdown records and YAML document records.
+- A taken derived path receives a ` (n)` suffix instead of failing.
+- `collection.path.pattern` values containing `/` or `\`, beginning with `.`,
+  empty, or not scalars fail with `path_value_invalid`.
+- An ambiguous configured ID resolves to null with `ambiguous_link` and no
+  filename fallback. Filename tiebreakers are required and end in code-point
+  order.
+- `if_revision` is opt-in; transports and SDKs must not add it on a caller's
+  behalf.
+- Lifecycle states that it has no sequence provider; implementations may
+  offer one only under an `x-*` extension. v0.2 `generated: sequence` is
+  reported as unsupported by v0.2 migration.
+- Test `links.duplicate_id_ambiguous` now also expects the `ambiguous_link`
+  diagnostic.
+
+#### Clarified
+
+- `settings.id_field` has no default; engines that resolve through `id`
+  without configuration are non-conforming. It also serves as the
+  move-detection identity hint.
+
+#### Migration
+
+- Collections need no edit. Add `enforce: write` to uniqueness rules that must
+  keep blocking duplicate writes. Chapter 13 ("Changes Since rc.4") lists
+  every behavior change and how engines report the tightenings.
 
 ### YAML document records and Bases as records
 
@@ -14,6 +111,8 @@ All notable changes to this specification and conformance suite are documented h
   are discovered, written, and authorized as ordinary records. Discovery
   through `x-obsidian.bases.include` and the saved-view source operations for
   Bases become transitional.
+
+### Seed type upgrades
 
 - A seed type resource may declare `upgrade_from`: one baseline or a list of
   baselines, each a digest-pinned starter the publisher previously shipped
