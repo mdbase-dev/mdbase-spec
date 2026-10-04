@@ -73,6 +73,16 @@ dependencies.
 **Files are the source of truth.** Tools read from and write to the filesystem.
 Indexes, caches, and derived databases can be rebuilt from collection state.
 
+**Plain Markdown.** A collection never requires mdbase metadata in a user's
+files. Record identity, revisions, merge state, and other engine bookkeeping
+live outside records, so a file written by any editor is a complete record.
+
+**Validity is reported, not guaranteed.** Files are edited by tools that know
+nothing about types. A conforming tool reads, indexes, and reports every record
+whatever its validity. Engines may reject an invalid write made through them,
+as feedback to the writer, but only for checks within that single record.
+Chapter 04 defines the principle and its three tiers.
+
 **Human-readable first.** Persistent collection data uses open text formats. A
 user with a text editor can read and modify every record and type file.
 
@@ -243,12 +253,27 @@ projections, ordering, grouping, and summaries remain machine-readable, while
 the Markdown body documents the view for people. Optional presentation metadata
 can select a renderer without changing query results.
 
-### Validation is progressive
+### Validation is progressive and reported
 
 Files in a collection can remain untyped records. Types can be added
 incrementally, and validation severity is configurable as `off`, `warn`, or
 `error`. JSON Schema controls field shape and unknown-property handling.
 Collection rules add checks that depend on other records or paths.
+
+Validity is a property reported when records are read. At level `error`, a
+write made through an engine fails when the resulting record breaks one of
+its own checks. Checks that span records, such as link existence and
+uniqueness, are reported and never block a write, unless a uniqueness rule
+explicitly opts into `enforce: write`.
+
+### Concurrent edits merge field by field
+
+When two edits to one record meet, for example an application update and an
+edit made in a text editor, a tool that reconciles them uses the three-way
+record merge of Chapter 12A. Different fields merge, timestamps take the
+later value, set-like lists take the union, appends to the body are both kept,
+and only real disagreements are conflicts. How a tool surfaces a conflict, and
+whether it replicates collections at all, is outside this specification.
 
 ### Links connect records across the collection
 
@@ -296,6 +321,7 @@ keep those claims precise and independently testable.
 | [10-cel-profile.md](./10-cel-profile.md) | Portable expressions and host bindings |
 | [11-querying.md](./11-querying.md) | Filters, ordering, projection, and result envelopes |
 | [12-operations.md](./12-operations.md) | Read and write operations, concurrency, and diagnostics |
+| [12a-concurrent-edits.md](./12a-concurrent-edits.md) | Record identity, move detection, three-way merge, and writer format fidelity |
 | [13-migrations-and-compatibility.md](./13-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
 | [14-conformance.md](./14-conformance.md) | Profiles, claims, fixtures, and runners |
 
@@ -315,7 +341,9 @@ directly comparable without making one product's internal API normative.
 
 ## Versioning
 
-This specification uses semantic versioning. The current version is **0.3.0**.
+This specification uses semantic versioning. The current version is **0.3.0**,
+in its fifth release candidate (`0.3.0-rc.5`). 0.3.0 is declared stable once
+implementations pass the conformance suite.
 Collections declare their specification version with `spec_version` in
 `mdbase.yaml`. Tools declare the profiles and versions they implement.
 
@@ -341,7 +369,12 @@ through version requirements.
 The keywords `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are to be
 interpreted as described in RFC 2119.
 
-Draft notes use ordinary prose and are non-normative.
+Draft notes use ordinary prose and are non-normative. A paragraph that begins
+with **Provisional (rc.5).** records a choice made where the design input
+left a detail open. It is normative in the release candidate and may change
+before 0.3.0 is declared stable. The
+[0.3.0-rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every such
+choice.
 
 ## License
 

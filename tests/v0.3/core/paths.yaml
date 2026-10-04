@@ -1,0 +1,215 @@
+# Executable cases for path keys, the collision suffix rule, and path-pattern
+# values (Chapters 02 and 07). Adapter-level create and rename cases are in
+# core-write.yaml.
+name: "path equivalence, collisions, and path-pattern values"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: paths
+spec_ref: "v0.3/02, v0.3/07"
+groups:
+  - name: path keys and derived paths
+    tests:
+      - name: paths that differ in case or Unicode normalization share a path key
+        id: paths.case_and_nfc
+        since: 0.3.0-rc.5
+        covers: [core_read.path_equivalence]
+        operation: path_equivalence
+        input:
+          paths: ["Notes/Café.md", "notes/café.md", "NOTES/CAFÉ.md", notes/other.md]
+        expect:
+          groups:
+            - ["NOTES/CAFÉ.md", "Notes/Café.md", "notes/café.md"]
+      - name: "full case folding makes Straße and STRASSE equivalent"
+        id: paths.full_case_folding
+        since: 0.3.0-rc.5
+        covers: [core_read.path_equivalence]
+        operation: path_equivalence
+        input:
+          paths: ["Straße.md", STRASSE.md, strasse-2.md]
+        expect:
+          groups:
+            - [STRASSE.md, "Straße.md"]
+      - name: different names are not equivalent
+        id: paths.distinct_paths
+        since: 0.3.0-rc.5
+        covers: [core_read.path_equivalence]
+        operation: path_equivalence
+        input:
+          paths: [tasks/a.md, tasks/b.md, tasks/a.base]
+        expect:
+          groups: []
+      - name: a free path is used as requested
+        id: paths.free_path_unchanged
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: allocate_path
+        input:
+          requested: tasks/Call Bob.md
+          existing: [tasks/Other.md]
+        expect:
+          path: tasks/Call Bob.md
+      - name: a taken path gets the first free suffix
+        id: paths.first_suffix
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: allocate_path
+        input:
+          requested: tasks/Call Bob.md
+          existing: [tasks/Call Bob.md]
+        expect:
+          path: "tasks/Call Bob (2).md"
+      - name: suffix candidates are checked by path key
+        id: paths.suffix_uses_path_keys
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: allocate_path
+        input:
+          requested: tasks/call bob.md
+          existing: [tasks/Call Bob.md, "tasks/CALL BOB (2).md"]
+        expect:
+          path: "tasks/call bob (3).md"
+      - name: an existing suffix is not parsed
+        id: paths.existing_suffix_not_parsed
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: allocate_path
+        input:
+          requested: "tasks/X (2).md"
+          existing: ["tasks/X (2).md"]
+        expect:
+          path: "tasks/X (2) (2).md"
+      - name: the suffix goes before the final extension only
+        id: paths.suffix_before_final_extension
+        since: 0.3.0-rc.5
+        covers: [core_write.path_collisions]
+        operation: allocate_path
+        input:
+          requested: views/tasks.view.base
+          existing: [views/tasks.view.base]
+        expect:
+          path: "views/tasks.view (2).base"
+      - name: a string value fills its placeholder
+        id: paths.derive_plain
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: Call Bob
+        expect:
+          path: tasks/Call Bob.md
+      - name: a number uses its JSON representation
+        id: paths.derive_number
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: 42
+        expect:
+          path: tasks/42.md
+      - name: a value containing a slash cannot create a folder
+        id: paths.derive_slash
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: Q3/Q4 plan
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: a value containing a backslash is invalid
+        id: paths.derive_backslash
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: "a\\b"
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: a value beginning with a dot is invalid
+        id: paths.derive_dot
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: ".."
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: a value that would hide the file is invalid
+        id: paths.derive_hidden
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: ".draft"
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: an empty value is invalid
+        id: paths.derive_empty
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: ""
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: a list value is invalid
+        id: paths.derive_list
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: [a]
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+      - name: a missing value is path_value_missing
+        id: paths.derive_missing
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter: {}
+        expect:
+          error:
+            code: path_value_missing
+            field: title
+      - name: a null value is path_value_missing
+        id: paths.derive_null
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: null
+        expect:
+          error:
+            code: path_value_missing
+            field: title

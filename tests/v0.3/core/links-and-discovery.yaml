@@ -213,7 +213,8 @@ groups:
 
       - name: "ambiguous id resolution fails without filename fallback"
         id: links.duplicate_id_ambiguous
-        covers: [links.configured_id_resolution]
+        changed: 0.3.0-rc.5
+        covers: [links.configured_id_resolution, links.ambiguous_id_link]
         operation: resolve_link
         input:
           path: "tasks/child.md"
@@ -221,3 +222,7 @@ groups:
         expect:
           valid: true
           resolved: null
+          diagnostics:
+            - code: ambiguous_link
+              field: parent
+              details: { candidates: ["tasks/a.md", "tasks/b.md"] }

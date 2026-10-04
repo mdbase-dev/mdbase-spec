@@ -2,9 +2,94 @@
 
 ## Migration Philosophy
 
-v0.3 uses the source model defined by Chapters 01–12. Migration translates
-v0.2.x collections into that model and reports features that need adapter-owned
-handling.
+This chapter has two parts. The first lists what changed for v0.3 collections
+and engines between the fourth and fifth release candidates. The second
+migrates v0.2.x collections into the v0.3 source model.
+
+Migration never rewrites a record.
+
+## Changes Since rc.4
+
+0.3.0-rc.5 adds the concurrent-edit semantics of Chapter 12A and relaxes
+several write-time checks. Collections keep `spec_version: "0.3.0"` and need
+no edit. Record files, type files, contracts, type packs, view records, and
+queries that were valid under rc.4 stay valid.
+
+Most changes are relaxations: a write that rc.4 rejected now succeeds and is
+reported. A few rules are tightened, and each tightening is reported as a
+diagnostic rather than by rejecting a collection, so that no collection that
+worked under rc.4 stops loading.
+
+### Behavior changes
+
+| Area | rc.4 | rc.5 | To keep the rc.4 behavior |
+| --- | --- | --- | --- |
+| `collection.unique` | at level `error`, a write that creates a duplicate fails | duplicates are reported and never block a write (`enforce: report` is the default) | add `enforce: write` to the rule |
+| `unique.scope` | listed, but its comparison set was underspecified | a rule governs records of its type; `scope` selects the records they must differ from; raw values compare without coercion; the default scope is `type` | nothing; check reports for records in the now exact scope |
+| link `validate_exists` and `target_type` | at level `error`, a write with a broken link fails | reported, never blocking | no equivalent; cross-record checks never block |
+| a successful write with cross-record issues | not applicable | returns `valid: true` with `warning` diagnostics | nothing |
+| concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (Chapter 12A); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
+| lifecycle `now` and `today` fields, `tags`, `uniqueItems` arrays | no merge semantics | merge as `max`, `union`, and `union` by default | declare `conflict` in `collection.merge` |
+| update | `patch`, `unset`, `body`, `document` | adds `add` and `remove` list operations, and `body_edits` against a `body_base` digest | nothing |
+| regular expressions in CEL `matches()`, JSON Schema `pattern`, and `match.where` | engine-dependent; Unicode-aware classes were implied | one profile everywhere: RE2 syntax with ASCII-only `\d`, `\w`, `\s`, `\b`, and case folding (Chapter 10); `\p{...}` is invalid | none; list non-ASCII characters explicitly, or lowercase text before matching |
+| derived path already taken | `path_conflict` | the first free suffixed path | supply an explicit path to get an error instead |
+| structured writes to Markdown frontmatter | only array and object structure SHOULD be preserved | MUST re-emit only changed entries | nothing |
+| structured writes to YAML document records | could re-emit the whole mapping | follow writer format fidelity | nothing |
+| filename link tiebreakers | SHOULD; "shortest path" unmeasured | MUST: referring directory, then fewest path segments, then code-point order; never scan or storage order | nothing |
+| rename with reference updating | which links are rewritten was unspecified | only links that resolved to the renamed record, including tiebreaker-selected matches; ambiguous links and links to other records unchanged; listed in `references_updated` | nothing |
+
+### Tightenings reported as diagnostics
+
+| Rule | How an engine reports a collection that relies on the rc.4 behavior |
+| --- | --- |
+| `match.expr` should not call `now()` or `today()`, read `file.mtime` or `file.ctime`, or follow links (Chapter 07) | the type still loads and its expression is evaluated as before; the engine reports a `warning` with code `nondeterministic_match`, the type name, and `details.binding`. In 0.3.0 stable this becomes an error that invalidates the type, so authors must move such logic before then |
+| a `collection.path.pattern` value may not contain `/` or `\`, begin with `.`, or be empty (Chapter 07) | existing records are unaffected, whatever their paths; only a create that would derive such a path fails, with `path_value_invalid` naming the field. rc.4 already called such values invalid, but engines created folders from them |
+| paths equal under case folding and NFC name one record path (Chapter 02) | existing files that collide stay records and each reports a `warning` with code `path_collision` and `details.paths`; an explicit create or rename onto an equivalent path fails with `path_conflict` |
+| an ambiguous configured ID does not fall back to filename resolution (Chapter 08) | the link resolves to null and the referring record reports an `ambiguous_link` warning with `details.candidates`. rc.4 already required this; engines that fell back are non-conforming |
+| a pattern may not use Unicode classes such as `\p{L}`, backreferences, or look-around (Chapter 10) | a type whose JSON Schema `pattern` or `match.where` pattern does so is invalid with `invalid_pattern`; a CEL literal pattern is an `expression_compile_error`. Patterns that only use `\w`, `\d`, `\s`, `\b`, or `(?i)` stay valid but match only ASCII in those constructs, so an rc.4 engine with Unicode classes diverges on non-ASCII text |
+| `settings.id_field` has no default (Chapter 04) | rc.4 already required this; an engine that resolved through `id` without configuration is non-conforming. A collection that relies on ID resolution adds `id_field: id` |
+
+### What needs no change
+
+- `spec_version`, which stays `0.3.0`
+- record files, frontmatter, and bodies
+- JSON Schemas, read defaults, links, projections, and display metadata
+- lifecycle policies, apart from the merge defaults above
+- CEL queries, collection projections, view records, and lifecycle guards,
+  which may still use `now()` and `today()`
+- data contracts and their digests, type packs, and `mdbase.lock.yaml`
+- the event/action interoperability profile 0.1 and the durable runtime
+  profile 0.2
+
+### Engines
+
+An engine moving from rc.4 to rc.5:
+
+- stops rejecting writes for cross-record issues, other than
+  `enforce: write` uniqueness rules, and reports those issues as warnings on
+  successful writes
+- evaluates every pattern with the mdbase regex profile
+- implements `body_edits`, at least the direct case
+- implements `add` and `remove`, path keys and the collision rule,
+  `path_value_invalid`, and the writer format fidelity rule
+- stops supplying `if_revision` on a caller's behalf
+- implements the merge of Chapter 12A if it reconciles concurrent edits, and
+  claims the `merge` profile
+- implements move detection if it reports renames of externally moved files
+- reports `nondeterministic_match`, `path_collision`, and `ambiguous_link`
+- applies the filename tiebreakers exactly, and rewrites on rename only the
+  links that resolved to the renamed record
+- removes any `id` default for `settings.id_field`
+
+Engines that conform to rc.4 keep claiming `0.3.0-rc.4` until they pass the
+rc.5 suite. The [rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every
+conformance test whose expected outcome changed, which is where an rc.4 engine
+diverges.
+
+## From v0.2 To v0.3
+
+The rest of this chapter migrates v0.2.x collections into the v0.3 source
+model.
 
 Migration tooling should produce:
 
@@ -17,7 +102,7 @@ Migration analyzes the complete collection. Before a write, tooling MUST
 validate every existing record against the proposed target types and include
 incompatible records in the report.
 
-## Configuration
+### Configuration
 
 Configuration migration preserves which files are records and how they
 validate and resolve:
@@ -45,7 +130,7 @@ validate and resolve:
   v0.3 meaning. Migration moves them under `x-legacy-v0.2` in the configuration
   and migrates strictness into each type's `additionalProperties`.
 
-## Type Mapping
+### Type Mapping
 
 | v0.2.x feature | v0.3 destination |
 | --- | --- |
@@ -71,7 +156,7 @@ validate and resolve:
 | `display_name_key` | `collection.display.name_field` |
 | `extends` | JSON Schema `$ref`/`allOf` or explicit duplication |
 
-## Defaults
+### Defaults
 
 Migration should distinguish:
 
@@ -83,7 +168,7 @@ For current mdbase field defaults, the safest migration is to emit both JSON
 Schema `default` and `collection.read_defaults` for static scalar defaults, with
 a report explaining the difference.
 
-## Generated Fields
+### Generated Fields
 
 Generated fields migrate to lifecycle. v0.2 generated values apply only when the
 field is missing, while lifecycle `set` always assigns, so migration adds a
@@ -97,8 +182,16 @@ field is missing, while lifecycle `set` always assigns, so migration adds a
 | `ulid` | guarded `on_create` action setting `{ ulid: true }` |
 | `slugify from field` | guarded `on_create` action setting `{ slugify: source }` |
 | `from field` without a transform | guarded `on_create` action setting `{ copy: source }` |
+| `sequence` | no destination; reported as unsupported |
 
-## Computed Fields
+`sequence` assigned "largest existing value plus one". It has no portable
+destination because concurrent creates on different devices allocate the same
+number unless every create is coordinated (Chapter 09). Migration reports each
+sequence field and recommends a guarded `ulid` or `uuid` action. Tools that
+must keep allocating numbers do so through an implementation provider under
+an `x-*` extension.
+
+### Computed Fields
 
 Computed fields migrate to one of:
 
@@ -108,7 +201,7 @@ Computed fields migrate to one of:
 - unsupported note when the computation has side effects or depends on
   non-portable functions
 
-## Expressions
+### Expressions
 
 Current mdbase expressions migrate to CEL where possible.
 
@@ -116,7 +209,7 @@ Tool-specific expression dialects are adapter concerns. Tools may translate
 them to CEL for portable storage and translate them back for user interfaces or
 exports.
 
-## Runtime Workflows
+### Runtime Workflows
 
 Current generated-field and tool-conforming behavior that causes mutation
 should be reviewed as lifecycle or workflow behavior.
@@ -126,7 +219,7 @@ Generated IDs and timestamps usually become lifecycle.
 Cross-record behavior, agent work, approval flows, external APIs, and scheduled
 checks become workflows and action/event contracts.
 
-## Data Contract Implementations
+### Data Contract Implementations
 
 Portable application interfaces migrate to a local data contract plus a
 type-local `implements` entry.
@@ -150,7 +243,7 @@ contracts merely because they contain keys named `contract` or `version`.
 Private annotations with no portable contract meaning remain under a
 namespaced `x-*` section. They SHOULD NOT become JSON Schema custom keywords.
 
-## Version Detection
+### Version Detection
 
 A v0.2.x type file usually has `name` and `fields` without `kind:
 mdbase.type`.

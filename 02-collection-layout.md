@@ -150,3 +150,66 @@ required.
 
 Implementations MAY reject platform-reserved filenames or characters when a
 write operation targets a filesystem where those paths cannot be represented.
+
+## Path Equivalence
+
+Two collection paths name the same record path when their **path keys** are
+equal. The path key of a path is computed as follows:
+
+1. normalize the path to Unicode Normalization Form C (NFC)
+2. apply Unicode default case folding (the full `C` and `F` mappings of
+   `CaseFolding.txt`, without locale tailoring)
+3. normalize the result to NFC again
+
+`Notes/Café.md` written with a precomposed `é` and `notes/CAFE\u0301.md`
+written with a combining accent have the same path key. So do `Straße.md` and
+`STRASSE.md`. Path keys never appear in results; paths are always reported as
+written.
+
+Path equivalence exists because macOS and Windows file systems treat such
+paths as one file, while Linux does not. Every tool therefore agrees on what
+collides, whatever file system it runs on:
+
+- A write MUST NOT create a record whose path key equals the path key of a
+  different existing record. The collision rule below decides what happens
+  instead.
+- A rename whose source and target have the same path key, such as
+  `tasks/todo.md` to `tasks/Todo.md`, changes only the spelling of the path
+  and is not a collision.
+- When record discovery finds several files with one path key, which can
+  happen on a case-sensitive file system, each file is still a record. Core
+  Read reports a `path_collision` warning on every record of the group, with
+  `details.paths` listing the group in code-point order.
+
+Path globs (above) remain case-sensitive and match paths as written.
+
+**Provisional (rc.5).** Case folding uses the full mappings, so `ß` and
+`ss` collide. This flags more collisions than some file systems would, never
+fewer.
+
+## Path Collisions
+
+When a new record would take a path whose path key is already in use, the
+outcome depends on where the path came from:
+
+| Path source | Outcome |
+| --- | --- |
+| an explicit path supplied by the caller of create or rename | the operation fails with `path_conflict` before any write |
+| a path derived from `collection.path.pattern` (Chapter 07) | the record receives the first free suffixed path |
+| two records that already hold equivalent paths, for example after concurrent creates or an engine copying records onto another file system | the earlier-ordered record keeps the path; each later one receives the first free suffixed path |
+
+A suffixed path inserts ` (n)`, a space and a decimal integer in parentheses,
+before the final extension of the last path component: `tasks/Call Bob.md`
+becomes `tasks/Call Bob (2).md`. Candidates are tried with `n = 2, 3, 4, …`,
+and the first candidate whose path key is unused is chosen. Existing suffixes
+are not parsed: the next candidate for `Call Bob (2).md` is
+`Call Bob (2) (2).md`.
+
+The ordering of records is supplied by whatever applies the rule, for example
+the order in which an engine confirmed two creates. When no order exists
+between the records, the record whose path as written is smaller in Unicode
+code-point order is earlier. Every tool that applies the rule to the same
+records in the same order computes the same paths.
+
+A suffixed path is an ordinary path. Applying the rule never edits a record's
+frontmatter or body, and the record keeps whatever identity its tool tracks.

@@ -204,6 +204,10 @@
       "then": { "properties": { "profiles": { "contains": { "const": "collection_semantics" } } } }
     },
     {
+      "if": { "properties": { "profiles": { "contains": { "const": "merge" } } } },
+      "then": { "properties": { "profiles": { "contains": { "const": "core_write" } } } }
+    },
+    {
       "if": { "properties": { "profiles": { "contains": { "const": "lifecycle" } } } },
       "then": {
         "properties": {
@@ -257,6 +261,7 @@
         "cel_query",
         "links",
         "core_write",
+        "merge",
         "type_packs",
         "lifecycle",
         "event_action_interop/0.1",

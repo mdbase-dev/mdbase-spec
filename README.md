@@ -10,7 +10,7 @@ update files safely.
 The durable data stays in ordinary Markdown files. Collections remain readable
 in a text editor, reviewable in Git, and usable across conforming tools.
 
-The current specification is **v0.3.0**.
+The current specification is **v0.3.0** (release candidate 5).
 
 [Read the overview](./00-overview.md) ·
 [Visit mdbase.dev](https://mdbase.dev) ·

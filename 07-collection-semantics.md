@@ -15,12 +15,14 @@ collection:
   read_defaults:
     status: open
   unique:
-    - field: id
+    - field: code
       scope: type
   links:
     assignee:
       target_type: person
       validate_exists: true
+  merge:
+    completedDate: max
 ```
 
 ## Field References
@@ -126,9 +128,10 @@ null. Ordering evaluates to false for incomparable values. `neq` also evaluates
 to false for a missing field. A predicate with an operand of the wrong type
 evaluates to false.
 
-`matches` uses the same portable regular-expression subset as JSON Schema
-`pattern`: Unicode-aware matching without backreferences or look-around. An
-unsupported or invalid pattern is a type-file diagnostic.
+`matches` uses the mdbase regex profile (Chapter 10), the same flavor as JSON
+Schema `pattern` and CEL `matches()`: RE2 syntax with ASCII-only classes and
+case folding. An unsupported or invalid pattern makes the type file invalid
+with an `invalid_pattern` diagnostic.
 
 ### CEL Matching
 
@@ -145,6 +148,25 @@ match:
 The expression combines with the other members of `match` using AND. It receives
 the matching context defined in Chapter 10 and MUST evaluate to boolean true for
 the type to match.
+
+Type membership drives validation, lifecycle, path policy, and merge, so every
+tool and every replay MUST compute the same membership for the same record.
+`match.expr` SHOULD therefore be deterministic: it SHOULD NOT call `now()` or
+`today()`, read `file.mtime` or `file.ctime`, or use a helper that reads
+other records, such as `asFile()`, `file.backlinks`, or `file.hasLink()`.
+Queries, projections, and lifecycle guards MAY use these functions.
+
+A tool that loads a type whose `match.expr` uses one of them MUST report a
+`warning` diagnostic with code `nondeterministic_match`, the type name, and
+`details.binding` naming the function or field. The type still loads and the
+expression is evaluated as before, with `now()` and `today()` reading the
+operation's captured instant. Membership of such a type can differ between
+tools and over time, so tools that merge or replay edits cannot rely on it.
+
+In 0.3.0 stable such a `match.expr` is an error: the type is invalid and
+reports `nondeterministic_match` with severity `error`. The warning in the
+release candidates gives authors a window to move time-dependent or
+cross-record logic into queries or collection projections.
 
 Implementations compile `match.expr` when loading the type. Parse and type
 errors invalidate the type definition. A per-record evaluation error reports a
@@ -211,24 +233,90 @@ collection:
 defines link parsing and resolution. `/relations` applies the same item-wise
 rule when the exactly selected value is an array.
 
-## Cross-File Uniqueness
+## Uniqueness
 
-`collection.unique` declares collection-level uniqueness:
+`collection.unique` declares that a field's values must differ between
+records:
 
 ```yaml
 collection:
   unique:
-    - field: id
+    - field: code
       scope: type
+      enforce: write
+    - field: slug
+      scope: path_glob
+      path_glob: "docs/**"
 ```
+
+| Member | Required | Meaning |
+| --- | --- | --- |
+| `field` | yes | field reference (Chapter 07); with `[]`, every selected item takes part |
+| `scope` | no, default `type` | which records the governed records must differ from |
+| `path_glob` | when `scope` is `path_glob` | a portable glob (Chapter 02) |
+| `enforce` | no, default `report` | `report` or `write` |
+
+A rule **governs** every record that matches its declaring type. With
+`scope: path_glob`, it governs only those whose path also matches
+`path_glob`. The scope selects the **comparison set**:
 
 | Scope | Comparison set |
 | --- | --- |
-| `collection` | every record in the collection |
-| `type` | every record matching the declaring type |
-| `path_glob` | every record under the configured path glob |
+| `type` | every record that matches the declaring type |
+| `collection` | every record in the collection, whatever its types |
+| `path_glob` | every record whose path matches `path_glob`, whatever its types |
 
-Missing and null values are exempt from uniqueness comparison.
+A governed record violates the rule when another record in the comparison set
+holds an equal value for the field. Values are compared as follows:
+
+- the persisted (raw) value is compared; read defaults and projections never
+  take part
+- missing and null values are exempt
+- values are equal under deep JSON equality, where numbers are equal when
+  their numeric values are equal; there is no coercion between types, so `1`
+  and `"1"` differ, and strings are compared exactly, without case folding or
+  normalization
+- when the field reference selects several values, each value takes part;
+  repeated items within one record's own array are not a uniqueness violation
+  (JSON Schema `uniqueItems` covers that)
+
+Each violation is a `duplicate_value` issue on the governed record, with the
+rule's field and `details.paths` listing the other records that hold the value
+in code-point order.
+
+### Enforcement
+
+`enforce` declares whether a rule is checked when a write is made through an
+engine:
+
+- `report` (the default): violations are cross-record issues (Chapter 04).
+  They are reported and never block a write.
+- `write`: a create, update, rename, or batch item made through an engine
+  fails with `duplicate_value` before writing when it would give a governed
+  record a value that another record in the comparison set already holds, or
+  would add to the comparison set a record whose value a governed record
+  already holds. This belongs to the request and safety tier, so it applies
+  at every validation level.
+
+`enforce: write` is the one cross-record check that can reject a write. It
+requires that concurrent writes are checked in a single order: when two writes
+would claim the same value, the first one in that order succeeds and the later
+one fails. How an implementation orders writes, for example through a single
+writer or a coordination service, is outside this specification. An
+implementation that cannot order writes that way for a collection MUST reject
+writes to fields covered by an `enforce: write` rule rather than accept them
+unchecked. Collections that need unique identifiers without coordination
+SHOULD generate them with lifecycle `ulid` or `uuid`.
+
+An `enforce: write` rule rejects only writes that introduce a duplicate. A
+write that leaves a record's covered values unchanged succeeds even when the
+record already violates the rule, for example after an external edit. Edits
+made by other tools and the results of a merge (Chapter 12A) are never
+rejected; their violations are reported.
+
+**Provisional (rc.5).** An `enforce: write` rule applies at every
+validation level, including `off`, because the author opted into it
+explicitly.
 
 ## Path Policy
 
@@ -241,12 +329,71 @@ collection:
 ```
 
 The portable grammar uses `{field}` placeholders for top-level frontmatter
-fields. Values are converted to strings without expression evaluation. A
-missing or null value produces `path_value_missing`.
+fields. Values are converted to strings without expression evaluation: a
+string is used as written, and a number or boolean uses its JSON
+representation. A missing or null value produces `path_value_missing`.
 
-Generated paths MUST remain inside the collection root. Placeholder values that
-produce `/`, `\\`, `.`, or `..` path components are invalid. Runtime-owned path
-logic and richer template languages belong under an `x-*` extension.
+A placeholder value always stays within one path component. A converted
+value is invalid, and the operation fails with `path_value_invalid` naming the
+field, when it:
+
+- is an array or an object
+- is empty
+- contains `/`, `\`, or a NUL character
+- begins with `.`
+
+A title such as `Q3/Q4 plan` therefore cannot create a subfolder. Generated
+paths MUST remain inside the collection root and MUST satisfy the path safety
+rules of Chapter 02. When a derived path's path key is already in use, the
+record receives the first free suffixed path defined in Chapter 02; the
+operation does not fail. Runtime-owned path logic and richer template
+languages belong under an `x-*` extension.
+
+## Merge Strategies
+
+`collection.merge` declares how each top-level frontmatter field combines when
+two concurrent edits of a record are merged (Chapter 12A):
+
+```yaml
+collection:
+  merge:
+    completedDate: max
+    status: conflict
+    reviewers: union
+```
+
+Each key names one top-level frontmatter field, as a field path with one
+segment and no `[]`, or a JSON Pointer with one token. Each value is a
+strategy:
+
+| Strategy | When both sides changed the field to different values |
+| --- | --- |
+| `conflict` | the field is in conflict |
+| `max` | the greater of the two values |
+| `min` | the lesser of the two values |
+| `union` | an observed-remove set union of the two lists |
+
+Chapter 12A defines each strategy exactly. A strategy matters only when both
+sides changed the same field differently. A field changed on one side always
+takes that side's value, and a field changed identically on both sides takes
+the shared value.
+
+A field without a declaration uses its default strategy. The first rule that
+applies wins:
+
+1. `max` when a matched type's lifecycle assigns the field with `{ now: true }`
+   or `{ today: true }`, so that concurrent modification timestamps never
+   conflict
+2. `union` when the field is named `tags`, or when a matched type's schema
+   declares the field's top-level property with `uniqueItems: true`
+3. `conflict` otherwise
+
+A declaration always replaces the default, so `dateModified: conflict` turns
+the timestamp default off. Applications that maintain timestamps in their own
+code, rather than through lifecycle, declare `max` explicitly.
+
+Merge strategies describe concurrent edits only. They never change
+validation, reads, queries, or the result of a single write.
 
 ## Display Metadata
 

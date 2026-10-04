@@ -42,24 +42,45 @@ General rules:
   target against record filenames with or without their record extension.
 - When `settings.id_field` is configured, a simple wikilink first tries
   ID-based resolution against that field and falls back to filename
-  resolution when no record has that ID.
+  resolution only when no record has that ID. When `settings.id_field` is
+  absent, no ID-based resolution happens, whatever fields records contain.
+
+A record has an ID when its persisted `id_field` value is a non-empty string.
+ID-based resolution compares the wikilink target with record IDs exactly,
+without case folding or normalization.
 
 After normalization, a link that escapes the collection root is invalid.
 
 ## Ambiguity
 
-If multiple records have the same configured ID, ID-based resolution is
-ambiguous and MUST fail without falling back to filename resolution.
+If several records have the configured ID, ID-based resolution is ambiguous.
+The link resolves to null, and the tool MUST NOT fall back to filename
+resolution. Duplicate IDs are not a record validation issue of the records
+that hold them.
 
-If filename resolution finds multiple candidates, tools SHOULD apply stable
-tiebreakers:
+If filename resolution finds multiple candidates, tools MUST apply these
+tiebreakers in order:
 
 1. same directory as referring file
-2. shortest collection path
-3. alphabetical path
+2. fewest path segments, that is, the shallowest collection path
+3. smallest path in Unicode code-point order
 
-If ambiguity remains, resolution returns null and reports an ambiguous link
-warning.
+Tools MUST NOT choose among candidates by any other criterion, such as
+discovery or scan order, the order in which files were indexed, or a
+provider's storage order, so every conforming tool resolves a simple link to
+the same record. The path segments of `docs/readme.md` are `docs` and
+`readme.md`; its depth is 2 whatever the length of its names.
+
+Filename candidates whose paths are equivalent under Chapter 02 path keys are
+ambiguous with each other even after the tiebreakers. If ambiguity remains,
+the link resolves to null. A link that the tiebreakers resolve is not
+ambiguous and reports no `ambiguous_link`.
+
+An ambiguous link reports an `ambiguous_link` cross-record issue on the
+referring record, with `details.candidates` listing the candidate paths in
+code-point order. An ambiguous link creates no backlink, and for
+`validate_exists` it counts as unresolved but reports `ambiguous_link` rather
+than `link_not_found`.
 
 ## Target Constraints
 
@@ -74,11 +95,15 @@ collection:
 ```
 
 When `validate_exists` is true, an unresolved link is a `link_not_found`
-record validation issue whose severity follows the validation level in
-Chapter 04.
+record validation issue.
 
-When `target_type` is present, a resolved target is valid only if it matches the
-target type.
+When `target_type` is present, a resolved target that does not match the
+target type is a `link_target_type_mismatch` record validation issue.
+
+Both are cross-record checks (Chapter 04): their severity follows the
+validation level, and they are reported but never block a write. A record
+can lose its link target at any time through an edit, delete, or rename of
+another record.
 
 ## Body Links
 

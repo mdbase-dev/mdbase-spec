@@ -1,0 +1,433 @@
+# Move detection (Chapter 12A). Each test lists what disappeared and what
+# appeared within one observation window. file_id stands for a platform file
+# identity such as a device and inode; omit it when the platform cannot supply
+# one. Cases follow the identity measurements in the mdbase-next prototype
+# (SPEC-CHANGES SC9): rename, rename then edit, delete and create with the
+# same bytes, delete and create of an edited file, and unrelated files.
+name: "move detection"
+spec_version: "0.3.0"
+fixture_set: watch
+category: watch
+spec_ref: v0.3/12A
+groups:
+  - name: pairing disappearances and appearances within one observation window
+    tests:
+      - name: a rename with unchanged bytes is a move
+        id: watch.moves_rename_same_content
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+          appeared:
+            - path: archive/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+        expect:
+          moves:
+            - from: notes/a.md
+              to: archive/a.md
+          deleted: []
+          created: []
+      - name: a rename followed by an edit keeps the file identity
+        id: watch.moves_rename_then_edit
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+          appeared:
+            - path: notes/b.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - other 1
+                - other 2
+                - other 3
+              file_id: f1
+        expect:
+          moves:
+            - from: notes/a.md
+              to: notes/b.md
+          deleted: []
+          created: []
+      - name: "delete and create with identical bytes is a move (git checkout)"
+        id: watch.moves_delete_create_same_bytes
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+          appeared:
+            - path: notes/b.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f2
+        expect:
+          moves:
+            - from: notes/a.md
+              to: notes/b.md
+          deleted: []
+          created: []
+      - name: delete and create of an edited file with the same name in another folder is a move
+        id: watch.moves_same_name_edited
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+          appeared:
+            - path: archive/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item nine
+              file_id: f2
+        expect:
+          moves:
+            - from: notes/a.md
+              to: archive/a.md
+          deleted: []
+          created: []
+      - name: the same name with similarity below 0.8 and no file identity is not a move
+        id: watch.moves_same_name_too_different
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+          appeared:
+            - path: archive/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - other 1
+                - other 2
+                - other 3
+        expect:
+          moves: []
+          deleted: [notes/a.md]
+          created: [archive/a.md]
+      - name: an unrelated delete and create are never paired
+        id: watch.moves_unrelated_files
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+              file_id: f1
+          appeared:
+            - path: lists/shopping.md
+              content: |
+                ---
+                title: Shopping
+                ---
+                - milk
+                - bread
+              file_id: f2
+        expect:
+          moves: []
+          deleted: [notes/a.md]
+          created: [lists/shopping.md]
+      - name: equal id_field values pair even when the content changed completely
+        id: watch.moves_identity_hint_pairs
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          id_field: id
+          disappeared:
+            - path: tasks/Call Bob.md
+              content: |
+                ---
+                id: t1
+                title: Call Bob
+                ---
+                Old notes.
+          appeared:
+            - path: tasks/Call Robert.md
+              content: |
+                ---
+                id: t1
+                title: Call Robert
+                ---
+                Rewritten completely.
+        expect:
+          moves:
+            - from: tasks/Call Bob.md
+              to: tasks/Call Robert.md
+          deleted: []
+          created: []
+      - name: "different id_field values never pair, even with the same name and file identity"
+        id: watch.moves_identity_hint_vetoes
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          id_field: id
+          disappeared:
+            - path: tasks/Call Bob.md
+              content: |
+                ---
+                id: t1
+                title: Call Bob
+                ---
+                Old notes.
+              file_id: f1
+          appeared:
+            - path: done/Call Bob.md
+              content: |
+                ---
+                id: t2
+                title: Call Bob
+                ---
+                Old notes.
+              file_id: f1
+        expect:
+          moves: []
+          deleted: [tasks/Call Bob.md]
+          created: [done/Call Bob.md]
+      - name: "when two appearances match equally, the smaller path pairs"
+        id: watch.moves_copies_pair_deterministically
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+          appeared:
+            - path: z/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+            - path: b/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+        expect:
+          moves:
+            - from: notes/a.md
+              to: b/a.md
+          deleted: []
+          created: [z/a.md]
+      - name: identical bytes outrank a same-name match
+        id: watch.moves_identical_bytes_beat_name
+        since: 0.3.0-rc.5
+        covers: [watch.move_detection]
+        operation: detect_moves
+        input:
+          disappeared:
+            - path: notes/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+          appeared:
+            - path: archive/a.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item nine
+            - path: archive/renamed.md
+              content: |
+                ---
+                title: Weekly review
+                ---
+                - item 1
+                - item 2
+                - item 3
+                - item 4
+                - item 5
+                - item 6
+                - item 7
+                - item 8
+                - item 9
+        expect:
+          moves:
+            - from: notes/a.md
+              to: archive/renamed.md
+          deleted: []
+          created: [archive/a.md]

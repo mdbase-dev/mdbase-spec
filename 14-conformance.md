@@ -16,6 +16,7 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Query | evaluate contextual CEL filters, projections, grouping, summaries, and query envelopes |
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
+| Merge | merge concurrent versions of a record with declared field strategies |
 | Type Packs | assess and transactionally apply managed type packs |
 | Lifecycle | apply standard managed-field policy during writes |
 | Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
@@ -34,6 +35,7 @@ Normative profile IDs and dependencies are:
 | `cel_query` | `collection_semantics`, `cel` |
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
+| `merge` | `core_write` |
 | `type_packs` | `data_contracts`, `core_write` |
 | `lifecycle` | `core_write`, `cel` |
 | `event_action_interop/0.1` | none |
@@ -67,6 +69,14 @@ behavior. They appear separately from v0.3 profiles.
 The canonical claim schema enforces profile dependencies. Claim verification
 tools SHOULD reject evidence produced for a different implementation artifact
 or specification version and SHOULD report stale evidence.
+
+### Conformance Suites
+
+The shared fixtures live in `tests/v0.3/`, and `tests/v0.3/README.md` defines
+their format. That includes the `merge_records` form, which states a merge case
+as a base version, two edited versions, and the type declarations, with the
+exact merged bytes and conflicts as the expected result. Each test added in a
+release candidate after rc.4 records it with `since: 0.3.0-rc.5`.
 
 ### Portable Interoperability Testbed
 
@@ -138,8 +148,11 @@ frontmatter selector. Implementations MAY add fields under `x-*`.
 The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `unsupported_profile`, `unsupported_feature`, `invalid_frontmatter`,
 `expression_compile_error`, `expression_evaluation_error`,
-`projection_shadowed`, `link_not_found`, `type_conflict`,
-`type_membership_changed`, `path_value_missing`, `schema_ref_forbidden`,
+`projection_shadowed`, `link_not_found`, `link_target_type_mismatch`,
+`ambiguous_link`, `duplicate_value`, `path_conflict`, `path_collision`,
+`type_conflict`, `type_membership_changed`, `path_value_missing`,
+`path_value_invalid`, `nondeterministic_match`, `invalid_pattern`,
+`schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
 `lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
 `context_not_found`, `context_required`, `context_type_mismatch`,
@@ -168,9 +181,14 @@ Core Read implementations MUST:
 - validate embedded JSON Schema against the v0.3 profile
 - select explicit types and evaluate structured inferred match rules
 - validate raw frontmatter independently against every matched schema
+- evaluate JSON Schema `pattern` and `match.where` `matches` with the mdbase
+  regex profile
 - reject a type that requires an unsupported optional profile with
   `unsupported_profile`
 - report diagnostics in the canonical machine-readable shape
+- read, index, and report invalid records rather than skip them
+- compute path keys and report `path_collision` for discovered records with
+  equivalent paths
 
 ## Data Contracts Requirements
 
@@ -208,7 +226,11 @@ Collection Semantics implementations MUST:
 
 - apply `collection.read_defaults` to effective reads
 - preserve missing, null, raw, and effective distinctions
-- validate every `collection.unique` rule in its declared scope
+- validate every `collection.unique` rule over its governed records and
+  comparison set, comparing raw values without coercion
+- report cross-record issues without blocking writes, except for
+  `enforce: write` uniqueness rules
+- load `collection.merge` declarations and derive default merge strategies
 - validate portable `collection.path` policies for write-capable tools
 - expose display metadata as advisory values
 - compose compatible behavior from multiple matched types
@@ -228,6 +250,8 @@ CEL implementations MUST:
   timezone behavior
 - provide the `lower()` and `upper()` text helpers with Unicode default case
   mappings
+- evaluate `matches()` with the mdbase regex profile: RE2 syntax with
+  ASCII-only classes and case folding
 - enforce and report expression, evaluation, and traversal limits
 - distinguish compilation diagnostics from evaluation diagnostics
 
@@ -243,6 +267,8 @@ CEL Match implementations MUST:
 - combine it with other members of `match` using AND
 - match only a boolean true result
 - report per-record evaluation errors and treat that candidate as a non-match
+- report `nondeterministic_match` for a `match.expr` that uses a
+  time-dependent or cross-record binding
 
 ## Query Requirements
 
@@ -328,9 +354,14 @@ Links implementations MUST:
 
 - parse wikilinks, Markdown links, and bare path link values
 - resolve collection-relative and file-relative paths safely
-- enforce `collection.links.target_type` and `validate_exists`
+- report `collection.links.target_type` and `validate_exists` issues as
+  cross-record issues
 - resolve simple wikilinks by filename, using ID resolution only when
   `settings.id_field` is configured
+- resolve ambiguous IDs to null without filename fallback, and report
+  `ambiguous_link`
+- choose among duplicate filename matches only with the Chapter 08
+  tiebreakers, ending in code-point order
 - expose `file.links`, `file.embeds`, `file.tags`, and `file.backlinks`
 - provide the CEL link helpers from Chapter 10
 - bound `asFile()` traversal
@@ -339,16 +370,49 @@ Links implementations MUST:
 
 Core Write implementations MUST:
 
-- validate a complete draft before writing
-- preserve unrelated Markdown body content where possible
+- validate a complete draft before writing, rejecting only request and
+  safety failures and, at level `error`, single-record issues
+- preserve unrelated Markdown body content
+- follow the writer format fidelity rule of Chapter 12A
+- apply `add` and `remove` list operations to the current value
+- apply `body_edits` directly when the body matches `body_base`, rebase them
+  with the Chapter 12A body merge when the base body is available, and report
+  `body_conflict` and `body_base_unavailable` otherwise
 - reject paths that escape the collection root
-- enforce `if_revision` and report common concurrency conflicts
+- when a rename updates references, rewrite the links that resolved to the
+  renamed record and would no longer resolve to it, including
+  tiebreaker-selected filename matches, and never rewrite ambiguous links or
+  links to other records
+- reject an explicit path that collides under path equivalence with
+  `path_conflict`, give a colliding derived path the first free suffix, and
+  reject invalid path-pattern values with `path_value_invalid`
+- enforce `enforce: write` uniqueness rules in a single write order
+- enforce `if_revision` when the caller supplies it, and never supply it on a
+  caller's behalf
 - persist null patch values as explicit null and remove `unset` keys
 - apply the validation level to record validation issues
 - execute batches atomically by default, support `allow_partial` and
   `dry_run`, reject duplicate batch paths, and report per-operation results
 - return the canonical operation envelope and final record revision
 - update derived state before reporting a successful mutation
+
+## Merge Requirements
+
+Merge implementations MUST:
+
+- merge frontmatter one top-level key at a time with the three-way rules of
+  Chapter 12A
+- apply declared and default `conflict`, `max`, `min`, and `union`
+  strategies exactly
+- treat end-of-body append-append as a union, earlier-ordered side first
+- merge other body changes line by line and report overlapping changes as a
+  `body` conflict
+- keep the first version's value at every conflict and report the conflict
+  with its base, first, and second values
+- never reject a merged version or turn it into a conflict because it is
+  invalid
+- copy values taken unchanged from one side verbatim from that side's source
+  text
 
 ## Lifecycle Requirements
 
@@ -406,9 +470,9 @@ An implementation that also claims `data_contracts` reports `contract_changed`
 with the contract file `path` after the contract registry and type
 implementations have been re-resolved. Implementations MAY also report
 `schema_changed`, `view_changed`, and `lock_changed`, each with a `path`, for
-referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename may be
-reported as `record_deleted` followed by `record_created` when the host cannot
-establish file identity.
+referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename that move
+detection (Chapter 12A) does not pair is reported as `record_deleted` followed
+by `record_created`.
 
 `record_created` and `record_modified` include current effective frontmatter.
 `record_renamed` includes `path`, `previous_path`, and current effective
@@ -429,3 +493,5 @@ Watch implementations MUST:
 - coalesce duplicate host notifications for one logical change and report the
   final observed state
 - isolate listener failures so later notifications continue to be delivered
+- pair disappearances and appearances with the move detection of Chapter 12A
+  when reporting renames of files changed outside the implementation

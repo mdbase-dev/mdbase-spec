@@ -65,6 +65,14 @@ Core lifecycle providers:
 operation observes the same time. The operation timezone follows the same
 precedence as the query timezone in Chapter 11.
 
+Lifecycle has no counter or sequence provider. A dense sequence such as
+"largest existing value plus one" depends on every other record, so two tools
+or devices creating records concurrently allocate the same number unless every
+create is coordinated. Collections use `ulid` or `uuid` for identifiers.
+An implementation MAY offer a sequence provider under an `x-*` extension; such
+a provider is not portable, and its allocation and coordination are
+implementation behavior.
+
 `slugify` lowercases the value, transliterates it to ASCII where a
 transliteration exists, replaces each run of other characters with `-`, and
 trims leading and trailing `-`. A missing, null, or non-string source value
@@ -94,6 +102,15 @@ A guard that fails to compile invalidates the type definition. A guard that
 raises an evaluation error fails the operation with
 `lifecycle_expression_error`. A guard that evaluates to anything other than
 boolean `true` skips its action.
+
+## Merge Defaults
+
+A top-level field that a matched type's lifecycle assigns with `{ now: true }`
+or `{ today: true }` merges with the `max` strategy by default (Chapter 07),
+so two concurrent updates that both refresh `dateModified` keep the later
+value instead of conflicting. A merge does not run lifecycle: lifecycle values
+in a merged record come from the two sides through their merge strategies
+(Chapter 12A).
 
 ## Validation Order
 

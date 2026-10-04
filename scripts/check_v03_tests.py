@@ -11,6 +11,9 @@ artifact-level tests that can run directly in this repository:
 - YAML documents parse and optionally validate against schemas
 - simple YAML pointer presence checks
 - the TaskNotes migration prototype can satisfy fixture report assertions
+- merge, path, and move-detection fixtures (0.3.0-rc.5) match the executable
+  model in scripts/concurrent_edits_model.py
+- the conformance claim schema lists exactly the manifest's profiles
 
 Adapter-target tests for core collection behavior, lifecycle, CEL, and runtime
 execution are shape-checked but not executed here.
@@ -40,6 +43,9 @@ except ImportError:
     sys.exit(1)
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import concurrent_edits_model  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TEST_ROOT = REPO_ROOT / "tests" / "v0.3"
 
@@ -59,7 +65,9 @@ EXECUTABLE_OPERATIONS = {
     "data_contract_digest",
     "data_contract_implementation_digest",
     "data_contract_registry_validate",
-}
+} | concurrent_edits_model.FIXTURE_OPERATIONS
+
+RELEASE_MARKER = re.compile(r"^0\.3\.0-rc\.[0-9]+$")
 
 CONFORMANCE_PROFILES = {
     "core_read",
@@ -70,6 +78,7 @@ CONFORMANCE_PROFILES = {
     "cel_query",
     "links",
     "core_write",
+    "merge",
     "type_packs",
     "lifecycle",
     "event_action_interop/0.1",
@@ -139,6 +148,8 @@ def main() -> int:
                 f"{manifest_path}: coverage_complete profile {profile_id} has uncovered requirements: {missing}"
             )
 
+    check_claim_schema_profiles(errors)
+
     if errors:
         print("\n".join(errors), file=sys.stderr)
         print(f"v0.3 suite check failed: {len(errors)} error(s), {executed} executable test(s), {skipped} adapter-target test(s)", file=sys.stderr)
@@ -146,6 +157,16 @@ def main() -> int:
 
     print(f"v0.3 suite ok: {executed} executable test(s), {skipped} adapter-target test(s)")
     return 0
+
+
+def check_claim_schema_profiles(errors: list[str]) -> None:
+    claim = load_json("schemas/v0.3/conformance-claim.schema.json")
+    listed = set(claim["$defs"]["profile"]["enum"])
+    if listed != CONFORMANCE_PROFILES:
+        errors.append(
+            "schemas/v0.3/conformance-claim.schema.json profiles differ from the suite: "
+            f"missing {sorted(CONFORMANCE_PROFILES - listed)}, extra {sorted(listed - CONFORMANCE_PROFILES)}"
+        )
 
 
 def validate_manifest(
@@ -278,6 +299,11 @@ def validate_suite_shape(
             for key in ["name", "operation", "input", "expect"]:
                 if key not in test:
                     errors.append(f"{path}: test {test_index} in group {group.get('name', group_index)!r} missing {key}")
+            for marker in ("since", "changed"):
+                if marker in test and not RELEASE_MARKER.match(str(test[marker])):
+                    errors.append(
+                        f"{path}: test {test.get('id', test_index)!r} {marker} must name a 0.3.0 release candidate"
+                    )
             covers = test.get("covers")
             if covers is None:
                 continue
@@ -335,6 +361,10 @@ def run_executable_test(test: dict[str, Any], setup: dict[str, Any] | None = Non
     input_data = test.get("input") or {}
     expect = test.get("expect") or {}
     setup = setup or {}
+
+    if operation in concurrent_edits_model.FIXTURE_OPERATIONS:
+        concurrent_edits_model.run_fixture(test, setup)
+        return
 
     if operation == "json_schema_meta_validate":
         for path in expand_paths(input_data.get("paths", [])):

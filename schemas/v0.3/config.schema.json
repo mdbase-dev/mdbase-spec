@@ -55,7 +55,8 @@
         },
         "id_field": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "description": "Field used for ID-based wikilink resolution and as a move-detection identity hint. No default."
         },
         "exclude": {
           "type": "array",

@@ -31,6 +31,9 @@ claim_profiles:
       - portable_globs
       - raw_schema_validation
       - machine_readable_diagnostics
+      - invalid_records_reported  # since 0.3.0-rc.5
+      - path_equivalence  # since 0.3.0-rc.5
+      - regex_profile  # since 0.3.0-rc.5
   - id: collection_semantics
     status: coverage_complete
     requires: [core_read]
@@ -40,6 +43,10 @@ claim_profiles:
       - simple_path_policy
       - display_metadata
       - independent_multi_type_validation
+      - unique_enforcement_modes  # since 0.3.0-rc.5
+      - unique_scope  # since 0.3.0-rc.5
+      - cross_record_reporting  # since 0.3.0-rc.5
+      - merge_declarations  # since 0.3.0-rc.5
   - id: data_contracts
     status: coverage_complete
     requires: [core_read]
@@ -64,6 +71,7 @@ claim_profiles:
       - text_helpers
       - operational_limits
       - expression_diagnostics
+      - regex_profile  # since 0.3.0-rc.5
   - id: cel_match
     status: draft
     requires: [core_read, cel]
@@ -73,6 +81,7 @@ claim_profiles:
       - combined_match_semantics
       - boolean_match_result
       - match_evaluation_diagnostics
+      - deterministic_match  # since 0.3.0-rc.5
   - id: cel_query
     status: draft
     requires: [collection_semantics, cel]
@@ -92,6 +101,9 @@ claim_profiles:
       - configured_id_resolution
       - frontmatter_wikilinks
       - backlinks
+      - id_field_no_default  # since 0.3.0-rc.5
+      - ambiguous_id_link  # since 0.3.0-rc.5
+      - filename_tiebreakers  # since 0.3.0-rc.5
   - id: core_write
     status: draft
     requires: [collection_semantics]
@@ -99,6 +111,29 @@ claim_profiles:
       - null_and_unset
       - batch_preflight
       - validation_levels
+      - validation_tiers  # since 0.3.0-rc.5
+      - list_operations  # since 0.3.0-rc.5
+      - writer_format_fidelity  # since 0.3.0-rc.5
+      - path_collisions  # since 0.3.0-rc.5
+      - path_pattern_values  # since 0.3.0-rc.5
+      - rename_references  # since 0.3.0-rc.5
+      - body_edits  # since 0.3.0-rc.5
+  - id: merge  # since 0.3.0-rc.5
+    status: coverage_complete
+    requires: [core_write]
+    requirements:
+      - field_three_way
+      - default_strategies
+      - declared_strategies
+      - max_min_semantics
+      - union_semantics
+      - body_three_way
+      - append_append_union
+      - conflict_reporting
+      - invalid_merge_reported
+      - merge_format_fidelity
+      - path_merge
+      - body_edit_rebase  # since 0.3.0-rc.5
   - id: type_packs
     status: draft
     requires: [data_contracts, core_write]
@@ -165,6 +200,7 @@ claim_profiles:
       - per_subject_ordering
       - notification_coalescing
       - listener_isolation
+      - move_detection  # since 0.3.0-rc.5
 
 fixture_sets:
   - id: schema_artifacts
@@ -187,6 +223,12 @@ fixture_sets:
       - core/core-write.yaml
       - core/links-and-discovery.yaml
       - core/yaml-document-records.yaml
+      - core/validation-tiers.yaml
+      - core/list-ops-and-fidelity.yaml
+      - core/paths.yaml
+      - core/link-ambiguity.yaml
+      - core/rename-references.yaml
+      - core/body-edits-update.yaml
   - id: data_contracts
     description: Data contracts, type implementations, projections, stable digests, and conflicts.
     coverage_targets: [data_contracts]
@@ -207,6 +249,8 @@ fixture_sets:
     coverage_targets: [cel, cel_match, cel_query, links]
     files:
       - cel/cel-profile.yaml
+      - cel/match-determinism.yaml
+      - cel/regex-profile.yaml
   - id: views
     description: Ordinary view records resolve named queries, invocation context, and advisory presentation.
     coverage_targets: [cel_query]
@@ -227,3 +271,14 @@ fixture_sets:
     coverage_targets: [runtime/0.2]
     files:
       - workflow-execution/workflow-execution.yaml
+  - id: merge
+    description: Three-way record merge and merge declarations, including the mdbase-next prototype merge fixtures (since 0.3.0-rc.5).
+    coverage_targets: [merge, collection_semantics]
+    files:
+      - merge/merge.yaml
+      - merge/body-edits.yaml
+  - id: watch
+    description: Move detection for externally moved files (since 0.3.0-rc.5).
+    coverage_targets: [watch]
+    files:
+      - watch/move-detection.yaml

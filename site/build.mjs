@@ -86,6 +86,7 @@ const SPEC_FILES = [
   { file: '10-cel-profile.md',            num: '10', title: 'CEL Profile',          id: 'section-10' },
   { file: '11-querying.md',               num: '11', title: 'Querying',             id: 'section-11' },
   { file: '12-operations.md',             num: '12', title: 'Operations',           id: 'section-12' },
+  { file: '12a-concurrent-edits.md',      num: '12A', title: 'Concurrent Edits',    id: 'section-12a' },
   { file: '13-migrations-and-compatibility.md', num: '13', title: 'Migrations & Compatibility', id: 'section-13' },
   { file: '14-conformance.md',            num: '14', title: 'Conformance',          id: 'section-14' },
   { file: 'interop/0.1.md',               num: 'I',  title: 'Event & Action Interoperability', id: 'companion-interop', group: 'Companion Profiles' },
@@ -244,7 +245,7 @@ function build() {
     entries: SPEC_FILES,
     output: 'spec.html',
     title: 'Specification',
-    version: 'v0.3.0',
+    version: 'v0.3.0-rc.5',
     switchLink: '<a href="spec-v0.2.html">v0.2 archive</a>',
   });
   buildSpec({

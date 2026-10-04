@@ -1,0 +1,314 @@
+# The mdbase regex profile (Chapter 10), since 0.3.0-rc.5: RE2 syntax with
+# ASCII-only \d, \w, \s, \b and case folding, over Unicode scalar values. The
+# regex_match cases are pure and run against scripts/concurrent_edits_model.py;
+# each one where a Unicode-aware engine would answer differently is a point
+# where an rc.4 engine diverges.
+name: regex profile
+spec_version: "0.3.0"
+fixture_set: cel
+category: cel
+spec_ref: "v0.3/06, v0.3/07, v0.3/10"
+groups:
+  - name: ASCII-only classes and case folding over Unicode scalar values
+    tests:
+      - name: "\\w does not match a non-ASCII letter"
+        id: regex.word_ascii_only
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\w$"
+          text: "é"
+        expect:
+          matches: false
+      - name: "\\w matches an ASCII letter"
+        id: regex.word_ascii_letter
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\w$"
+          text: a
+        expect:
+          matches: true
+      - name: "\\W matches a non-ASCII letter"
+        id: regex.not_word_non_ascii
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\W$"
+          text: "é"
+        expect:
+          matches: true
+      - name: "\\d does not match an Arabic-Indic digit"
+        id: regex.digit_ascii_only
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\d$"
+          text: "١"
+        expect:
+          matches: false
+      - name: "\\d matches an ASCII digit"
+        id: regex.digit_ascii
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\d$"
+          text: "7"
+        expect:
+          matches: true
+      - name: "\\s does not match a no-break space"
+        id: regex.space_ascii_only
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\s$"
+          text: " "
+        expect:
+          matches: false
+      - name: "\\s matches a tab"
+        id: regex.space_tab
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\s$"
+          text: "\t"
+        expect:
+          matches: true
+      - name: "\\b sees a boundary between f and é"
+        id: regex.boundary_ascii
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "caf\\b"
+          text: "café"
+        expect:
+          matches: true
+      - name: "(?i) does not fold non-ASCII letters"
+        id: regex.ignore_case_ascii_only
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "(?i)^é$"
+          text: "É"
+        expect:
+          matches: false
+      - name: "(?i) folds ASCII letters"
+        id: regex.ignore_case_ascii
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "(?i)^abc$"
+          text: ABC
+        expect:
+          matches: true
+      - name: ". matches one Unicode scalar value"
+        id: regex.dot_scalar_value
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^.$"
+          text: "é"
+        expect:
+          matches: true
+      - name: ". matches a scalar value outside the BMP"
+        id: regex.dot_astral
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^.$"
+          text: "😀"
+        expect:
+          matches: true
+      - name: a bracket range can list non-ASCII letters
+        id: regex.explicit_range
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^[a-zà-ÿ]+$"
+          text: "café"
+        expect:
+          matches: true
+      - name: "\\x{...} names a scalar value"
+        id: regex.hex_escape
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^caf\\x{E9}$"
+          text: "café"
+        expect:
+          matches: true
+      - name: a match is unanchored
+        id: regex.unanchored
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: b
+          text: abc
+        expect:
+          matches: true
+      - name: "\\p{L} is invalid"
+        id: regex.unicode_class_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "\\p{L}"
+          text: a
+        expect:
+          error:
+            code: invalid_pattern
+      - name: a backreference is invalid
+        id: regex.backreference_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "(a)\\1"
+          text: aa
+        expect:
+          error:
+            code: invalid_pattern
+      - name: look-ahead is invalid
+        id: regex.lookahead_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "a(?=b)"
+          text: ab
+        expect:
+          error:
+            code: invalid_pattern
+  - name: "regex profile in CEL, JSON Schema, and match.where"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        word.md: |
+          ---
+          kind: mdbase.type
+          name: word
+          version: 1
+          match:
+            path_glob: "words/**/*.md"
+            where:
+              label:
+                matches: "^\\w+$"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                code: { type: string, pattern: "^\\w+$" }
+          ---
+      files:
+        words/plain.md: |
+          ---
+          label: cafe
+          code: abc
+          ---
+        words/accented.md: |
+          ---
+          label: café
+          code: café
+          ---
+    tests:
+      - name: "CEL matches() uses ASCII-only \\w"
+        id: regex.cel_matches_ascii
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile]
+        operation: evaluate_cel
+        input:
+          path: words/plain.md
+          expression: "\"é\".matches(\"^\\\\w$\") || !\"a\".matches(\"^\\\\w$\")"
+        expect:
+          valid: true
+          value: false
+      - name: an invalid literal pattern is a compile error
+        id: regex.cel_literal_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile]
+        operation: evaluate_cel
+        input:
+          path: words/plain.md
+          expression: "\"a\".matches(\"\\\\p{L}\")"
+        expect:
+          valid: false
+          diagnostics:
+            - code: expression_compile_error
+      - name: "JSON Schema pattern uses ASCII-only \\w"
+        id: regex.schema_pattern_ascii
+        since: "0.3.0-rc.5"
+        covers: [core_read.regex_profile]
+        operation: validate
+        input:
+          path: words/accented.md
+        expect:
+          valid: false
+          issues:
+            - code: schema_pattern
+              field: code
+      - name: "match.where matches uses ASCII-only \\w"
+        id: regex.match_where_ascii
+        since: "0.3.0-rc.5"
+        covers: [core_read.regex_profile]
+        operation: get_types
+        input:
+          path: words/accented.md
+        expect:
+          valid: true
+          types: []
+      - name: match.where matches an ASCII label
+        id: regex.match_where_plain
+        since: "0.3.0-rc.5"
+        covers: [core_read.regex_profile]
+        operation: get_types
+        input:
+          path: words/plain.md
+        expect:
+          valid: true
+          types: [word]
+  - name: unsupported pattern syntax
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        letters.md: |
+          ---
+          kind: mdbase.type
+          name: letters
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                name: { type: string, pattern: "^\\p{L}+$" }
+          ---
+    tests:
+      - name: a Unicode class in a schema pattern makes the type invalid
+        id: regex.schema_unicode_class_invalid
+        since: "0.3.0-rc.5"
+        covers: [core_read.regex_profile]
+        operation: load_types
+        input: {}
+        expect:
+          valid: false
+          diagnostics_contain:
+            - code: invalid_pattern
+              type: letters

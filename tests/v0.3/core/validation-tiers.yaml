@@ -1,0 +1,449 @@
+# Validation tiers (Chapter 04), uniqueness enforcement and scope (Chapter 07),
+# and non-blocking link checks (Chapter 08). These tests need a collection
+# engine and run through adapters.
+name: "validation tiers and cross-record checks"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: validation
+spec_ref: "v0.3/04, v0.3/07, v0.3/08"
+
+groups:
+  - name: "uniqueness reports by default and enforces on opt-in"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                ref: {}
+                code: { type: string }
+                note: { type: string }
+          collection:
+            unique:
+              - field: ref
+              - field: code
+                enforce: write
+          ---
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        tasks/a.md: |
+          ---
+          title: A
+          ref: R-1
+          code: C-1
+          ---
+        tasks/numeric.md: |
+          ---
+          title: Numeric
+          ref: 7
+          ---
+        tasks/dup-1.md: |
+          ---
+          title: Dup one
+          code: C-9
+          ---
+        tasks/dup-2.md: |
+          ---
+          title: Dup two
+          code: C-9
+          ---
+        notes/n.md: |
+          ---
+          code: C-2
+          ---
+    tests:
+      - name: "a report-mode duplicate is written and reported as a warning"
+        id: collection.unique_report_default_writes
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_enforcement_modes, core_write.validation_tiers]
+        operation: create
+        input:
+          path: "tasks/b.md"
+          type: task
+          frontmatter: { title: B, ref: R-1 }
+        expect:
+          valid: true
+          diagnostics:
+            - code: duplicate_value
+              severity: warning
+              field: ref
+              details: { paths: ["tasks/a.md"] }
+
+      - name: "validate reports an existing duplicate with the level's severity"
+        id: collection.unique_report_validate
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_enforcement_modes]
+        operation: validate
+        input:
+          path: "tasks/dup-1.md"
+        expect:
+          valid: false
+          issues:
+            - code: duplicate_value
+              severity: error
+              field: code
+              details: { paths: ["tasks/dup-2.md"] }
+
+      - name: "an enforce: write duplicate is rejected before writing"
+        id: collection.unique_enforce_write_rejects
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_enforcement_modes, core_write.validation_tiers]
+        operation: create
+        input:
+          path: "tasks/c.md"
+          type: task
+          frontmatter: { title: C, code: C-1 }
+        expect:
+          valid: false
+          error:
+            code: duplicate_value
+
+      - name: "enforce: write applies at validation level off"
+        id: collection.unique_enforce_write_level_off
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_enforcement_modes]
+        operation: create
+        setup:
+          config: |
+            spec_version: "0.3.0"
+            settings:
+              validation: "off"
+        input:
+          path: "tasks/c.md"
+          type: task
+          frontmatter: { title: C, code: C-1 }
+        expect:
+          valid: false
+          error:
+            code: duplicate_value
+
+      - name: "a write that leaves an existing duplicate unchanged succeeds"
+        id: collection.unique_enforce_write_unrelated_edit
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_enforcement_modes]
+        operation: update
+        input:
+          path: "tasks/dup-1.md"
+          patch: { note: still duplicated }
+        expect:
+          valid: true
+          frontmatter: { code: C-9, note: still duplicated }
+
+      - name: "type scope ignores records of other types"
+        id: collection.unique_type_scope
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: create
+        input:
+          path: "tasks/d.md"
+          type: task
+          frontmatter: { title: D, code: C-2 }
+        expect:
+          valid: true
+          diagnostics: []
+
+      - name: "values are compared without coercion"
+        id: collection.unique_no_coercion
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: create
+        input:
+          path: "tasks/e.md"
+          type: task
+          frontmatter: { title: E, ref: "7" }
+        expect:
+          valid: true
+          diagnostics: []
+
+  - name: "collection and path_glob scopes"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          collection:
+            read_defaults:
+              slug: default-slug
+            unique:
+              - field: code
+                scope: collection
+              - field: slug
+                scope: path_glob
+                path_glob: "tasks/active/**"
+          ---
+      files:
+        tasks/active/a.md: |
+          ---
+          code: K-1
+          slug: alpha
+          ---
+        tasks/active/b.md: |
+          ---
+          slug: alpha
+          ---
+        tasks/archive/c.md: |
+          ---
+          slug: beta
+          ---
+        tasks/active/d.md: |
+          ---
+          slug: beta
+          ---
+        tasks/active/no-slug-1.md: |
+          ---
+          code: K-3
+          ---
+        tasks/active/no-slug-2.md: |
+          ---
+          code: K-4
+          ---
+        notes/n.md: |
+          ---
+          code: K-1
+          ---
+    tests:
+      - name: "collection scope compares governed records with records of any type"
+        id: collection.unique_collection_scope
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: validate
+        input:
+          path: "tasks/active/a.md"
+        expect:
+          valid: false
+          issues:
+            - code: duplicate_value
+              field: code
+              details: { paths: ["notes/n.md"] }
+
+      - name: "a record outside the declaring type is not governed"
+        id: collection.unique_ungoverned_record
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: validate
+        input:
+          path: "notes/n.md"
+        expect:
+          valid: true
+          diagnostics: []
+
+      - name: "path_glob scope governs and compares only matching paths"
+        id: collection.unique_path_glob_scope
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: validate
+        input:
+          path: "tasks/active/d.md"
+        expect:
+          valid: true
+          diagnostics: []
+
+      - name: "path_glob scope reports duplicates inside the glob"
+        id: collection.unique_path_glob_duplicate
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: validate
+        input:
+          path: "tasks/active/b.md"
+        expect:
+          valid: false
+          issues:
+            - code: duplicate_value
+              field: slug
+              details: { paths: ["tasks/active/a.md"] }
+
+      - name: "read defaults never take part in uniqueness"
+        id: collection.unique_raw_values_only
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.unique_scope]
+        operation: validate
+        input:
+          path: "tasks/active/no-slug-1.md"
+        expect:
+          valid: true
+          diagnostics: []
+
+  - name: "cross-record link checks never block writes"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+                parent: { type: string }
+                owner: { type: string }
+          collection:
+            links:
+              parent:
+                target_type: task
+                validate_exists: true
+              owner:
+                target_type: person
+          ---
+        person.md: |
+          ---
+          kind: mdbase.type
+          name: person
+          version: 1
+          match:
+            path_glob: "people/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        tasks/a.md: |
+          ---
+          title: A
+          ---
+        tasks/b.md: |
+          ---
+          title: B
+          ---
+    tests:
+      - name: "a broken link is written at level error and reported as a warning"
+        id: links.validate_exists_non_blocking
+        since: 0.3.0-rc.5
+        covers: [core_write.validation_tiers, collection_semantics.cross_record_reporting]
+        operation: update
+        input:
+          path: "tasks/a.md"
+          patch: { parent: "[[missing]]" }
+        expect:
+          valid: true
+          frontmatter: { parent: "[[missing]]" }
+          diagnostics:
+            - code: link_not_found
+              severity: warning
+              field: parent
+
+      - name: "a link to a record of the wrong type is reported, not rejected"
+        id: links.target_type_non_blocking
+        since: 0.3.0-rc.5
+        covers: [collection_semantics.cross_record_reporting]
+        operation: update
+        input:
+          path: "tasks/a.md"
+          patch: { owner: "[[b]]" }
+        expect:
+          valid: true
+          diagnostics:
+            - code: link_target_type_mismatch
+              severity: warning
+              field: owner
+
+      - name: "a single-record issue still rejects at level error"
+        id: core_write.single_record_blocks
+        since: 0.3.0-rc.5
+        covers: [core_write.validation_tiers]
+        operation: update
+        input:
+          path: "tasks/a.md"
+          patch: { title: 5 }
+        expect:
+          valid: false
+          diagnostics:
+            - code: schema_type
+              severity: error
+
+  - name: "invalid records are read and reported"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                priority: { type: integer, maximum: 5 }
+          ---
+      files:
+        tasks/edited-elsewhere.md: |
+          ---
+          priority: 9
+          ---
+          Written by another tool.
+    tests:
+      - name: "a query returns an invalid record"
+        id: core_write.invalid_record_queried
+        since: 0.3.0-rc.5
+        covers: [core_read.invalid_records_reported]
+        operation: query
+        input:
+          types: [task]
+        expect:
+          valid: true
+          results:
+            - path: "tasks/edited-elsewhere.md"
+
+      - name: "an update that repairs an externally invalidated record succeeds"
+        id: core_write.update_invalid_record
+        since: 0.3.0-rc.5
+        covers: [core_read.invalid_records_reported, core_write.validation_tiers]
+        operation: update
+        input:
+          path: "tasks/edited-elsewhere.md"
+          patch: { priority: 3 }
+        expect:
+          valid: true
+          frontmatter: { priority: 3 }
+          diagnostics: []
