@@ -193,10 +193,10 @@ A tool that reads a collection skips files at such paths as it skips
 excluded paths. A write that would create one fails with `invalid_request`
 (`details.reason` names the rule) before any write.
 
-**Provisional (rc.5).** The rule set comes from the first implementation's
-security review (mdbase-next SEC-033). Earlier drafts let implementations
-reject such paths optionally, which allowed a path from one device to write
-an Obsidian plugin or escape the collection on another.
+**Provisional (rc.5).** The rule set comes from the
+review of the first implementation. Earlier drafts let implementations
+reject such paths optionally; replicating a collection across file systems
+needs every tool to agree on them.
 
 ## Path Equivalence
 
