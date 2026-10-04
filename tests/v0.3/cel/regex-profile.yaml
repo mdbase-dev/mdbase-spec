@@ -161,6 +161,38 @@ groups:
           text: abc
         expect:
           matches: true
+      - name: "\\< and \\> are literal angle brackets"
+        id: regex.angle_brackets_literal
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "^\\<b\\>$"
+          text: "<b>"
+        expect:
+          matches: true
+      - name: a repetition count above 1000 is invalid
+        id: regex.repetition_limit_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "a{1001}"
+          text: a
+        expect:
+          error:
+            code: invalid_pattern
+      - name: "(?<name>...) is invalid; named groups use (?P<name>...)"
+        id: regex.angle_named_group_invalid
+        since: "0.3.0-rc.5"
+        covers: [cel.regex_profile, core_read.regex_profile]
+        operation: regex_match
+        input:
+          pattern: "(?<n>a)"
+          text: a
+        expect:
+          error:
+            code: invalid_pattern
       - name: "\\p{L} is invalid"
         id: regex.unicode_class_invalid
         since: "0.3.0-rc.5"

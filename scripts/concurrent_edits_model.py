@@ -34,18 +34,54 @@ import yaml
 # --------------------------------------------------------------------- YAML
 
 
-class _StringDateLoader(yaml.SafeLoader):
-    """Safe loader that keeps timestamps as strings (Chapter 03 YAML profile)."""
+class _CoreSchemaLoader(yaml.SafeLoader):
+    """Safe loader with the YAML 1.2 core schema (Chapter 03 YAML profile).
+
+    Plain scalars resolve to null (`~`, `null`, `Null`, `NULL`, empty),
+    booleans (`true`/`True`/`TRUE`, `false`/`False`/`FALSE`), integers
+    (decimal, `0o` octal, `0x` hex), and decimal floats. Everything else,
+    including YAML 1.1 forms such as `yes`, `on`, `0777` as octal, `1_000`,
+    `1:20`, timestamps, and the `<<` merge key, is a string. `.inf` and `.nan`
+    are outside the JSON data model and stay strings.
+    """
 
 
-_StringDateLoader.yaml_implicit_resolvers = {
-    key: [(tag, regexp) for tag, regexp in resolvers if tag != "tag:yaml.org,2002:timestamp"]
-    for key, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
-}
+_CoreSchemaLoader.yaml_implicit_resolvers = {}
+for _tag, _pattern, _first in [
+    ("tag:yaml.org,2002:null", r"^(?:~|null|Null|NULL|)$", ["~", "n", "N", ""]),
+    ("tag:yaml.org,2002:bool", r"^(?:true|True|TRUE|false|False|FALSE)$", list("tTfF")),
+    ("tag:yaml.org,2002:int", r"^(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)$", list("-+0123456789")),
+    (
+        "tag:yaml.org,2002:float",
+        r"^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$",
+        list("-+.0123456789"),
+    ),
+]:
+    _CoreSchemaLoader.add_implicit_resolver(_tag, re.compile(_pattern), _first)
+
+
+def _construct_core_int(loader: yaml.SafeLoader, node: yaml.Node) -> int:
+    text = loader.construct_scalar(node)
+    if text.startswith("0o"):
+        return int(text[2:], 8)
+    if text.startswith("0x"):
+        return int(text[2:], 16)
+    return int(text, 10)
+
+
+def _construct_core_float(loader: yaml.SafeLoader, node: yaml.Node) -> Any:
+    text = loader.construct_scalar(node)
+    value = float(text)
+    # A decimal number too large for a finite double stays a string.
+    return text if value in (float("inf"), float("-inf")) else value
+
+
+_CoreSchemaLoader.add_constructor("tag:yaml.org,2002:int", _construct_core_int)
+_CoreSchemaLoader.add_constructor("tag:yaml.org,2002:float", _construct_core_float)
 
 
 def load_yaml_text(text: str) -> Any:
-    return yaml.load(text, Loader=_StringDateLoader)
+    return yaml.load(text, Loader=_CoreSchemaLoader)
 
 
 # ------------------------------------------------------------------ paths
@@ -82,6 +118,36 @@ def allocate_path(requested: str, existing: list[str]) -> str:
     return suffixed(requested, n)
 
 
+def es_number(value: float) -> str:
+    """RFC 8785 / ECMAScript Number.prototype.toString for a finite float."""
+    if value == 0:
+        return "0"
+    # Shortest round-trip digits.
+    digits = repr(abs(value))
+    if "e" in digits:
+        mantissa, _, exp = digits.partition("e")
+    else:
+        int_part, _, frac = digits.partition(".")
+        frac = frac.rstrip("0")
+        whole = (int_part + frac).lstrip("0")
+        lead_zeros = len(int_part + frac) - len((int_part + frac).lstrip("0"))
+        n = len(int_part) - lead_zeros
+        mantissa = whole[0] + ("." + whole[1:] if len(whole) > 1 else "")
+        exp = str(n - 1)
+    ds = mantissa.replace(".", "").rstrip("0") or "0"
+    n = int(exp) + 1
+    k = len(ds)
+    sign = "-" if value < 0 else ""
+    if k <= n <= 21:
+        return sign + ds + "0" * (n - k)
+    if 0 < n <= 21:
+        return sign + ds[:n] + "." + ds[n:]
+    if -6 < n <= 0:
+        return sign + "0." + "0" * (-n) + ds
+    e = n - 1
+    return sign + ds[0] + ("." + ds[1:] if k > 1 else "") + "e" + ("-" if e < 0 else "+") + str(abs(e))
+
+
 class PathError(Exception):
     def __init__(self, code: str, field_name: str | None = None):
         super().__init__(code)
@@ -106,6 +172,8 @@ def derive_path(pattern: str, frontmatter: dict[str, Any]) -> str:
             text = "true" if value else "false"
         elif isinstance(value, str):
             text = value
+        elif isinstance(value, float):
+            text = es_number(value)
         else:
             text = json.dumps(value)
         if text == "" or "/" in text or "\\" in text or "\0" in text or text.startswith("."):
@@ -174,33 +242,61 @@ def _split_lines(text: str) -> list[str]:
     return text.splitlines(keepends=True)
 
 
+def _is_key_line(line: str) -> bool:
+    return bool(line.strip()) and line[0] not in " \t#" and not _is_seq_line(line)
+
+
+def _is_seq_line(line: str) -> bool:
+    return line.startswith("- ") or line.rstrip("\r\n") == "-"
+
+
 def _parse_items(fm_lines: list[str]) -> list[Any]:
-    """Split frontmatter lines into top-level entries and interstitial lines."""
+    """Split frontmatter lines into top-level entries and interstitial lines.
+
+    An entry is its key line, every line up to the last line of its value
+    (indented lines and `- ` items at column 0, with any blank or column-0
+    comment lines among them), and then any blank and indented comment lines
+    up to the last indented comment line, stopping at a column-0 comment.
+    """
     items: list[Any] = []
-    current: Entry | None = None
-    pending_blank: list[str] = []
-    for line in fm_lines:
-        if not line.strip():
-            pending_blank.append(line)
-            continue
-        continuation = line[0] in " \t" or line.startswith("- ") or line.rstrip("\r\n") == "-"
-        if continuation and current is not None:
-            current.lines.extend(pending_blank)
-            pending_blank = []
-            current.lines.append(line)
-            continue
-        items.extend(pending_blank)
-        pending_blank = []
-        match = _ENTRY_KEY.match(line)
-        if match and not line.startswith("#"):
-            raw_key = match.group(1)
-            key = load_yaml_text(raw_key) if raw_key[0] in "\"'" else raw_key
-            current = Entry(key=str(key), lines=[line])
-            items.append(current)
-        else:
-            current = None
+    i = 0
+    n = len(fm_lines)
+    while i < n:
+        line = fm_lines[i]
+        match = _ENTRY_KEY.match(line) if _is_key_line(line) else None
+        if not match:
             items.append(line)
-    items.extend(pending_blank)
+            i += 1
+            continue
+        raw_key = match.group(1)
+        key = load_yaml_text(raw_key) if raw_key[0] in "\"'" else raw_key
+        j = i + 1
+        while j < n and not _is_key_line(fm_lines[j]):
+            j += 1
+        # fm_lines[i+1:j] are candidates. The value ends at its last line that
+        # is not blank and not a comment.
+        end = i + 1
+        for k in range(i + 1, j):
+            text = fm_lines[k]
+            stripped = text.strip()
+            if stripped and not stripped.startswith("#"):
+                end = k + 1
+        # Then indented comment lines, with blank lines between them.
+        k = end
+        while k < j:
+            text = fm_lines[k]
+            stripped = text.strip()
+            if not stripped:
+                k += 1
+                continue
+            if stripped.startswith("#") and text[0] in " \t":
+                end = k + 1
+                k += 1
+                continue
+            break
+        items.append(Entry(key=str(key), lines=list(fm_lines[i:end])))
+        items.extend(fm_lines[end:j])
+        i = j
     return items
 
 
@@ -446,29 +542,111 @@ def merge_body(base: str, first: str, second: str) -> str | None:
     if first.startswith(base) and second.startswith(base):
         first_tail = first[len(base) :]
         second_tail = second[len(base) :]
-        separator = "\n" if first_tail and not first_tail.endswith("\n") else ""
+        if base and not base.endswith("\n"):
+            for eol in ("\r\n", "\n"):
+                if first_tail.startswith(("\r\n", "\n")) and second_tail.startswith(eol):
+                    second_tail = second_tail[len(eol) :]
+                    break
+        separator = (
+            "\n"
+            if first_tail and not first_tail.endswith("\n") and not second_tail.startswith(("\n", "\r\n"))
+            else ""
+        )
         return base + first_tail + separator + second_tail
     return diff3(_split_lines(base), _split_lines(first), _split_lines(second))
 
 
 def _lcs_pairs(a: list[str], b: list[str]) -> list[tuple[int, int]]:
+    """The Chapter 12A alignment: Myers' linear-space algorithm.
+
+    Common prefixes and suffixes are matched first; the rest splits at the
+    middle snake found by `_bisect` and each part is aligned the same way.
+    """
+    out: list[tuple[int, int]] = []
+    stack: list[Any] = [("range", 0, len(a), 0, len(b))]
+    while stack:
+        task = stack.pop()
+        if task[0] == "emit":
+            out.extend(task[1])
+            continue
+        _, a0, a1, b0, b1 = task
+        while a0 < a1 and b0 < b1 and a[a0] == b[b0]:
+            out.append((a0, b0))
+            a0 += 1
+            b0 += 1
+        suffix = []
+        while a1 > a0 and b1 > b0 and a[a1 - 1] == b[b1 - 1]:
+            a1 -= 1
+            b1 -= 1
+            suffix.append((a1, b1))
+        suffix.reverse()
+        stack.append(("emit", suffix))
+        if a0 == a1 or b0 == b1:
+            continue
+        split = _bisect(a[a0:a1], b[b0:b1])
+        if split is not None:
+            x, y = split
+            stack.append(("range", a0 + x, a1, b0 + y, b1))
+            stack.append(("range", a0, a0 + x, b0, b0 + y))
+    return out
+
+
+def _bisect(a: list[str], b: list[str]) -> tuple[int, int] | None:
+    """The middle snake of a and b (which differ at both ends): a split point."""
     n, m = len(a), len(b)
-    table = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(n - 1, -1, -1):
-        for j in range(m - 1, -1, -1):
-            table[i][j] = table[i + 1][j + 1] + 1 if a[i] == b[j] else max(table[i + 1][j], table[i][j + 1])
-    pairs = []
-    i = j = 0
-    while i < n and j < m:
-        if a[i] == b[j]:
-            pairs.append((i, j))
-            i += 1
-            j += 1
-        elif table[i + 1][j] >= table[i][j + 1]:
-            i += 1
-        else:
-            j += 1
-    return pairs
+    max_d = (n + m + 1) // 2
+    offset = max_d
+    size = 2 * max_d + 2
+    v1 = [-1] * size
+    v2 = [-1] * size
+    v1[offset + 1] = 0
+    v2[offset + 1] = 0
+    delta = n - m
+    front = delta % 2 != 0
+    k1start = k1end = k2start = k2end = 0
+    for d in range(max_d):
+        for k1 in range(-d + k1start, d - k1end + 1, 2):
+            k1o = offset + k1
+            if k1 == -d or (k1 != d and v1[k1o - 1] < v1[k1o + 1]):
+                x1 = v1[k1o + 1]
+            else:
+                x1 = v1[k1o - 1] + 1
+            y1 = x1 - k1
+            while x1 < n and y1 < m and a[x1] == b[y1]:
+                x1 += 1
+                y1 += 1
+            v1[k1o] = x1
+            if x1 > n:
+                k1end += 2
+            elif y1 > m:
+                k1start += 2
+            elif front:
+                k2o = offset + delta - k1
+                if 0 <= k2o < size and v2[k2o] != -1 and x1 >= n - v2[k2o]:
+                    return x1, y1
+        for k2 in range(-d + k2start, d - k2end + 1, 2):
+            k2o = offset + k2
+            if k2 == -d or (k2 != d and v2[k2o - 1] < v2[k2o + 1]):
+                x2 = v2[k2o + 1]
+            else:
+                x2 = v2[k2o - 1] + 1
+            y2 = x2 - k2
+            while x2 < n and y2 < m and a[n - x2 - 1] == b[m - y2 - 1]:
+                x2 += 1
+                y2 += 1
+            v2[k2o] = x2
+            if x2 > n:
+                k2end += 2
+            elif y2 > m:
+                k2start += 2
+            elif not front:
+                k1o = offset + delta - k2
+                if 0 <= k1o < size and v1[k1o] != -1:
+                    x1 = v1[k1o]
+                    y1 = offset + x1 - k1o
+                    if x1 >= n - x2:
+                        return x1, y1
+    return None
 
 
 def diff3(base: list[str], first: list[str], second: list[str]) -> str | None:
@@ -520,17 +698,18 @@ def merge_records(
     else:
         content_shortcut = None
 
-    # Path merges with the conflict strategy.
+    # Path merges with the conflict strategy. Its conflict is reported last.
+    path_conflicts: list[dict[str, Any]] = []
     if first_path == second_path or second_path == base_path:
         path = first_path
     elif first_path == base_path:
         path = second_path
     else:
         path = first_path
-        conflicts.append({"kind": "path", "base": base_path, "first": first_path, "second": second_path})
+        path_conflicts.append({"kind": "path", "base": base_path, "first": first_path, "second": second_path})
 
     if content_shortcut is not None:
-        return MergeResult(document=content_shortcut, path=path, conflicts=conflicts)
+        return MergeResult(document=content_shortcut, path=path, conflicts=path_conflicts)
 
     mappings = all(isinstance(d.frontmatter, dict) for d in (base, first, second))
     result = parse_document(first_text)
@@ -550,7 +729,11 @@ def merge_records(
             if states_equal(f, b):
                 _take(result, second, key, eol)
                 continue
-            kind = strategy(record_types, key)
+            try:
+                kind = strategy(record_types, key)
+            except ValueError:
+                # A type_conflict between declarations: the field conflicts.
+                kind = "conflict"
             if kind in ("max", "min"):
                 if f is MISSING or s is MISSING:
                     if f is MISSING:
@@ -593,7 +776,7 @@ def merge_records(
         conflicts.append({"kind": "body"})
         body = first.body
     result.body = body
-    return MergeResult(document=render(result), path=path, conflicts=conflicts)
+    return MergeResult(document=render(result), path=path, conflicts=conflicts + path_conflicts)
 
 
 def render_frontmatter(doc: Document) -> str:
@@ -706,11 +889,21 @@ _FORBIDDEN = [
     (re.compile(r"\\[pP]"), "Unicode class"),
     (re.compile(r"\\[1-9]"), "backreference"),
     (re.compile(r"\(\?(=|!|<=|<!|P=)"), "look-around or backreference"),
+    (re.compile(r"\(\?<"), "named group other than (?P<name>...)"),
+    (re.compile(r"\\b\{"), "\\b{...} boundary"),
 ]
+
+
+_REPEAT = re.compile(r"(?<!\\)\{(\d+)(?:,(\d*))?\}")
 
 
 def regex_match(pattern: str, text: str) -> bool:
     """Unanchored search with ASCII-only classes and case folding."""
+    if len(pattern.encode("utf-8")) > 8192:
+        raise InvalidPattern("pattern longer than 8192 bytes")
+    for found in _REPEAT.finditer(pattern):
+        if int(found.group(1)) > 1000 or (found.group(2) and int(found.group(2)) > 1000):
+            raise InvalidPattern("repetition count above 1000")
     for forbidden, what in _FORBIDDEN:
         if forbidden.search(pattern):
             raise InvalidPattern(what)

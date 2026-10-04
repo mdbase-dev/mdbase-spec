@@ -110,6 +110,28 @@ groups:
             title: 42
         expect:
           path: tasks/42.md
+      - name: "an integral float uses the RFC 8785 number text"
+        id: paths.derive_float_integral
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: 42.0
+        expect:
+          path: tasks/42.md
+      - name: "a large float uses the RFC 8785 exponent form"
+        id: paths.derive_float_exponent
+        since: 0.3.0-rc.5
+        covers: [core_write.path_pattern_values]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          frontmatter:
+            title: 1.0e+21
+        expect:
+          path: tasks/1e+21.md
       - name: a value containing a slash cannot create a folder
         id: paths.derive_slash
         since: 0.3.0-rc.5

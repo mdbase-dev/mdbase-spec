@@ -119,6 +119,7 @@ groups:
           value: true
 
       - name: "explicit null is not replaced by read default"
+        id: cel.explicit_null_not_defaulted
         operation: evaluate_cel
         input:
           path: "tasks/null-status.md"
@@ -294,6 +295,7 @@ groups:
               severity: warning
 
       - name: "file host binding exposes path and folder helpers"
+        id: cel.file_path_folder_helpers
         operation: evaluate_cel
         input:
           path: "tasks/open.md"
@@ -303,6 +305,7 @@ groups:
           value: true
 
       - name: "file tag helper uses segment prefix semantics"
+        id: cel.file_tag_segment_prefix
         operation: evaluate_cel
         input:
           path: "tasks/open.md"
@@ -312,6 +315,7 @@ groups:
           value: true
 
       - name: "file body can be filtered without being returned"
+        id: cel.query_body_filter
         operation: query
         input:
           where: 'file.body.contains("runtime")'
@@ -374,6 +378,7 @@ groups:
             path: tasks/card-001.md
     tests:
       - name: "event payload binding works in workflow context"
+        id: cel.workflow_event_binding
         operation: evaluate_cel
         input:
           context: workflow
@@ -408,6 +413,7 @@ groups:
           value: true
 
       - name: "step result binding works in workflow context"
+        id: cel.workflow_step_binding
         operation: evaluate_cel
         input:
           context: workflow
@@ -417,6 +423,7 @@ groups:
           value: true
 
       - name: "workflow input expression object is evaluated but plain strings are not"
+        id: cel.workflow_input_expression
         operation: evaluate_workflow_input
         input:
           template:

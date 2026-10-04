@@ -187,6 +187,13 @@ Path globs (above) remain case-sensitive and match paths as written.
 `ss` collide. This flags more collisions than some file systems would, never
 fewer.
 
+**Provisional (rc.5).** NFC and case folding use the data of **Unicode
+17.0.0** (`UnicodeData.txt`, `CompositionExclusions.txt`, `CaseFolding.txt`).
+Unicode's stability policies keep both stable for assigned characters, but a
+character assigned in a later version can fold or compose differently once a
+tool knows it. Pinning the version makes every tool compute the same path
+keys. A later release names its own version.
+
 ## Path Collisions
 
 When a new record would take a path whose path key is already in use, the
