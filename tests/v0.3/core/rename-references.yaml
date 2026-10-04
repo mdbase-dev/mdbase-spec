@@ -1,0 +1,121 @@
+# Rename reference updating in 0.3.0-rc.5 (Chapter 12): a rename rewrites
+# only the links that resolved to the renamed record under Chapter 08,
+# including tiebreaker-selected filename matches, and leaves ambiguous links
+# unchanged. `references_updated` lists every rewritten link; records it does
+# not list are unchanged.
+name: "rename reference updating"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: core_write
+spec_ref: "v0.3/08, v0.3/12"
+
+groups:
+  - name: "duplicate filenames resolved by the tiebreakers"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        folder-a/shared-name.md: |
+          ---
+          title: A
+          ---
+        folder-b/shared-name.md: |
+          ---
+          title: B
+          ---
+        notes/source.md: |
+          ---
+          ref: "[[shared-name]]"
+          ---
+        folder-b/local.md: |
+          ---
+          ref: "[[shared-name]]"
+          ---
+    tests:
+      - name: "a link selected by code-point order is rewritten"
+        id: core_write.rename_tiebreak_winner
+        since: 0.3.0-rc.5
+        covers: [core_write.rename_references, links.filename_tiebreakers]
+        operation: rename
+        input:
+          from: "folder-a/shared-name.md"
+          to: "folder-a/renamed.md"
+          update_refs: true
+        expect:
+          valid: true
+          path: "folder-a/renamed.md"
+          references_updated:
+            - path: "notes/source.md"
+              field: ref
+              old_value: "[[shared-name]]"
+              new_value: "[[renamed]]"
+
+      - name: "a link selected by the referring directory is rewritten, and only that link"
+        id: core_write.rename_tiebreak_same_directory
+        since: 0.3.0-rc.5
+        covers: [core_write.rename_references, links.filename_tiebreakers]
+        operation: rename
+        input:
+          from: "folder-b/shared-name.md"
+          to: "folder-b/other.md"
+          update_refs: true
+        expect:
+          valid: true
+          path: "folder-b/other.md"
+          references_updated:
+            - path: "folder-b/local.md"
+              field: ref
+              old_value: "[[shared-name]]"
+              new_value: "[[other]]"
+
+  - name: "ambiguous configured ids"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          id_field: id
+      files:
+        tasks/a.md: |
+          ---
+          id: shared
+          ---
+        tasks/b.md: |
+          ---
+          id: shared
+          ---
+        tasks/shared.md: |
+          ---
+          title: Filename match
+          ---
+        tasks/child.md: |
+          ---
+          parent: "[[shared]]"
+          ---
+    tests:
+      - name: "renaming one record with an ambiguous id rewrites no link"
+        id: core_write.rename_ambiguous_id_unchanged
+        since: 0.3.0-rc.5
+        covers: [core_write.rename_references, links.ambiguous_id_link]
+        operation: rename
+        input:
+          from: "tasks/a.md"
+          to: "tasks/a2.md"
+          update_refs: true
+        expect:
+          valid: true
+          path: "tasks/a2.md"
+          references_updated: []
+
+      - name: "renaming the filename match of an ambiguous id rewrites no link"
+        id: core_write.rename_no_filename_fallback
+        since: 0.3.0-rc.5
+        covers: [core_write.rename_references, links.ambiguous_id_link]
+        operation: rename
+        input:
+          from: "tasks/shared.md"
+          to: "tasks/renamed.md"
+          update_refs: true
+        expect:
+          valid: true
+          path: "tasks/renamed.md"
+          references_updated: []

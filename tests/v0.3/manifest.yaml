@@ -103,6 +103,7 @@ claim_profiles:
       - backlinks
       - id_field_no_default  # since 0.3.0-rc.5
       - ambiguous_id_link  # since 0.3.0-rc.5
+      - filename_tiebreakers  # since 0.3.0-rc.5
   - id: core_write
     status: draft
     requires: [collection_semantics]
@@ -115,6 +116,7 @@ claim_profiles:
       - writer_format_fidelity  # since 0.3.0-rc.5
       - path_collisions  # since 0.3.0-rc.5
       - path_pattern_values  # since 0.3.0-rc.5
+      - rename_references  # since 0.3.0-rc.5
       - body_edits  # since 0.3.0-rc.5
   - id: merge  # since 0.3.0-rc.5
     status: coverage_complete
@@ -225,6 +227,7 @@ fixture_sets:
       - core/list-ops-and-fidelity.yaml
       - core/paths.yaml
       - core/link-ambiguity.yaml
+      - core/rename-references.yaml
       - core/body-edits-update.yaml
   - id: data_contracts
     description: Data contracts, type implementations, projections, stable digests, and conflicts.

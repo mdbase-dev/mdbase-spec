@@ -360,6 +360,8 @@ Links implementations MUST:
   `settings.id_field` is configured
 - resolve ambiguous IDs to null without filename fallback, and report
   `ambiguous_link`
+- choose among duplicate filename matches only with the Chapter 08
+  tiebreakers, ending in code-point order
 - expose `file.links`, `file.embeds`, `file.tags`, and `file.backlinks`
 - provide the CEL link helpers from Chapter 10
 - bound `asFile()` traversal
@@ -377,6 +379,10 @@ Core Write implementations MUST:
   with the Chapter 12A body merge when the base body is available, and report
   `body_conflict` and `body_base_unavailable` otherwise
 - reject paths that escape the collection root
+- when a rename updates references, rewrite the links that resolved to the
+  renamed record and would no longer resolve to it, including
+  tiebreaker-selected filename matches, and never rewrite ambiguous links or
+  links to other records
 - reject an explicit path that collides under path equivalence with
   `path_conflict`, give a colliding derived path the first free suffix, and
   reject invalid path-pattern values with `path_value_invalid`

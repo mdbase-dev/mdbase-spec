@@ -50,7 +50,7 @@ Bases, seed type upgrades, and saved-view identification.
 - Diagnostic codes `path_collision`, `path_value_invalid`, `ambiguous_link`,
   `link_target_type_mismatch`, `nondeterministic_match`, `invalid_pattern`,
   and `duplicate_value` are listed as core codes.
-- The v0.3 suite gains 147 tests marked `since: 0.3.0-rc.5`, including the 13
+- The v0.3 suite gains 155 tests marked `since: 0.3.0-rc.5`, including the 13
   merge fixtures of the mdbase-next prototype in a new `merge_records` format
   and new `merge` and `watch` fixture sets. `scripts/check_v03_tests.py` runs
   the 95 pure-function fixtures against an executable model
@@ -79,8 +79,12 @@ Bases, seed type upgrades, and saved-view identification.
 - `collection.path.pattern` values containing `/` or `\`, beginning with `.`,
   empty, or not scalars fail with `path_value_invalid`.
 - An ambiguous configured ID resolves to null with `ambiguous_link` and no
-  filename fallback. Filename tiebreakers are required and end in code-point
+  filename fallback. Filename tiebreakers are required: referring directory,
+  then fewest path segments, then code-point order, and never scan or storage
   order.
+- A rename with reference updating rewrites only the links that resolved
+  to the renamed record, including tiebreaker-selected filename matches, and
+  reports them in `references_updated`; ambiguous links are not rewritten.
 - `if_revision` is opt-in; transports and SDKs must not add it on a caller's
   behalf.
 - Lifecycle states that it has no sequence provider; implementations may

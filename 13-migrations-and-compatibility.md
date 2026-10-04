@@ -35,7 +35,8 @@ worked under rc.4 stops loading.
 | derived path already taken | `path_conflict` | the first free suffixed path | supply an explicit path to get an error instead |
 | structured writes to Markdown frontmatter | only array and object structure SHOULD be preserved | MUST re-emit only changed entries | nothing |
 | structured writes to YAML document records | could re-emit the whole mapping | follow writer format fidelity | nothing |
-| filename link tiebreakers | SHOULD | MUST, ending in code-point order | nothing |
+| filename link tiebreakers | SHOULD; "shortest path" unmeasured | MUST: referring directory, then fewest path segments, then code-point order; never scan or storage order | nothing |
+| rename with reference updating | which links are rewritten was unspecified | only links that resolved to the renamed record, including tiebreaker-selected matches; ambiguous links and links to other records unchanged; listed in `references_updated` | nothing |
 
 ### Tightenings reported as diagnostics
 
@@ -76,6 +77,8 @@ An engine moving from rc.4 to rc.5:
   claims the `merge` profile
 - implements move detection if it reports renames of externally moved files
 - reports `nondeterministic_match`, `path_collision`, and `ambiguous_link`
+- applies the filename tiebreakers exactly, and rewrites on rename only the
+  links that resolved to the renamed record
 - removes any `id` default for `settings.id_field`
 
 Engines that conform to rc.4 keep claiming `0.3.0-rc.4` until they pass the

@@ -274,9 +274,26 @@ path key equals that of a different existing record fails with
 `path_conflict`. A target whose path key equals the source's own path key only
 changes the path's spelling, such as its case, and is not a conflict.
 
-If reference updating is enabled, link updates SHOULD preserve link style,
-alias, and anchor where possible. ID-based links SHOULD not be rewritten if the
-target ID did not change.
+If reference updating is enabled, the rename updates the links that
+reference the renamed record: the links that, before the rename, resolve to it
+under Chapter 08, including a simple link whose filename match was selected by
+the tiebreakers. Each such link that would no longer resolve to the record
+after the move MUST be rewritten so that it resolves to the record at its new
+path. An ID-based link whose target ID did not change still resolves and
+SHOULD NOT be rewritten. A rename MUST NOT rewrite links that resolve to
+another record, are unresolved, or are ambiguous; in particular, a link whose
+configured ID is ambiguous resolves to no record and is not rewritten, even
+when it matches the renamed record's filename. Link updates SHOULD preserve
+link style, alias, and anchor where possible.
+
+The rename result lists each rewritten link in `references_updated`, with the
+referring record's `path`, the `field` that held the link (or
+`location: body`), `old_value`, and `new_value`, ordered by referring path.
+
+A rename keeps the record's identity: internal identity, history, and merge
+bases follow the record to its new path, as for a move detected under Chapter
+12A, and a tool that reports watch notifications reports it as
+`record_renamed`.
 
 An implementation MAY commit a rename and its reference updates as one atomic
 batch. Otherwise reference updates are applied after the rename, and failed

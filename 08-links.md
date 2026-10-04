@@ -62,12 +62,19 @@ If filename resolution finds multiple candidates, tools MUST apply these
 tiebreakers in order:
 
 1. same directory as referring file
-2. shortest collection path
+2. fewest path segments, that is, the shallowest collection path
 3. smallest path in Unicode code-point order
+
+Tools MUST NOT choose among candidates by any other criterion, such as
+discovery or scan order, the order in which files were indexed, or a
+provider's storage order, so every conforming tool resolves a simple link to
+the same record. The path segments of `docs/readme.md` are `docs` and
+`readme.md`; its depth is 2 whatever the length of its names.
 
 Filename candidates whose paths are equivalent under Chapter 02 path keys are
 ambiguous with each other even after the tiebreakers. If ambiguity remains,
-the link resolves to null.
+the link resolves to null. A link that the tiebreakers resolve is not
+ambiguous and reports no `ambiguous_link`.
 
 An ambiguous link reports an `ambiguous_link` cross-record issue on the
 referring record, with `details.candidates` listing the candidate paths in

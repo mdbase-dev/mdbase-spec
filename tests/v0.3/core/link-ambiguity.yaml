@@ -1,6 +1,6 @@
 # Link clarifications in 0.3.0-rc.5 (Chapters 04 and 08): settings.id_field has
-# no default, and an ambiguous ID resolves to null with ambiguous_link and no
-# filename fallback.
+# no default, an ambiguous ID resolves to null with ambiguous_link and no
+# filename fallback, and the filename tiebreakers are required.
 name: "link resolution clarifications"
 spec_version: "0.3.0"
 fixture_set: core_collection
@@ -82,3 +82,133 @@ groups:
             - code: ambiguous_link
               severity: warning
               field: parent
+
+  # Filename tiebreakers (Chapter 08) are required in 0.3.0-rc.5. They order
+  # by referring directory, then path depth in segments, then code-point
+  # order, never by scan or storage order.
+  - name: "same directory wins over a shallower path"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        target.md: |
+          ---
+          title: Root target
+          ---
+        tasks/target.md: |
+          ---
+          title: Same-directory target
+          ---
+        tasks/source.md: |
+          ---
+          ref: "[[target]]"
+          ---
+    tests:
+      - name: "a candidate in the referring directory wins"
+        id: links.tiebreak_same_directory
+        since: 0.3.0-rc.5
+        covers: [links.filename_tiebreakers]
+        operation: resolve_link
+        input:
+          path: "tasks/source.md"
+          field: ref
+        expect:
+          valid: true
+          resolved: "tasks/target.md"
+          diagnostics: []
+
+  - name: "depth counts path segments"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        a/b/target.md: |
+          ---
+          title: Deeper but shorter path
+          ---
+        a-much-longer-folder-name/target.md: |
+          ---
+          title: Shallower but longer path
+          ---
+        source.md: |
+          ---
+          ref: "[[target]]"
+          ---
+    tests:
+      - name: "the shallowest candidate wins, whatever the length of its names"
+        id: links.tiebreak_depth
+        since: 0.3.0-rc.5
+        covers: [links.filename_tiebreakers]
+        operation: resolve_link
+        input:
+          path: "source.md"
+          field: ref
+        expect:
+          valid: true
+          resolved: "a-much-longer-folder-name/target.md"
+          diagnostics: []
+
+  - name: "code-point order is the final tiebreaker"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        alpha/target.md: |
+          ---
+          title: Lowercase folder
+          ---
+        Beta/target.md: |
+          ---
+          title: Uppercase folder
+          ---
+        source.md: |
+          ---
+          ref: "[[target]]"
+          ---
+    tests:
+      - name: "equal-depth candidates resolve to the smallest path in code-point order"
+        id: links.tiebreak_code_point
+        since: 0.3.0-rc.5
+        covers: [links.filename_tiebreakers]
+        operation: resolve_link
+        input:
+          path: "source.md"
+          field: ref
+        expect:
+          valid: true
+          resolved: "Beta/target.md"
+          diagnostics: []
+
+  - name: "path-key-equivalent candidates"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        notes/plan.md: |
+          ---
+          title: lower
+          ---
+        Notes/plan.md: |
+          ---
+          title: upper
+          ---
+        tasks/t.md: |
+          ---
+          ref: "[[plan]]"
+          ---
+    tests:
+      - name: "candidates with one path key stay ambiguous after the tiebreakers"
+        id: links.tiebreak_path_key_ambiguous
+        since: 0.3.0-rc.5
+        covers: [links.filename_tiebreakers]
+        operation: resolve_link
+        input:
+          path: "tasks/t.md"
+          field: ref
+        expect:
+          valid: true
+          resolved: null
+          diagnostics:
+            - code: ambiguous_link
+              field: ref
+              details: { candidates: ["Notes/plan.md", "notes/plan.md"] }

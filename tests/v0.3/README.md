@@ -96,6 +96,7 @@ Future v0.3 adapters should support these operations:
 - `evaluate_cel`
 - `create`
 - `update`
+- `rename`
 - `runtime_load_contracts`
 - `runtime_compose_registry`
 - `runtime_preflight_workflows`
@@ -165,6 +166,14 @@ are pure functions of their input and the group's `setup.types`, so
 diagnostics. Tests that create two files differing only in case, such as
 `paths.discovered_collision`, need a case-sensitive file system; an adapter on
 a case-insensitive one reports them as skipped.
+
+### `rename` with `update_refs` (since rc.5)
+
+`core/rename-references.yaml` renames with `input.update_refs: true` and
+expects `references_updated`: every rewritten link, ordered by referring path,
+with `path`, `field` (or `location: body`), `old_value`, and `new_value`. A
+record the list does not name is unchanged, so an empty list asserts that no
+link was rewritten.
 
 ### `merge_records`
 
