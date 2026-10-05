@@ -18,10 +18,6 @@ Optional saved-view operations:
 
 - list_views
 - execute_view
-- read_view_source
-- create_view_source
-- update_view_source
-- delete_view_source
 
 ## Read
 
@@ -398,8 +394,9 @@ diagnostics: []
 
 `source.path` is a collection-relative path. `source.format` is a stable source
 format identifier. `source.revision` is an opaque token for the source content.
-`source.writable` describes whether the provider accepts writes for that source
-format. Each nested descriptor exposes the stable named-view ID, its display
+`source.writable` is true when the source is a record, whose type implements
+`mdbase.view` or `obsidian.base`, and is edited with the record operations.
+It is false for a source that is not a record. Each nested descriptor exposes the stable named-view ID, its display
 name, and its optional presentation metadata. Discovery order is ascending by
 source path and then source-defined named-view order.
 
@@ -435,40 +432,15 @@ source's declared expression dialect and returns the query result envelope with
 `render: false` requests the headless result and is the default. `render: true`
 requests renderer output using the selected presentation metadata.
 
-### Saved-view source operations
+### Editing saved views
 
-A provider that advertises a source as `writable: true` MUST support the four
-saved-view source operations. These operations exchange the complete source
-document so format-aware editors can preserve source data they do not
-interpret.
-
-`read_view_source` accepts a `path` from `list_views` and returns:
-
-```yaml
-path: TaskNotes/Views/tasks.base
-format: obsidian.base
-revision: sha256:opaque
-document: |
-  views:
-    - type: tasknotesTaskList
-      name: Tasks
-```
-
-`create_view_source` accepts `document` and may accept `path`, `format`, and
-`name`. When `path` is absent, the provider selects a collection-relative path
-using the requested format and the collection's format configuration. Creation
-MUST validate the complete document and MUST fail with `path_conflict` rather
-than replace an existing source.
-
-`update_view_source` accepts `path`, `document`, and optional `if_revision`.
-The complete candidate document MUST be valid before the current source is
-atomically replaced. `delete_view_source` accepts `path` and optional
-`if_revision`.
-
-All source operations apply the collection's path-boundary and symlink rules.
-Update and delete use the concurrency behavior defined below. A successful
-create or update returns the same fields as `read_view_source`; a successful
-delete returns `path` and `deleted: true`.
+Saved views are records (Chapter 05a), so they have no dedicated write
+operations. A client edits a source whose `source.writable` is true with the
+record operations: `read` with `include_document` returns the complete source,
+`update` with `document` replaces it exactly as supplied, preserving source
+data the client does not interpret, and `create` and `delete` add and remove
+sources. The record operations apply their ordinary validation, path-boundary,
+symlink and concurrency rules.
 
 ## Concurrency
 
