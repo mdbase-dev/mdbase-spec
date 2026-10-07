@@ -158,6 +158,12 @@ when the provider can perform that transaction. If it cannot, it MUST report the
 per-file outcomes explicitly rather than imply all-or-nothing completion. A stale
 CAS is an apply failure, not a successful promotion or a YAML parse diagnostic.
 
+During verified lost-tail resurrection, an acknowledged promotion MUST NOT be
+replayed. It has no effects and produces a typed diagnostic; the current holder,
+bytes, and history stay unchanged. Setup can be re-applied idempotently against
+fresh current state afterwards. This recovery exception does not relax the normal
+setup CAS checks and MUST NOT be a client-selectable bypass.
+
 This describes setup semantics, not a new general-purpose public operation or
 wire allocation. Providers with a signed mutation format MUST define a closed,
 typed transition in that format before activation; unknown operations MUST NOT
