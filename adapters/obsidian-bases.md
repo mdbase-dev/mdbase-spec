@@ -119,6 +119,63 @@ embed supplies its embedding record, and an active-file interface supplies its
 active record. The adapter resolves that host state into an explicit invocation
 context before calling the query or view executor.
 
+## Existing files during setup
+
+When setup enables `base` as a record extension, it assesses the existing ordinary
+`.base` files that will become records and lists them for the user or application.
+Promotion is an identity-preserving holder transition, not delete followed by
+create: the same identity, exact path, and exact source bytes become a YAML document
+record. It does not create a new view resource.
+
+For a replicated provider, the logical transition is
+`ordinary_file_to_record { id, path, prior: FileContent, doc }`:
+
+- `id` is the existing file identity; `path` is its exact current path.
+- `prior` is the **complete** current file-content descriptor (`FileContent`),
+  including its content profile, length, hash and storage/crypto references where
+  applicable. A hash alone is not full-descriptor CAS.
+- `doc` is the complete exact UTF-8 source, not a re-serialized parsed value. Its
+  full-source hash and byte length MUST match the authenticated prior content.
+  Declared metadata alone is not proof that the source bytes were authenticated.
+
+Apply MUST verify current authority and that the current holder is an ordinary
+file with the same identity, path, and complete content descriptor. Concurrent
+content edits, moves, holder changes, or same-hash resealing/rekeying invalidate
+that comparison. The transition refuses rather than overwriting a changed file;
+there is no partial file-removal/record-insertion prefix. The current and prospective
+record-extension configuration and type packs are checked as part of setup, not
+bypassed by the filename. Promotion grants no additional read or write authority.
+
+The exact source MUST fit the provider's whole-record source limit and pass its
+bounded YAML mapping admission. Syntax or structural-admission failure leaves the
+ordinary file and its bytes untouched and produces a typed, file-specific receipt
+diagnostic; it does not fail the entire setup. Successful promotion preserves
+comments, unknown keys and formatting. It MUST NOT apply create-time lifecycle
+rewrites, assign a new identity, or create, remove, or change tombstones.
+
+Configuration, packs, and admitted promotions form one atomic setup application
+when the provider can perform that transaction. If it cannot, it MUST report the
+per-file outcomes explicitly rather than imply all-or-nothing completion. A stale
+CAS is an apply failure, not a successful promotion or a YAML parse diagnostic.
+
+Setup also needs an unoccupied provisioning-receipt resource namespace. If the
+exact path `mdbase.provisions.yaml` is held by an Ordinary File or Record, the
+WHOLE setup MUST fail with a typed namespace-conflict diagnostic and no changes.
+The diagnostic tells the user to rename that exact path before retrying. Setup
+MUST NOT implicitly migrate a File/Record into a resource; `.base` promotion does
+not authorize that separate transition.
+
+During verified lost-tail resurrection, an acknowledged promotion MUST NOT be
+replayed. It has no effects and produces a typed diagnostic; the current holder,
+bytes, and history stay unchanged. Setup can be re-applied idempotently against
+fresh current state afterwards. This recovery exception does not relax the normal
+setup CAS checks and MUST NOT be a client-selectable bypass.
+
+This describes setup semantics, not a new general-purpose public operation or
+wire allocation. Providers with a signed mutation format MUST define a closed,
+typed transition in that format before activation; unknown operations MUST NOT
+partially apply. Removing the extension does not implicitly reverse promotion.
+
 ## Optional Feature Requirements
 
 An implementation advertises `obsidian_bases_views` through
