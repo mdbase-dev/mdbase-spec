@@ -3,11 +3,11 @@
 ## Purpose
 
 This companion document defines how an mdbase collection provider exposes
-Obsidian `.base` files as saved-view sources. It builds on the saved-view model
-in [Querying](../11-querying.md) and the saved-view operations in
+Obsidian Bases document records as saved-view sources. It builds on the saved-view
+model in [Querying](../11-querying.md) and the view operations in
 [Operations](../12-operations.md). Implementations that do not advertise the
-`obsidian_bases_views` optional feature ignore `.base` files and the
-`x-obsidian` configuration section.
+`obsidian_bases_views` optional feature can still store and edit these records;
+they need not discover or execute them as views.
 
 ## Bases as records
 
@@ -21,7 +21,7 @@ its type implements `mdbase.view`:
 kind: mdbase.type
 name: obsidian_base
 version: 1
-match: { path_glob: 'TaskNotes/Views/**/*.base' }
+match: { path_glob: '**/*.base' }
 implements:
   - contract: obsidian.base
     version: 1.0.0
@@ -37,46 +37,43 @@ grants. Because Obsidian owns the format, writers SHOULD replace a Base with a
 whole-document `update` so comments and layout survive; structured patches
 remain valid but re-emit the YAML.
 
-The type's path match replaces `x-obsidian.bases.include`, and the record
-operations replace the saved-view source operations for Bases. Both remain
-defined below for collections that do not list `base` as a record extension.
-They are transitional: they are removed in the release that removes the
-saved-view source operations for canonical views, and no new consumer should
-adopt them.
+## Discovery and extension opt-in
 
-## Sources
+A provider discovers view sources from records whose matched type implements
+`obsidian.base`. Discovery MUST NOT use a separate path scan or side list. A path
+glob can match a record to a type, as above, but the implemented contract is what
+makes that record a view source. The contract itself grants no read, execute, or
+write authority; ordinary record grants still apply.
 
-Obsidian `.base` files are external saved-view sources. A collection provider
-discovers configured sources and exposes them through the saved-view operations
-in [Operations](../12-operations.md). Core Read continues to discover records
-through the collection's record extensions.
+The `obsidian.base` catalog pack provides the managed contract and a seeded,
+user-editable `obsidian_base` type matching `**/*.base`. A pack that depends on it
+(such as TaskNotes) can seed additional view records. Seeded view records are
+user-owned and MUST NOT be overwritten on upgrade; user-created Base records
+are discovered by the same contract rule.
 
-Collections enable discovery with a namespaced configuration section:
+`.base` is not a global record-extension default or a special resource kind.
+The pack declares, through its `setup.configuration` collection-setup envelope,
+a requirement that `/settings/record_extensions` contains `"base"`, with a
+`set_add` provision for `"base"`. Assessment shows this addition before apply;
+apply preserves the effective `md` default and existing extensions. Uninstall
+MUST NOT silently remove the extension. Without that opt-in, `.base` files are
+not records and MUST NOT become views through an alternate discovery path.
+Record discovery retains the path-boundary and symlink protections in
+[Collection Layout](../02-collection-layout.md).
 
-```yaml
-x-obsidian:
-  bases:
-    include:
-      - TaskNotes/Views/**/*.base
-    create_folder: TaskNotes/Views
-    default_for_new_views: true
-```
+The older `x-obsidian.bases.include` discovery mechanism and saved-view source
+mutation operations are superseded, not an alternative when the extension is
+disabled. Bases use ordinary record create, update, rename, and delete operations;
+no separate include list, creation-folder setting, or source-operation path is
+required.
 
-`include` contains collection-relative globs as defined in
-[Collection Layout](../02-collection-layout.md). The provider MUST apply
-the same path-boundary and symlink protections used for record discovery.
-`create_folder` identifies the preferred location for new Obsidian sources.
-`default_for_new_views` makes that source format the collection's default when
-a view-creation interface offers no explicit format. Providers advertising
-write support use these values when creating a source.
-
-Write-capable providers validate the complete `.base` document before a
-source operation commits it. They preserve unknown top-level keys, view keys,
+Record writers validate the complete Base document before a record mutation
+commits it. They preserve unknown top-level keys, view keys,
 property metadata, formulas, and presentation options supplied in the
 document. A source editor can therefore modify the structures it understands
 while round-tripping the remainder.
 
-The `.base` file remains authoritative for a discovered Obsidian source.
+The Base record remains authoritative for a discovered Obsidian source.
 `list_views` returns `source.format: obsidian.base`, a revision derived from the
 source bytes, and a stable named-view ID for each contained view. Stable IDs are
 derived deterministically from view names when the source format supplies no
@@ -124,7 +121,7 @@ context before calling the query or view executor.
 An implementation advertises `obsidian_bases_views` through
 `optional_features` when it:
 
-- discovers `.base` sources selected by `x-obsidian.bases.include`
+- discovers record sources whose matched type implements `obsidian.base`
 - assigns deterministic named-view IDs and source revisions
 - parses filters and formulas before candidate evaluation
 - evaluates the Obsidian Bases expression dialect, including formula
@@ -134,7 +131,7 @@ An implementation advertises `obsidian_bases_views` through
 - applies source order, sort, group, limit, and presentation metadata
 - exposes the source's ordered properties and display names
 - returns the saved-view headless result envelope
-- keeps `.base` sources authoritative throughout discovery and execution
+- keeps Base records authoritative throughout discovery and execution
 
 Conformance suites for `obsidian_bases_views` MUST include an oracle corpus
 captured from the supported Obsidian expression environment. Each case records

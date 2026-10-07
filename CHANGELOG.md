@@ -2,6 +2,15 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## Unreleased
+
+### Changed
+
+- Obsidian Bases discovery uses records whose type implements `obsidian.base`.
+  The catalog pack opts into the `base` record extension through a collection-setup
+  `contains` requirement and `set_add` provision; the legacy include-list route is
+  superseded.
+
 ## 0.3.0-rc.5 (draft, untagged)
 
 The fifth release candidate specifies the data semantics that let several
