@@ -158,6 +158,13 @@ when the provider can perform that transaction. If it cannot, it MUST report the
 per-file outcomes explicitly rather than imply all-or-nothing completion. A stale
 CAS is an apply failure, not a successful promotion or a YAML parse diagnostic.
 
+Setup also needs an unoccupied provisioning-receipt resource namespace. If the
+exact path `mdbase.provisions.yaml` is held by an Ordinary File or Record, the
+WHOLE setup MUST fail with a typed namespace-conflict diagnostic and no changes.
+The diagnostic tells the user to rename that exact path before retrying. Setup
+MUST NOT implicitly migrate a File/Record into a resource; `.base` promotion does
+not authorize that separate transition.
+
 During verified lost-tail resurrection, an acknowledged promotion MUST NOT be
 replayed. It has no effects and produces a typed diagnostic; the current holder,
 bytes, and history stay unchanged. Setup can be re-applied idempotently against
