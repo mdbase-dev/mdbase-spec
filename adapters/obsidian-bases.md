@@ -6,8 +6,10 @@ This companion document defines how an mdbase collection provider exposes
 Obsidian `.base` files as saved-view sources. It builds on the saved-view model
 in [Querying](../11-querying.md) and the saved-view operations in
 [Operations](../12-operations.md). Implementations that do not advertise the
-`obsidian_bases_views` optional feature ignore `.base` files and the
-`x-obsidian` configuration section.
+`obsidian_bases_views` optional feature ignore the `x-obsidian` configuration
+section and need not discover or execute Bases as views. A collection that
+lists `base` in `settings.record_extensions` still stores its `.base` files as
+records (Chapter 03), which every implementation reads and writes.
 
 ## Bases as records
 
