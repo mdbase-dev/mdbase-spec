@@ -132,6 +132,10 @@ Bases, seed type upgrades, and saved-view identification.
   are discovered, written, and authorized as ordinary records. Discovery
   through `x-obsidian.bases.include` and the saved-view source operations for
   Bases become transitional.
+- The Obsidian Bases adapter no longer says that implementations without
+  `obsidian_bases_views` ignore `.base` files. Such implementations still
+  store them as records when the collection lists `base` as a record
+  extension; the optional feature covers view discovery and execution only.
 
 ### Seed type upgrades
 
