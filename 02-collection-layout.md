@@ -256,7 +256,7 @@ outcome depends on where the path came from:
 | Path source | Outcome |
 | --- | --- |
 | an explicit path supplied by the caller of create or rename | the operation fails with `path_conflict` before any write |
-| a path derived from `collection.path.pattern` (Chapter 07) | the record receives the first free suffixed path |
+| a path derived from `collection.path.pattern` (Chapter 07) | the record receives the first free suffixed path; when the pattern has path-stored fields, the operation fails with `path_conflict` instead |
 | two records that already hold equivalent paths, for example after concurrent creates or an engine copying records onto another file system | the earlier-ordered record keeps the path; each later one receives the first free suffixed path |
 
 A suffixed path inserts ` (n)`, a space and a decimal integer in parentheses,
@@ -274,3 +274,5 @@ records in the same order computes the same paths.
 
 A suffixed path is an ordinary path. Applying the rule never edits a record's
 frontmatter or body, and the record keeps whatever identity its tool tracks.
+When the record's type stores fields in its path (Chapter 07), the suffix
+becomes part of the decoded value.

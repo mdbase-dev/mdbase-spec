@@ -320,16 +320,34 @@ explicitly.
 
 ## Path Policy
 
-Path policy guides create and rename operations:
+Path policy derives the paths of new records and can store field values in
+the path instead of in frontmatter:
 
 ```yaml
 collection:
   path:
-    pattern: "tasks/{id}.md"
+    pattern: "tasks/{title}.md"
+    fields: [title]
 ```
 
-The portable grammar uses `{field}` placeholders for top-level frontmatter
-fields. Values are converted to strings without expression evaluation: a
+| Member | Required | Meaning |
+| --- | --- | --- |
+| `pattern` | when `fields` is present | the path template for derived paths |
+| `fields` | no | path-stored fields: top-level fields whose values are stored in the path |
+| `x-*` | no | implementation extensions |
+
+Loading a type whose `collection.path` has any other key reports a `warning`
+diagnostic with code `unknown_path_key`, the type name, and `details.key`. The
+type still loads and the key has no effect. Runtime-owned path logic and
+richer template languages belong under an `x-*` extension.
+
+### Patterns
+
+A pattern is literal text and placeholders. A placeholder is `{field}` or
+`{field:FORMAT}`, where `field` names a top-level field. `{` and `}` occur only
+as placeholder delimiters.
+
+`{field}` converts the value to a string without expression evaluation: a
 string is used as written, and a number or boolean uses its JSON
 representation. A missing or null value produces `path_value_missing`.
 
@@ -348,12 +366,167 @@ field, when it:
 - contains `/`, `\`, or a NUL character
 - begins with `.`
 
-A title such as `Q3/Q4 plan` therefore cannot create a subfolder. Generated
-paths MUST remain inside the collection root and MUST satisfy the path safety
-rules of Chapter 02. When a derived path's path key is already in use, the
-record receives the first free suffixed path defined in Chapter 02; the
-operation does not fail. Runtime-owned path logic and richer template
-languages belong under an `x-*` extension.
+A title such as `Q3/Q4 plan` therefore cannot create a subfolder.
+
+`{field:FORMAT}` writes a date. FORMAT is read from left to right as the
+tokens `YYYY` (the four-digit year), `MM` (the two-digit month), and `DD` (the
+two-digit day), taken wherever one begins, and literal characters, which MUST
+NOT be `{`, `}`, `/`, or `\`. FORMAT contains at least one token.
+`{date:DD-MM-YYYY}` writes `2026-10-30` as `30-10-2026`. The value MUST be a
+string holding an RFC 3339 `full-date`; any other value fails with
+`path_value_invalid` naming the field. `{field:FORMAT}` is valid only for a
+field whose top-level property in the type's JSON Schema declares
+`format: date`.
+
+A type whose pattern has a malformed placeholder, or a `{field:FORMAT}` that
+breaks these rules, is invalid with an `invalid_type` error naming the type.
+
+Generated paths MUST remain inside the collection root and MUST satisfy the
+path safety rules of Chapter 02. When a derived path's path key is already in
+use, the record receives the first free suffixed path defined in Chapter 02,
+and the operation does not fail, unless the pattern has path-stored fields
+(below).
+
+### Path-stored fields
+
+```yaml
+collection:
+  path:
+    pattern: "Daily/{date:YYYY}/{date:YYYY-MM-DD}.md"
+    fields: [date]
+```
+
+Each field in `fields` is a **path-stored field**: its value lives in the
+record's path and is never written to frontmatter. A type is invalid, with an
+`invalid_type` error naming the type, when `fields` is present and:
+
+- `pattern` is absent, or a listed field does not occur in `pattern`
+- a field is listed twice, or its top-level property in the type's JSON
+  Schema does not declare `type: string`
+- two placeholders occur with no literal character between them and either
+  names a path-stored field
+- a path-stored field occurs both as `{field}` and as `{field:FORMAT}`, or
+  its `{field:FORMAT}` occurrences do not together contain `YYYY`, `MM`, and
+  `DD`
+
+#### Decoding
+
+The values of a record's path-stored fields are decoded from its
+collection-relative path, using the pattern of each matched type that stores
+fields:
+
+1. The pattern matches the whole path. Literal text matches itself exactly,
+   comparing code points without case folding or normalization. In
+   `{field:FORMAT}`, `YYYY` matches four ASCII digits, `MM` and `DD` each
+   match two, and each literal character matches itself. `{field}` matches
+   one or more characters other than `/`.
+2. When the path can match in more than one way, the placeholders are
+   assigned from left to right, each taking the shortest text with which the
+   rest of the pattern still matches the rest of the path.
+3. A path-stored field written `{field}` has the text its occurrence matched.
+   If it occurs more than once and the texts differ, it has no value.
+4. A path-stored field written `{field:FORMAT}` has the `full-date` formed
+   from the year, month, and day matched by all its occurrences. If two
+   occurrences match different values for one component, or the components
+   do not form a calendar date, it has no value.
+5. Text matched by placeholders of other fields is discarded.
+
+A field left without a value by step 3 or 4 is reported as a `warning` with
+code `path_value_inconsistent` and the field. When the path does not match the
+pattern, every path-stored field of that type is missing, and nothing is
+reported for the path itself; validation reports what a missing value breaks,
+such as `required`. Decoding never normalizes the text.
+
+With `pattern: "notes/{id} {title}.md"` and `fields: [title]`, the path
+`notes/A1 Call Bob back.md` decodes `title` as `Call Bob back`: `{id}` takes
+the shortest text, `A1`. With `tasks/{title}.md`, `tasks/v1.2 notes.md`
+decodes `title` as `v1.2 notes`, because the match is anchored at both ends.
+With the daily-note pattern above, `Daily/2026/2026-10-30.md` decodes `date`
+as `2026-10-30`, and `Daily/2025/2026-10-30.md` leaves it without a value
+and reports `path_value_inconsistent`.
+
+#### Record values
+
+A record's **persisted values** are its persisted frontmatter with each
+path-stored field set to its decoded value, or removed when it has none.
+Outside type matching, every rule that reads a typed record's persisted or raw
+frontmatter reads its persisted values: JSON Schema validation, including
+`required`; collection validators and uniqueness; links; lifecycle drafts and
+`old`; CEL `raw`, `record`, and top-level fields; queries; data contract
+views; and display metadata. `effective_frontmatter` is built from the
+persisted values. The `frontmatter` member of a record document is still the
+mapping parsed from the file and never holds a decoded value (Chapter 03).
+Decoded values are not read defaults; a read default applies to a path-stored
+field only when it is missing.
+
+Decoded values never take part in type matching. `match` reads the raw
+frontmatter and the path, so a `fields_present` or `where` rule does not see a
+path-stored field; the matched types then decide which patterns decode. When
+several matched types store one field and decode different values, the record
+reports `type_conflict` for the field, and the value of the first matched type
+in canonical order is used.
+
+When the frontmatter also has a key named by a path-stored field, the decoded
+value takes its place, or the field is missing when the path does not decode,
+and the record reports a `warning` with code `path_field_in_frontmatter` and
+the field. No tool moves a file because of such a key. A write through an
+engine that sets the field removes the key.
+
+#### Writing
+
+A write never persists a path-stored field to frontmatter. Before a value of a
+path-stored field written `{field}` is placed in a path, it is normalized:
+
+1. each character with the Unicode `White_Space` property becomes U+0020
+   SPACE;
+2. each of `<`, `>`, `:`, `"`, `/`, `\`, `|`, `?`, `*`, `#`, `[`, `]`, and
+   `^` is removed, and so is each control character (U+0000–U+001F,
+   U+007F–U+009F) and each invisible or HFS+-ignored character listed in the
+   portable path rules of Chapter 02;
+3. each run of spaces becomes one space;
+4. leading and trailing characters that are `.` or a space are removed.
+
+The normalized value replaces the value that was written: it is the record's
+value and the value the operation result reports. Normalizing a normalized
+value changes nothing. A value that is not a string, or that is empty after
+normalization, fails with `path_value_invalid` naming the field, and so does a
+value that gives the derived path a segment the portable path rules of
+Chapter 02 forbid, such as the Windows device name `CON` or a segment longer
+than 255 bytes. A missing or null value fails with `path_value_missing`.
+Values for `{field:FORMAT}` are not normalized; they MUST be a `full-date`.
+A write whose new path does not decode to the values it wrote fails with
+`path_value_invalid` naming the first such field: with
+`pattern: "{title} {id}.md"`, the title `x y` would give `x y A1.md`, which
+decodes `title` as `x`. Only values a write sets are normalized, and only a
+changed path-stored value moves a record: a write that sets no path-stored
+field never moves it and succeeds whether or not its path decodes.
+
+When a write changes path-stored fields of an existing record, its new path is
+the current path with the text matched by each occurrence of each changed
+field, as assigned by decoding, replaced by the new value: as written for
+`{field}`, formatted for `{field:FORMAT}`. When the current path does not
+decode, the new path is derived from the whole pattern and the record's
+persisted values. Chapter 12 defines how create, update, and rename use these
+rules. In summary:
+
+- a derived path whose path key belongs to another record fails with
+  `path_conflict`; it never receives a suffix, which would change the stored
+  value
+- an update that changes a path-stored field moves the record, and can
+  update the links that pointed to the old path
+- a rename sets path-stored values to what its target path decodes, and
+  fails with `path_value_missing` when the target does not decode
+- a file moved outside an engine changes its values by decoding
+
+The collision rule of Chapter 02 still applies to paths no single write
+chose: records created concurrently, records copied onto another file system,
+and merged paths (Chapter 12A). Its suffix then becomes part of the decoded
+value, such as `Call Bob (2)`.
+
+**Provisional (rc.6).** Only string fields can be path-stored, and FORMAT
+has only the `YYYY`, `MM`, and `DD` tokens. Normalization follows the
+filename rules TaskNotes applies to titles, made idempotent: removals happen
+before runs of spaces are collapsed and before the ends are trimmed.
 
 ## Merge Strategies
 

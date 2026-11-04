@@ -1,0 +1,1035 @@
+# Path-stored fields (Chapter 07, Path Policy; Chapter 12): fields whose
+# values live in the record's path instead of its frontmatter. The
+# `decode_path` and `derive_path` cases are pure functions that
+# scripts/check_v03_tests.py runs against scripts/concurrent_edits_model.py;
+# the other cases need an adapter.
+name: "path-stored fields"
+spec_version: "0.3.0"
+fixture_set: core_collection
+category: paths
+spec_ref: "v0.3/07, v0.3/12"
+
+groups:
+  - name: "decoding"
+    tests:
+      - name: "a stored field takes the text its placeholder matched"
+        id: path_fields.decode_simple
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "tasks/{title}.md"
+          path: "tasks/Call Bob.md"
+          fields: [title]
+        expect:
+          matched: true
+          values: { title: "Call Bob" }
+          issues: []
+
+      - name: "the match is anchored, so a dot inside the value is kept"
+        id: path_fields.decode_anchored
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "tasks/{title}.md"
+          path: "tasks/v1.2 notes.md"
+          fields: [title]
+        expect:
+          matched: true
+          values: { title: "v1.2 notes" }
+          issues: []
+
+      - name: "earlier placeholders take the shortest text, later ones the rest"
+        id: path_fields.decode_shortest_match
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "notes/{id} {title}.md"
+          path: "notes/A1 Call Bob back.md"
+          fields: [title]
+        expect:
+          matched: true
+          values: { title: "Call Bob back" }
+          issues: []
+
+      - name: "a non-stored placeholder's text is discarded"
+        id: path_fields.decode_unstored_discarded
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "notes/{id} {title}.md"
+          path: "notes/A1 B2 C3.md"
+          fields: [id]
+        expect:
+          matched: true
+          values: { id: A1 }
+          issues: []
+
+      - name: "formatted date occurrences combine into one full-date"
+        id: path_fields.decode_date_nested
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "Daily/{date:YYYY}/{date:MM}/{date:YYYY-MM-DD}.md"
+          path: "Daily/2026/10/2026-10-30.md"
+          fields: [date]
+        expect:
+          matched: true
+          values: { date: "2026-10-30" }
+          issues: []
+
+      - name: "a format can reorder the components"
+        id: path_fields.decode_date_reordered
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "Daily/{date:DD-MM-YYYY}.md"
+          path: "Daily/30-10-2026.md"
+          fields: [date]
+        expect:
+          matched: true
+          values: { date: "2026-10-30" }
+          issues: []
+
+      - name: "occurrences that disagree leave the field without a value"
+        id: path_fields.decode_date_inconsistent
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "Daily/{date:YYYY}/{date:MM}/{date:YYYY-MM-DD}.md"
+          path: "Daily/2025/10/2026-10-30.md"
+          fields: [date]
+        expect:
+          matched: true
+          values: {}
+          issues:
+            - { code: path_value_inconsistent, field: date }
+
+      - name: "components that are not a calendar date are inconsistent"
+        id: path_fields.decode_date_not_calendar
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "Daily/{date:YYYY-MM-DD}.md"
+          path: "Daily/2026-02-30.md"
+          fields: [date]
+        expect:
+          matched: true
+          values: {}
+          issues:
+            - { code: path_value_inconsistent, field: date }
+
+      - name: "a token matches exactly its number of digits"
+        id: path_fields.decode_date_digit_count
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "Daily/{date:DD-MM-YYYY}.md"
+          path: "Daily/30-10-26.md"
+          fields: [date]
+        expect:
+          matched: false
+          values: {}
+          issues: []
+
+      - name: "repeated plain occurrences that differ are inconsistent"
+        id: path_fields.decode_repeated_inconsistent
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "projects/{name}/{name}.md"
+          path: "projects/alpha/beta.md"
+          fields: [name]
+        expect:
+          matched: true
+          values: {}
+          issues:
+            - { code: path_value_inconsistent, field: name }
+
+      - name: "a path that does not match leaves stored fields missing"
+        id: path_fields.decode_no_match
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "tasks/{title}.md"
+          path: "tasks/archive/Call Bob.md"
+          fields: [title]
+        expect:
+          matched: false
+          values: {}
+          issues: []
+
+      - name: "decoding compares literal text by code point"
+        id: path_fields.decode_case_sensitive_literal
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: decode_path
+        input:
+          pattern: "tasks/{title}.md"
+          path: "Tasks/Call Bob.md"
+          fields: [title]
+        expect:
+          matched: false
+          values: {}
+          issues: []
+
+  - name: "normalization and derivation"
+    tests:
+      - name: "whitespace runs collapse and the ends are trimmed"
+        id: path_fields.normalize_whitespace
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: "  Call \t Bob\nback  "
+        expect:
+          path: "tasks/Call Bob back.md"
+          values: { title: "Call Bob back" }
+
+      - name: "forbidden characters are removed, so a slash cannot create a folder"
+        id: path_fields.normalize_removed_characters
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: "Q3/Q4: plan?"
+        expect:
+          path: "tasks/Q3Q4 plan.md"
+          values: { title: "Q3Q4 plan" }
+
+      - name: "every listed character is removed before spaces collapse"
+        id: path_fields.normalize_full_list
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: "#tag [link] ^block | <x> \"q\" * a\\b"
+        expect:
+          path: "tasks/tag link block x q ab.md"
+          values: { title: "tag link block x q ab" }
+
+      - name: "control and invisible characters are removed"
+        id: path_fields.normalize_control_invisible
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: "a\x07b ​ c­"
+        expect:
+          path: "tasks/ab c.md"
+          values: { title: "ab c" }
+
+      - name: "leading and trailing dots and spaces are removed"
+        id: path_fields.normalize_dots
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: " . .hidden draft. . "
+        expect:
+          path: "tasks/hidden draft.md"
+          values: { title: "hidden draft" }
+
+      - name: "a value that would not decode back is invalid"
+        id: path_fields.derive_round_trip
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "{title} {id}.md"
+          fields: [title]
+          frontmatter:
+            title: "x y"
+            id: A1
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+
+      - name: "a value empty after normalization is invalid"
+        id: path_fields.normalize_empty
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: " ?:* .. "
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+
+      - name: "a Windows device name is invalid"
+        id: path_fields.normalize_device_name
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: "con"
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+
+      - name: "a stored value that is not a string is invalid"
+        id: path_fields.normalize_not_string
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter:
+            title: 42
+        expect:
+          error:
+            code: path_value_invalid
+            field: title
+
+      - name: "a missing stored value is path_value_missing"
+        id: path_fields.normalize_missing
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "tasks/{title}.md"
+          fields: [title]
+          frontmatter: {}
+        expect:
+          error:
+            code: path_value_missing
+            field: title
+
+      - name: "a formatted placeholder writes each occurrence's components"
+        id: path_fields.derive_date_format
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "Daily/{date:YYYY}/{date:DD-MM-YYYY}.md"
+          fields: [date]
+          frontmatter:
+            date: "2026-10-30"
+        expect:
+          path: "Daily/2026/30-10-2026.md"
+          values: { date: "2026-10-30" }
+
+      - name: "a formatted placeholder needs a full-date"
+        id: path_fields.derive_date_invalid
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "Daily/{date:YYYY-MM-DD}.md"
+          fields: [date]
+          frontmatter:
+            date: "30/10/2026"
+        expect:
+          error:
+            code: path_value_invalid
+            field: date
+
+      - name: "a format works for a field that is not stored"
+        id: path_fields.derive_date_unstored
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: derive_path
+        input:
+          pattern: "meetings/{date:YYYY}/{title}.md"
+          frontmatter:
+            date: "2026-10-30"
+            title: Standup
+        expect:
+          path: "meetings/2026/Standup.md"
+
+  - name: "type loading"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        legacy.md: |
+          ---
+          kind: mdbase.type
+          name: legacy
+          version: 1
+          match:
+            path_glob: "legacy/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+          collection:
+            path:
+              pattern: "legacy/{title}.md"
+              fields: [title]
+              runtime: tasknotes
+              x-tasknotes:
+                template: "{{title}}"
+          ---
+    tests:
+      - name: "a key other than pattern, fields, or x-* loads with a warning"
+        id: path_fields.unknown_path_key
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: load_types
+        input: {}
+        expect:
+          valid: true
+          diagnostics:
+            - code: unknown_path_key
+              severity: warning
+              type: legacy
+              details: { key: runtime }
+
+  - name: "invalid path-stored declarations"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        adjacent.md: |
+          ---
+          kind: mdbase.type
+          name: adjacent
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                id: { type: string }
+                title: { type: string }
+          collection:
+            path:
+              pattern: "notes/{id}{title}.md"
+              fields: [title]
+          ---
+        not-string.md: |
+          ---
+          kind: mdbase.type
+          name: not_string
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                rank: { type: integer }
+          collection:
+            path:
+              pattern: "ranks/{rank}.md"
+              fields: [rank]
+          ---
+        absent-field.md: |
+          ---
+          kind: mdbase.type
+          name: absent_field
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                id: { type: string }
+                title: { type: string }
+          collection:
+            path:
+              pattern: "items/{id}.md"
+              fields: [title]
+          ---
+        format-not-date.md: |
+          ---
+          kind: mdbase.type
+          name: format_not_date
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                day: { type: string }
+          collection:
+            path:
+              pattern: "days/{day:YYYY-MM-DD}.md"
+              fields: [day]
+          ---
+        partial-date.md: |
+          ---
+          kind: mdbase.type
+          name: partial_date
+          version: 1
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                month: { type: string, format: date }
+          collection:
+            path:
+              pattern: "months/{month:YYYY-MM}.md"
+              fields: [month]
+          ---
+    tests:
+      - name: "invalid declarations make their types invalid"
+        id: path_fields.invalid_declarations
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: load_types
+        input: {}
+        expect:
+          valid: false
+          diagnostics:
+            - { code: invalid_type, severity: error, type: adjacent }
+            - { code: invalid_type, severity: error, type: not_string }
+            - { code: invalid_type, severity: error, type: absent_field }
+            - { code: invalid_type, severity: error, type: format_not_date }
+            - { code: invalid_type, severity: error, type: partial_date }
+
+  - name: "title stored in the filename"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      types:
+        task.md: |
+          ---
+          kind: mdbase.type
+          name: task
+          version: 1
+          match:
+            path_glob: "tasks/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1 }
+                status: { enum: [open, done] }
+          collection:
+            path:
+              pattern: "tasks/{title}.md"
+              fields: [title]
+          ---
+      files:
+        tasks/Call Bob.md: |
+          ---
+          status: open
+          ---
+          Ring before noon.
+        tasks/Ring Alice.md: |
+          ---
+          status: open
+          ---
+        tasks/Dup.md: |
+          ---
+          title: Other
+          status: open
+          ---
+        tasks/sub/orphan.md: |
+          ---
+          status: open
+          ---
+        notes/plan.md: |
+          ---
+          ref: "[[Call Bob]]"
+          ---
+    tests:
+      - name: "a read reports the decoded value in effective frontmatter only"
+        id: path_fields.read_decoded
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: read
+        input:
+          path: "tasks/Call Bob.md"
+        expect:
+          valid: true
+          types: [task]
+          frontmatter: { status: open }
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Call Bob", status: open }
+          diagnostics: []
+
+      - name: "decoded values are visible to queries through raw"
+        id: path_fields.query_raw
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: query
+        input:
+          types: [task]
+          where: 'raw.title == "Call Bob"'
+        expect:
+          valid: true
+          results:
+            - path: "tasks/Call Bob.md"
+
+      - name: "a path that does not decode leaves a required stored field missing"
+        id: path_fields.required_validation
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: validate
+        input:
+          path: "tasks/sub/orphan.md"
+        expect:
+          valid: false
+          issues:
+            - { code: schema_required, severity: error, field: title }
+
+      - name: "a frontmatter key named by a stored field loses to the path"
+        id: path_fields.frontmatter_duplicate
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: read
+        input:
+          path: "tasks/Dup.md"
+        expect:
+          valid: true
+          frontmatter: { title: Other }
+          effective_frontmatter: { title: Dup }
+          diagnostics:
+            - { code: path_field_in_frontmatter, severity: warning, field: title }
+
+      - name: "create derives the path and never persists the stored field"
+        id: path_fields.create_not_persisted
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: "  Q3/Q4: plan? ", status: open }
+        expect:
+          valid: true
+          path: "tasks/Q3Q4 plan.md"
+          frontmatter: { status: open }
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Q3Q4 plan" }
+
+      - name: "a derived path taken by another record fails instead of taking a suffix"
+        id: path_fields.create_collision
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: "call bob", status: open }
+        expect:
+          valid: false
+          error:
+            code: path_conflict
+
+      - name: "an explicit path supplies the stored value"
+        id: path_fields.create_explicit_path
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: task
+          path: "tasks/Email Carol.md"
+          frontmatter: { status: open }
+        expect:
+          valid: true
+          path: "tasks/Email Carol.md"
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Email Carol" }
+
+      - name: "an explicit path that disagrees with the requested value is rejected"
+        id: path_fields.create_explicit_mismatch
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: task
+          path: "tasks/Email Carol.md"
+          frontmatter: { title: "Email Dave", status: open }
+        expect:
+          valid: false
+          error:
+            code: invalid_request
+            field: title
+            details: { reason: path_value_mismatch }
+
+      - name: "patching a stored field moves the record and rewrites its links"
+        id: path_fields.update_moves
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          patch: { title: "Call Robert" }
+          update_refs: true
+        expect:
+          valid: true
+          path: "tasks/Call Robert.md"
+          frontmatter: { status: open }
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Call Robert", status: open }
+          body_contains: "Ring before noon."
+          references_updated:
+            - path: "notes/plan.md"
+              field: ref
+              old_value: "[[Call Bob]]"
+              new_value: "[[Call Robert]]"
+        verify_after:
+          operation: read
+          input:
+            path: "tasks/Call Robert.md"
+          expect:
+            valid: true
+            effective_frontmatter: { title: "Call Robert" }
+
+      - name: "a case-only change respells the path"
+        id: path_fields.update_respells
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          patch: { title: "call bob" }
+        expect:
+          valid: true
+          path: "tasks/call bob.md"
+          effective_frontmatter: { title: "call bob" }
+
+      - name: "the patched value is normalized"
+        id: path_fields.update_normalizes
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          patch: { title: "Call Bob?" }
+        expect:
+          valid: true
+          path: "tasks/Call Bob.md"
+          effective_frontmatter: { title: "Call Bob" }
+
+      - name: "an update onto another record's path fails"
+        id: path_fields.update_collision
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          patch: { title: "ring alice" }
+        expect:
+          valid: false
+          error:
+            code: path_conflict
+        verify_after:
+          operation: read
+          input:
+            path: "tasks/Call Bob.md"
+          expect:
+            valid: true
+            effective_frontmatter: { title: "Call Bob" }
+
+      - name: "unsetting a stored field is path_value_missing"
+        id: path_fields.update_unset
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          unset: [title]
+        expect:
+          valid: false
+          error:
+            code: path_value_missing
+            field: title
+
+      - name: "a record whose path does not decode moves to the derived path"
+        id: path_fields.update_from_undecodable
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/sub/orphan.md"
+          patch: { title: Orphan }
+        expect:
+          valid: true
+          path: "tasks/Orphan.md"
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: Orphan }
+
+      - name: "setting the field removes a duplicate frontmatter key"
+        id: path_fields.update_removes_duplicate_key
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Dup.md"
+          patch: { title: Dedup }
+        expect:
+          valid: true
+          path: "tasks/Dedup.md"
+          frontmatter: { status: open }
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: Dedup }
+          diagnostics: []
+
+      - name: "a document replacement with an equal stored key drops the key"
+        id: path_fields.document_equal_value
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          document: |
+            ---
+            title: Call Bob
+            status: done
+            ---
+            Ring before noon.
+        expect:
+          valid: true
+          path: "tasks/Call Bob.md"
+          frontmatter: { status: done }
+          frontmatter_not_contains: [title]
+
+      - name: "a document replacement with a different stored key moves the record"
+        id: path_fields.document_moves
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          document: |
+            ---
+            title: Call Robert
+            status: open
+            ---
+            Ring before noon.
+        expect:
+          valid: true
+          path: "tasks/Call Robert.md"
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Call Robert" }
+
+      - name: "a rename sets the stored value from the target path"
+        id: path_fields.rename_decodes
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: rename
+        input:
+          from: "tasks/Call Bob.md"
+          to: "tasks/Phone Bob.md"
+        expect:
+          valid: true
+          path: "tasks/Phone Bob.md"
+          frontmatter_not_contains: [title]
+          effective_frontmatter: { title: "Phone Bob" }
+
+      - name: "a rename to a path that does not decode fails"
+        id: path_fields.rename_not_decodable
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: rename
+        input:
+          from: "tasks/Call Bob.md"
+          to: "tasks/archive/Call Bob.md"
+        expect:
+          valid: false
+          error:
+            code: path_value_missing
+            field: title
+
+  - name: "id and title in the filename"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        zettel.md: |
+          ---
+          kind: mdbase.type
+          name: zettel
+          version: 1
+          match:
+            path_glob: "zettel/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                id: { type: string }
+                title: { type: string }
+          collection:
+            path:
+              pattern: "zettel/{id} {title}.md"
+              fields: [title]
+          ---
+      files:
+        zettel/A1 Old idea.md: |
+          ---
+          id: B2
+          ---
+    tests:
+      - name: "create fills both placeholders and stores only the title"
+        id: path_fields.zettel_create
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: zettel
+          frontmatter: { id: "202610301200", title: First note }
+        expect:
+          valid: true
+          path: "zettel/202610301200 First note.md"
+          frontmatter: { id: "202610301200" }
+          frontmatter_not_contains: [title]
+
+      - name: "an update replaces only the stored field's span"
+        id: path_fields.zettel_update_span
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "zettel/A1 Old idea.md"
+          patch: { title: New idea }
+        expect:
+          valid: true
+          path: "zettel/A1 New idea.md"
+          frontmatter: { id: B2 }
+          effective_frontmatter: { id: B2, title: New idea }
+
+  - name: "daily notes"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          timezone: UTC
+      types:
+        daily.md: |
+          ---
+          kind: mdbase.type
+          name: daily
+          version: 1
+          match:
+            path_glob: "Daily/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [date]
+              properties:
+                date: { type: string, format: date }
+                mood: { type: string }
+          collection:
+            path:
+              pattern: "Daily/{date:YYYY}/{date:YYYY-MM-DD}.md"
+              fields: [date]
+          lifecycle:
+            on_create:
+              - if: '!has(raw.date)'
+                set:
+                  date: { today: true }
+          ---
+      files:
+        Daily/2026/2026-10-29.md: |
+          ---
+          mood: calm
+          ---
+        Daily/2025/2026-10-28.md: |
+          ---
+          mood: odd
+          ---
+    tests:
+      - name: "create derives the path after lifecycle supplies the date"
+        id: path_fields.create_after_lifecycle
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: daily
+          now: "2026-10-30T09:00:00Z"
+          frontmatter: { mood: bright }
+        expect:
+          valid: true
+          path: "Daily/2026/2026-10-30.md"
+          frontmatter: { mood: bright }
+          frontmatter_not_contains: [date]
+          effective_frontmatter: { date: "2026-10-30", mood: bright }
+
+      - name: "a daily note that already exists is a path conflict"
+        id: path_fields.create_date_collision
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: create
+        input:
+          type: daily
+          frontmatter: { date: "2026-10-29" }
+        expect:
+          valid: false
+          error:
+            code: path_conflict
+
+      - name: "a read decodes the date from both occurrences"
+        id: path_fields.read_date
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: read
+        input:
+          path: "Daily/2026/2026-10-29.md"
+        expect:
+          valid: true
+          effective_frontmatter: { date: "2026-10-29", mood: calm }
+          diagnostics: []
+
+      - name: "disagreeing occurrences report path_value_inconsistent"
+        id: path_fields.read_date_inconsistent
+        since: 0.3.0-rc.6
+        covers: [collection_semantics.path_stored_fields]
+        operation: validate
+        input:
+          path: "Daily/2025/2026-10-28.md"
+        expect:
+          valid: false
+          issues:
+            - { code: path_value_inconsistent, severity: warning, field: date }
+            - { code: schema_required, severity: error, field: date }
+
+      - name: "an update of the date moves the note into the right folder"
+        id: path_fields.update_date_moves
+        since: 0.3.0-rc.6
+        covers: [core_write.path_stored_writes]
+        operation: update
+        input:
+          path: "Daily/2026/2026-10-29.md"
+          patch: { date: "2025-12-31" }
+        expect:
+          valid: true
+          path: "Daily/2025/2025-12-31.md"
+          frontmatter: { mood: calm }
+          frontmatter_not_contains: [date]

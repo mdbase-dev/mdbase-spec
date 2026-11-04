@@ -342,7 +342,8 @@ directly comparable without making one product's internal API normative.
 ## Versioning
 
 This specification uses semantic versioning. The current version is **0.3.0**,
-in its fifth release candidate (`0.3.0-rc.5`). 0.3.0 is declared stable once
+in its fifth release candidate (`0.3.0-rc.5`); the sixth (`0.3.0-rc.6`) is
+in draft. 0.3.0 is declared stable once
 implementations pass the conformance suite.
 Collections declare their specification version with `spec_version` in
 `mdbase.yaml`. Tools declare the profiles and versions they implement.
@@ -370,7 +371,7 @@ The keywords `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are to be
 interpreted as described in RFC 2119.
 
 Draft notes use ordinary prose and are non-normative. A paragraph that begins
-with **Provisional (rc.5).** records a choice made where the design input
+with **Provisional (rc.5).** or **Provisional (rc.6).** records a choice made where the design input
 left a detail open. It is normative in the release candidate and may change
 before 0.3.0 is declared stable. The
 [0.3.0-rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every such

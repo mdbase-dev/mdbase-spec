@@ -76,7 +76,8 @@ The shared fixtures live in `tests/v0.3/`, and `tests/v0.3/README.md` defines
 their format. That includes the `merge_records` form, which states a merge case
 as a base version, two edited versions, and the type declarations, with the
 exact merged bytes and conflicts as the expected result. Each test added in a
-release candidate after rc.4 records it with `since: 0.3.0-rc.5`.
+release candidate after rc.4 records that release candidate, such as
+`since: 0.3.0-rc.5` or `since: 0.3.0-rc.6`.
 
 ### Portable Interoperability Testbed
 
@@ -151,7 +152,8 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `projection_shadowed`, `link_not_found`, `link_target_type_mismatch`,
 `ambiguous_link`, `duplicate_value`, `path_conflict`, `path_collision`,
 `type_conflict`, `type_membership_changed`, `path_value_missing`,
-`path_value_invalid`, `nondeterministic_match`, `invalid_pattern`,
+`path_value_invalid`, `path_value_inconsistent`, `path_field_in_frontmatter`,
+`unknown_path_key`, `invalid_type`, `nondeterministic_match`, `invalid_pattern`,
 `schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
 `lifecycle_expression_error`, `concurrent_modification`, `invalid_query`,
@@ -232,6 +234,8 @@ Collection Semantics implementations MUST:
   `enforce: write` uniqueness rules
 - load `collection.merge` declarations and derive default merge strategies
 - validate portable `collection.path` policies for write-capable tools
+- decode path-stored fields from record paths and use the decoded values
+  wherever persisted values are read, except type matching
 - expose display metadata as advisory values
 - compose compatible behavior from multiple matched types
 - report `type_conflict` for incompatible matched behavior
@@ -386,6 +390,10 @@ Core Write implementations MUST:
 - reject an explicit path that collides under path equivalence with
   `path_conflict`, give a colliding derived path the first free suffix, and
   reject invalid path-pattern values with `path_value_invalid`
+- never persist path-stored fields to frontmatter, normalize their values,
+  derive paths from them after lifecycle, reject a colliding derived path
+  with `path_conflict`, and move a record atomically when an update changes
+  a path-stored field
 - enforce `enforce: write` uniqueness rules in a single write order
 - enforce `if_revision` when the caller supplies it, and never supply it on a
   caller's behalf
@@ -477,8 +485,10 @@ by `record_created`.
 `record_created` and `record_modified` include current effective frontmatter.
 `record_renamed` includes `path`, `previous_path`, and current effective
 frontmatter. `record_modified.changed_fields` contains the top-level raw
-frontmatter keys whose persisted values changed; it is empty for a body-only
-change. A deleted notification may include the last observed frontmatter.
+frontmatter keys whose persisted values changed, and the path-stored fields
+(Chapter 07) whose decoded values changed; it is empty for a body-only
+change. A change of path that changes path-stored values is reported as
+`record_renamed` followed by `record_modified`. A deleted notification may include the last observed frontmatter.
 
 Watch implementations MUST:
 
