@@ -85,7 +85,7 @@ single record being written. Checks are divided into three tiers:
 
 | Tier | Checks | Effect on a write made through an engine |
 | --- | --- | --- |
-| request and safety | invalid requests, path escapes and unsafe paths, `path_conflict` for an explicit path, configuration and type-file errors, `type_conflict`, `type_membership_changed`, lifecycle failures, `if_revision` failures, expression compilation errors, and `collection.unique` rules with `enforce: write` | always rejected, at every validation level |
+| request and safety | invalid requests, path escapes and unsafe paths, `path_conflict` for an explicit path or a path with path-stored fields, `path_value_missing` and `path_value_invalid` on a write, configuration and type-file errors, `type_conflict`, `type_membership_changed`, lifecycle failures, `if_revision` failures, expression compilation errors, and `collection.unique` rules with `enforce: write` | always rejected, at every validation level |
 | single-record | JSON Schema failures, `format_invalid`, non-mapping frontmatter, and data contract view failures | follows the validation level below |
 | cross-record | `collection.unique` rules with `enforce: report`, `link_not_found`, link `target_type` mismatches, `ambiguous_link`, and `path_collision` | reported, never rejected |
 
@@ -95,6 +95,10 @@ records; such a check never blocks a write, because another tool, another
 device, or a later edit can change the other records at any time. The only
 exception is a uniqueness rule that explicitly opts into `enforce: write`
 (Chapter 07).
+
+`path_value_inconsistent` and `path_field_in_frontmatter` (Chapter 07) are
+single-record checks whose severity is always `warning`: they are reported at
+levels `warn` and `error` and never reject a write.
 
 Writes that do not go through an engine's write operations are never rejected.
 That includes edits made by other tools, files that appear through a file

@@ -59,15 +59,19 @@ During collection load, an implementation:
    contract registry
 
 Each valid definition then enters the collection's type registry. Diagnostics
-for an invalid definition identify the type-file path and the failing section.
+for an invalid definition identify the type-file path and the failing section,
+with the code of the failing check, or `invalid_type` when no more specific
+code applies.
 
 For each record, an implementation:
 
 1. parses the record path and raw persisted frontmatter
 2. determines its matched types using Chapter 07
-3. validates the raw frontmatter against every matched JSON Schema
-4. evaluates every matched type's collection validators
-5. constructs effective read values, including compatible read defaults and
+3. decodes the values of path-stored fields from the path (Chapter 07)
+4. validates the raw frontmatter, with those values, against every matched
+   JSON Schema
+5. evaluates every matched type's collection validators
+6. constructs effective read values, including compatible read defaults and
    projections supported by the implementation
 
 Type selection and record validation are separate operations. An explicit type
@@ -132,9 +136,10 @@ remain within the collection or installed pack root that owns the schema.
 
 Exactly one of `value` and `ref` is required. A type containing both is invalid.
 
-The JSON Schema validates raw persisted frontmatter. Read defaults,
-projections, and lifecycle values enter at the stages defined by their own
-chapters.
+The JSON Schema validates raw persisted frontmatter, together with the values
+of path-stored fields decoded from the record's path (Chapter 07). Read
+defaults, projections, and lifecycle values enter at the stages defined by
+their own chapters.
 
 ## mdbase Sections
 

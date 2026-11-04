@@ -47,6 +47,7 @@ claim_profiles:
       - unique_scope  # since 0.3.0-rc.5
       - cross_record_reporting  # since 0.3.0-rc.5
       - merge_declarations  # since 0.3.0-rc.5
+      - path_stored_fields  # since 0.3.0-rc.6
   - id: data_contracts
     status: coverage_complete
     requires: [core_read]
@@ -118,6 +119,7 @@ claim_profiles:
       - path_pattern_values  # since 0.3.0-rc.5
       - rename_references  # since 0.3.0-rc.5
       - body_edits  # since 0.3.0-rc.5
+      - path_stored_writes  # since 0.3.0-rc.6
   - id: merge  # since 0.3.0-rc.5
     status: coverage_complete
     requires: [core_write]
@@ -226,6 +228,7 @@ fixture_sets:
       - core/validation-tiers.yaml
       - core/list-ops-and-fidelity.yaml
       - core/paths.yaml
+      - core/path-fields.yaml
       - core/link-ambiguity.yaml
       - core/rename-references.yaml
       - core/body-edits-update.yaml

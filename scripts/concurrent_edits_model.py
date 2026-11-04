@@ -6,6 +6,7 @@ This is not an mdbase implementation. It models the functions that the
 
 - path keys, path equivalence, and the collision suffix rule (Chapter 02)
 - path-pattern derivation and placeholder validation (Chapter 07)
+- path-stored field normalization and decoding (Chapter 07, since rc.6)
 - default and declared merge strategies (Chapter 07)
 - the three-way record merge and writer format fidelity (Chapter 12A)
 - move detection pairing (Chapter 12A)
@@ -155,33 +156,216 @@ class PathError(Exception):
         self.field = field_name
 
 
-def derive_path(pattern: str, frontmatter: dict[str, Any]) -> str:
-    out = []
+DATE_TOKENS = ("YYYY", "MM", "DD")
+FULL_DATE = re.compile(r"^([0-9]{4})-([0-9]{2})-([0-9]{2})$")
+
+# Chapter 02: characters that are invisible or that HFS+ ignores in names.
+INVISIBLE_RANGES = [
+    (0x00AD, 0x00AD), (0x034F, 0x034F), (0x115F, 0x1160), (0x17B4, 0x17B5),
+    (0x180B, 0x180F), (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F),
+    (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF), (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8), (0x1BCA0, 0x1BCA3), (0x1D173, 0x1D17A), (0xE0000, 0xE0FFF),
+]
+# Unicode White_Space property.
+WHITE_SPACE = set(
+    [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0xA0, 0x1680]
+    + list(range(0x2000, 0x200B))
+    + [0x2028, 0x2029, 0x202F, 0x205F, 0x3000]
+)
+REMOVED_CHARACTERS = set('<>:"/\\|?*#[]^')
+DEVICE_NAMES = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "CLOCK$"} | {
+    f"{prefix}{digit}" for prefix in ("COM", "LPT") for digit in "0123456789\u00b9\u00b2\u00b3"
+}
+
+
+def parse_pattern(pattern: str) -> list[tuple]:
+    """Split a path pattern into ("lit", text) and ("ph", field, format_tokens | None) parts.
+
+    format_tokens is a list of "YYYY", "MM", "DD", or ("lit", char) items.
+    """
+    parts: list[tuple] = []
     rest = pattern
     while "{" in rest:
         open_index = rest.index("{")
         close_index = rest.index("}", open_index)
-        out.append(rest[:open_index])
-        name = rest[open_index + 1 : close_index]
+        if open_index:
+            parts.append(("lit", rest[:open_index]))
+        body = rest[open_index + 1 : close_index]
+        name, colon, fmt = body.partition(":")
+        tokens = None
+        if colon:
+            tokens = []
+            i = 0
+            while i < len(fmt):
+                for token in DATE_TOKENS:
+                    if fmt.startswith(token, i):
+                        tokens.append(token)
+                        i += len(token)
+                        break
+                else:
+                    tokens.append(("lit", fmt[i]))
+                    i += 1
+        parts.append(("ph", name, tokens))
+        rest = rest[close_index + 1 :]
+    if rest:
+        parts.append(("lit", rest))
+    return parts
+
+
+def normalize_stored_value(value: str) -> str:
+    """Chapter 07 normalization of a path-stored value written `{field}`."""
+    chars = [" " if ord(c) in WHITE_SPACE else c for c in value]
+    kept = []
+    for c in chars:
+        code = ord(c)
+        if c in REMOVED_CHARACTERS or code <= 0x1F or 0x7F <= code <= 0x9F:
+            continue
+        if any(lo <= code <= hi for lo, hi in INVISIBLE_RANGES):
+            continue
+        kept.append(c)
+    text = re.sub(" +", " ", "".join(kept))
+    return text.strip(". ")
+
+
+def is_device_name(segment: str) -> bool:
+    stem = segment.split(".", 1)[0].rstrip(" ")
+    return stem.upper() in DEVICE_NAMES
+
+
+def format_date(value: Any, tokens: list, name: str) -> str:
+    match = FULL_DATE.match(value) if isinstance(value, str) else None
+    if not match:
+        raise PathError("path_value_invalid", name)
+    year, month, day = match.groups()
+    out = []
+    for token in tokens:
+        out.append({"YYYY": year, "MM": month, "DD": day}[token] if isinstance(token, str) else token[1])
+    return "".join(out)
+
+
+def derive_path_and_values(
+    pattern: str, frontmatter: dict[str, Any], fields: list[str] | None = None
+) -> tuple[str, dict[str, Any]]:
+    """Derive a path; path-stored string values written `{field}` are normalized first."""
+    stored = set(fields or [])
+    values: dict[str, Any] = {}
+    for name in fields or []:
         value = frontmatter.get(name)
         if value is None:
             raise PathError("path_value_missing", name)
-        if isinstance(value, (list, dict)):
-            raise PathError("path_value_invalid", name)
-        if isinstance(value, bool):
-            text = "true" if value else "false"
-        elif isinstance(value, str):
-            text = value
-        elif isinstance(value, float):
-            text = es_number(value)
+        values[name] = value
+    out = []
+    owners: list[set[str]] = [set()]
+    for part in parse_pattern(pattern):
+        if part[0] == "lit":
+            out.append(part[1])
+            for _ in range(part[1].count("/")):
+                owners.append(set())
+            continue
+        _, name, tokens = part
+        value = frontmatter.get(name)
+        if value is None:
+            raise PathError("path_value_missing", name)
+        if tokens is not None:
+            text = format_date(value, tokens, name)
+        elif name in stored:
+            if not isinstance(value, str):
+                raise PathError("path_value_invalid", name)
+            text = normalize_stored_value(value)
+            values[name] = text
+            if text == "":
+                raise PathError("path_value_invalid", name)
         else:
-            text = json.dumps(value)
-        if text == "" or "/" in text or "\\" in text or "\0" in text or text.startswith("."):
-            raise PathError("path_value_invalid", name)
+            if isinstance(value, (list, dict)):
+                raise PathError("path_value_invalid", name)
+            if isinstance(value, bool):
+                text = "true" if value else "false"
+            elif isinstance(value, str):
+                text = value
+            elif isinstance(value, float):
+                text = es_number(value)
+            else:
+                text = json.dumps(value)
+            if text == "" or "/" in text or "\\" in text or "\0" in text or text.startswith("."):
+                raise PathError("path_value_invalid", name)
+        if name in stored:
+            owners[-1].add(name)
         out.append(text)
-        rest = rest[close_index + 1 :]
-    out.append(rest)
-    return "".join(out)
+    path = "".join(out)
+    for segment, names in zip(path.split("/"), owners):
+        if names and (is_device_name(segment) or len(segment.encode("utf-8")) > 255):
+            raise PathError("path_value_invalid", sorted(names, key=list(fields or []).index)[0])
+    if fields:
+        decoded = decode_path(pattern, path, list(fields))["values"]
+        for name in fields:
+            if decoded.get(name) != values[name]:
+                raise PathError("path_value_invalid", name)
+    return path, values
+
+
+def derive_path(pattern: str, frontmatter: dict[str, Any]) -> str:
+    return derive_path_and_values(pattern, frontmatter)[0]
+
+
+def decode_path(pattern: str, path: str, fields: list[str]) -> dict[str, Any]:
+    """Chapter 07 decoding: anchored, placeholders shortest-first left to right."""
+    parts = parse_pattern(pattern)
+    regex = ["^"]
+    groups: list[tuple[str, list | None]] = []
+    for part in parts:
+        if part[0] == "lit":
+            regex.append(re.escape(part[1]))
+            continue
+        _, name, tokens = part
+        if tokens is None:
+            regex.append("([^/]+?)")
+        else:
+            inner = []
+            for token in tokens:
+                if isinstance(token, str):
+                    inner.append("([0-9]{%d})" % len(token))
+                else:
+                    inner.append(re.escape(token[1]))
+            regex.append("".join(inner))
+        groups.append((name, tokens))
+    match = re.match("".join(regex) + "$", path)
+    if not match:
+        return {"matched": False, "values": {}, "issues": []}
+    captured = iter(match.groups())
+    texts: dict[str, list[str]] = {}
+    components: dict[str, dict[str, set[str]]] = {}
+    for name, tokens in groups:
+        if tokens is None:
+            texts.setdefault(name, []).append(next(captured))
+        else:
+            for token in tokens:
+                if isinstance(token, str):
+                    components.setdefault(name, {}).setdefault(token, set()).add(next(captured))
+    values: dict[str, Any] = {}
+    issues = []
+    for name in fields:
+        if name in texts:
+            if len(set(texts[name])) == 1:
+                values[name] = texts[name][0]
+            else:
+                issues.append({"code": "path_value_inconsistent", "field": name})
+            continue
+        parts_seen = components.get(name, {})
+        if all(len(parts_seen.get(token, ())) == 1 for token in DATE_TOKENS):
+            year, month, day = (next(iter(parts_seen[token])) for token in DATE_TOKENS)
+            if valid_calendar_date(int(year), int(month), int(day)):
+                values[name] = f"{year}-{month}-{day}"
+                continue
+        issues.append({"code": "path_value_inconsistent", "field": name})
+    return {"matched": True, "values": values, "issues": issues}
+
+
+def valid_calendar_date(year: int, month: int, day: int) -> bool:
+    if not 1 <= month <= 12 or day < 1:
+        return False
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    return day <= days
 
 
 # --------------------------------------------------------------- equality
@@ -980,6 +1164,7 @@ FIXTURE_OPERATIONS = {
     "path_equivalence",
     "allocate_path",
     "derive_path",
+    "decode_path",
     "detect_moves",
     "regex_match",
     "apply_body_edits",
@@ -1041,13 +1226,23 @@ def run_fixture(test: dict[str, Any], setup: dict[str, Any]) -> None:
 
     if operation == "derive_path":
         try:
-            path = derive_path(data["pattern"], data.get("frontmatter") or {})
+            path, values = derive_path_and_values(data["pattern"], data.get("frontmatter") or {}, data.get("fields"))
         except PathError as exc:
             if "error" not in expect or expect["error"].get("code") != exc.code or expect["error"].get("field") != exc.field:
                 raise AssertionError(f"unexpected {exc.code} for {exc.field}") from exc
             return
         if expect.get("path") != path:
             raise AssertionError(f"path {path!r} != expected {expect.get('path')!r}")
+        if "values" in expect and expect["values"] != values:
+            raise AssertionError(f"values {values!r} != expected {expect['values']!r}")
+        return
+
+    if operation == "decode_path":
+        result = decode_path(data["pattern"], data["path"], data["fields"])
+        for key in ("matched", "values", "issues"):
+            wanted = expect.get(key, {"matched": True, "values": {}, "issues": []}[key])
+            if result[key] != wanted:
+                raise AssertionError(f"{key} {result[key]!r} != expected {wanted!r}")
         return
 
     if operation == "detect_moves":

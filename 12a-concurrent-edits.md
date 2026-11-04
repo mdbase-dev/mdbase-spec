@@ -299,6 +299,10 @@ a frontmatter key with the `conflict` strategy: one side's move wins over an
 unchanged path, and two different moves are a conflict of kind `path`. The merged
 path then goes through the path collision rule of Chapter 02.
 
+A path-stored field (Chapter 07) is part of the path, not of the frontmatter.
+An edit that changes its value is a change of path and merges under this rule,
+and the merged record's path-stored values are decoded from the merged path.
+
 ### Validity and lifecycle
 
 The merge never checks validity. A merged version is validated when it is

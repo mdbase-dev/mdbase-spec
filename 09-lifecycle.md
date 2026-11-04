@@ -126,7 +126,10 @@ For create and update:
 8. write the file
 
 Lifecycle MUST run before final validation so generated IDs and timestamps can
-satisfy required schema fields. Chapters 05 and 12 define membership freezing.
+satisfy required schema fields. It also runs before a path is derived from
+path-stored fields (Chapter 07): the draft holds the persisted values,
+including path-stored values, and a lifecycle action that sets a path-stored
+field determines the record's path. Chapters 05 and 12 define membership freezing.
 
 Read defaults MUST NOT run as lifecycle policy unless a write operation
 explicitly asks to materialize them.

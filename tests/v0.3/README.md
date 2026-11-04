@@ -118,6 +118,7 @@ Future v0.3 adapters should support these operations:
 - `merge_records`, `merge_strategies`, `path_equivalence`, `allocate_path`,
   `derive_path`, `detect_moves`, `regex_match`, and `apply_body_edits` (since
   rc.5; see below)
+- `decode_path` (since rc.6; see below)
 
 ### Type-pack history
 
@@ -157,11 +158,13 @@ are tracked in [release/v0.3.0.md](../../release/v0.3.0.md).
 
 ## Release-candidate markers
 
-Tests added after 0.3.0-rc.4 carry `since: 0.3.0-rc.5`. Existing tests whose
-expected outcome changed carry `changed: 0.3.0-rc.5`. An engine that conforms
-to rc.4 passes every test without either marker; the release notes in
-`docs/releases/0.3.0-rc.5.md` list the changed tests. Requirements added in
-rc.5 are marked with a `# since 0.3.0-rc.5` comment in `manifest.yaml`.
+Tests added after 0.3.0-rc.4 carry `since: 0.3.0-rc.5`, and tests added
+after 0.3.0-rc.5 carry `since: 0.3.0-rc.6`. Existing tests whose expected
+outcome changed carry `changed:` with the release candidate that changed it.
+An engine that conforms to rc.4 passes every test without either marker; the
+release notes in `docs/releases/0.3.0-rc.5.md` list the changed tests.
+Requirements added in a release candidate are marked with a
+`# since 0.3.0-rc.N` comment in `manifest.yaml`.
 
 ## Concurrent-edit, regex, and body-edit operations (since rc.5)
 
@@ -294,3 +297,41 @@ expect:
 
 It models the body part of an `update` with `body_edits` (Chapter 12).
 
+## Path-stored field operations (since rc.6)
+
+`core/path-fields.yaml` covers `collection.path.fields` (Chapter 07). Its pure
+cases use `decode_path` and `derive_path`, which `scripts/check_v03_tests.py`
+runs against the executable model; the rest use `load_types`, `read`,
+`validate`, `query`, `create`, `update`, and `rename`.
+
+### `decode_path`
+
+```yaml
+operation: decode_path
+input:
+  pattern: "notes/{id} {title}.md"
+  path: "notes/A1 Call Bob back.md"
+  fields: [title]           # the path-stored fields
+expect:
+  matched: true             # whether the pattern matches the whole path
+  values: { title: "Call Bob back" }   # every stored field that has a value
+  issues: []                # every issue, e.g. { code: path_value_inconsistent, field: date }
+```
+
+A path that does not match gives `matched: false`, `values: {}`, and
+`issues: []`.
+
+### `derive_path` with stored fields
+
+`input.fields` names the path-stored fields; their values are normalized before
+they are placed in the path, and `expect.values` lists the normalized values.
+Without `input.fields`, `derive_path` behaves as in rc.5. Both forms accept
+`{field:FORMAT}` placeholders.
+
+### Fixed clock and update options
+
+`create` and `update` may give `input.now`, an RFC 3339 timestamp: the
+operation's captured instant, which lifecycle `now` and `today` read. The
+group's `settings.timezone` gives the operation timezone. `update` may give
+`input.update_refs`; its result then has `references_updated`, in the format
+of `rename`.

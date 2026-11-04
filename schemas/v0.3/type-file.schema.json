@@ -344,11 +344,21 @@
       }
     },
     "pathPolicy": {
+      "description": "Path policy (Chapter 07). Keys other than pattern, fields, and x-* load with an unknown_path_key warning; runtime, template, folder, and generated_by keep their earlier shapes.",
       "type": "object",
       "properties": {
         "pattern": {
           "type": "string",
           "minLength": 1
+        },
+        "fields": {
+          "description": "Path-stored fields: top-level string fields whose values are stored in the path (Chapter 07).",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         },
         "runtime": {
           "$ref": "#/$defs/identifier"
@@ -364,7 +374,15 @@
           "$ref": "#/$defs/identifier"
         }
       },
-      "additionalProperties": false
+      "patternProperties": {
+        "^x-[A-Za-z][A-Za-z0-9._:-]{0,127}$": {
+          "$ref": "#/$defs/domainExtension"
+        }
+      },
+      "dependentRequired": {
+        "fields": ["pattern"]
+      },
+      "additionalProperties": true
     },
     "mergeStrategies": {
       "description": "Per-field merge strategies for top-level frontmatter fields (Chapter 07).",

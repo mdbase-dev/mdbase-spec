@@ -95,7 +95,8 @@ reserved. A frontmatter field with one of those names remains available through
 ### Query Context
 
 In a query, top-level fields and `record` contain effective values. `raw`
-contains persisted frontmatter.
+contains persisted frontmatter, with the values of path-stored fields decoded
+from the record's path (Chapter 07).
 
 ```cel
 !has(raw.status) && record.status == "open"

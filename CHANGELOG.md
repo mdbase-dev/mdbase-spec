@@ -2,6 +2,58 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## 0.3.0-rc.6 (draft, untagged)
+
+The sixth release candidate lets a type store field values in the record's
+path, so that a task title kept as the filename or a daily note's date is
+declared once, in the type, and every tool reads and writes it the same way.
+Collections keep `spec_version: "0.3.0"`. It supersedes the filename-derived
+values of [SN-056](./notes/SN-056.md); see [SN-102](./notes/SN-102.md).
+
+### Path-stored fields
+
+#### Added
+
+- `collection.path.fields` lists path-stored fields: top-level string fields
+  whose values live in the path and are never written to frontmatter
+  (Chapter 07).
+- `{field:FORMAT}` placeholders write a `format: date` field with the tokens
+  `YYYY`, `MM`, and `DD`, such as `Daily/{date:YYYY}/{date:YYYY-MM-DD}.md`.
+- Decoding: the pattern matches the whole path, placeholders take the
+  shortest text from left to right, and formatted date occurrences combine.
+  Decoded values are persisted values for validation, uniqueness, queries,
+  CEL, links, lifecycle, data contract views, and display, but not for type
+  matching. `effective_frontmatter` holds them; `frontmatter` does not.
+- Normalization of stored values before they are placed in a path:
+  whitespace becomes spaces; `< > : " / \ | ? * # [ ] ^`, control
+  characters, and the invisible characters of Chapter 02 are removed; space
+  runs collapse; leading and trailing `.` and spaces are removed.
+- Writes (Chapter 12): create derives the path after lifecycle and fails
+  with `path_conflict` instead of taking a suffix when the path is taken; an
+  update that changes a stored field moves the record atomically, with
+  optional `update_refs` and `references_updated`; `unset` of a stored field
+  and a rename to a path that does not decode fail with
+  `path_value_missing`. A moving update is reported as `record_renamed`
+  followed by `record_modified`.
+- Diagnostic codes `path_value_inconsistent`, `path_field_in_frontmatter`,
+  and `unknown_path_key` (warnings), and `invalid_type` for type files that
+  fail a check without a more specific code.
+- `collection.path.fields` and `x-*` keys in
+  `schemas/v0.3/type-file.schema.json`.
+- `tests/v0.3/core/path-fields.yaml`: 52 tests marked `since: 0.3.0-rc.6`,
+  24 of them pure `decode_path` and `derive_path` cases executed against
+  `scripts/concurrent_edits_model.py`. New requirements
+  `collection_semantics.path_stored_fields` and
+  `core_write.path_stored_writes`.
+
+#### Changed
+
+- Keys of `collection.path` other than `pattern`, `fields`, and `x-*`,
+  including `runtime`, `template`, `folder`, and `generated_by`, load with an
+  `unknown_path_key` warning. The type-file schema still accepts them.
+- `path_value_missing` and `path_value_invalid` on a write are listed in the
+  request and safety tier (Chapter 04).
+
 ## 0.3.0-rc.5 (draft, untagged)
 
 The fifth release candidate specifies the data semantics that let several

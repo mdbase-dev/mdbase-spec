@@ -3,8 +3,9 @@
 ## Migration Philosophy
 
 This chapter has two parts. The first lists what changed for v0.3 collections
-and engines between the fourth and fifth release candidates. The second
-migrates v0.2.x collections into the v0.3 source model.
+and engines between the fourth and fifth, and the fifth and sixth, release
+candidates. The second migrates v0.2.x collections into the v0.3 source
+model.
 
 Migration never rewrites a record.
 
@@ -85,6 +86,30 @@ Engines that conform to rc.4 keep claiming `0.3.0-rc.4` until they pass the
 rc.5 suite. The [rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every
 conformance test whose expected outcome changed, which is where an rc.4 engine
 diverges.
+
+## Changes Since rc.5
+
+0.3.0-rc.6 (draft) adds path-stored fields (Chapter 07): fields whose values
+live in the record's path, such as a task title kept as the filename or a
+daily note's date. Collections keep `spec_version: "0.3.0"`. A collection that
+does not declare `collection.path.fields` behaves as under rc.5, apart from
+the warning below.
+
+| Area | rc.5 | rc.6 | To keep the rc.5 behavior |
+| --- | --- | --- | --- |
+| `collection.path` keys other than `pattern` | `runtime`, `template`, `folder`, and `generated_by` accepted and ignored | any key other than `pattern`, `fields`, and `x-*` loads with an `unknown_path_key` warning and is ignored | move runtime-owned path logic under an `x-*` key |
+| `{field:FORMAT}` placeholders | not defined | write a `format: date` field with the `YYYY`, `MM`, and `DD` tokens | nothing |
+| a value stored only in the filename | applications decode it themselves | `collection.path.fields` decodes it into the record's persisted values | nothing |
+
+A record whose title is already its filename keeps its file: declaring
+`fields: [title]` makes the existing filename the title. A record that also
+has `title` in its frontmatter reports `path_field_in_frontmatter` until a
+write sets the title, which removes the key.
+
+An engine moving from rc.5 to rc.6 decodes path-stored fields on read, never
+writes them to frontmatter, derives paths from them after lifecycle, moves a
+record when an update changes one, and reports `unknown_path_key`,
+`path_value_inconsistent`, and `path_field_in_frontmatter`.
 
 ## From v0.2 To v0.3
 

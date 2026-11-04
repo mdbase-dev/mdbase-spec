@@ -91,11 +91,13 @@ explicit null.
 ## Persisted And Effective Frontmatter
 
 `frontmatter` always means the parsed mapping persisted in the Markdown file.
-It does not contain read defaults, computed values, or other derived data.
+It does not contain read defaults, computed values, values decoded from the
+path, or other derived data.
 
-`effective_frontmatter` is the derived read/query mapping after applying
-`collection.read_defaults` and any other read-time computation supported by the
-active profile.
+`effective_frontmatter` is the derived read/query mapping built from the
+record's persisted values, which add the values of path-stored fields decoded
+from its path (Chapter 07), after applying `collection.read_defaults` and any
+other read-time computation supported by the active profile.
 
 These names have fixed meanings in every operation and provider. An operation
 MUST NOT place effective values in `frontmatter`, place persisted values in
@@ -139,7 +141,8 @@ reconstruct `document` from parsed frontmatter and body when exact source is
 unavailable.
 
 Validation of JSON Schema `required` is against the persisted or draft
-frontmatter object, not against effective read defaults.
+frontmatter object, with the values of path-stored fields (Chapter 07), not
+against effective read defaults.
 
 ## Body
 

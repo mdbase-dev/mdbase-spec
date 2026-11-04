@@ -65,8 +65,24 @@ Pipeline:
 
 An explicit `path` whose path key (Chapter 02) equals that of an existing
 record fails with `path_conflict`. A path derived from `collection.path.pattern`
-never fails for that reason: it receives the first free suffixed path from
-Chapter 02, and the result reports the final path.
+without path-stored fields never fails for that reason: it receives the first
+free suffixed path from Chapter 02, and the result reports the final path.
+
+When a selected type has path-stored fields (Chapter 07):
+
+- Without an explicit `path`, the path is derived in step 8 from the values
+  after lifecycle `on_create`, so a lifecycle action can supply a
+  path-stored value. Each path-stored value is normalized first. A derived
+  path whose path key equals that of an existing record fails with
+  `path_conflict`; it never receives a suffix.
+- With an explicit `path`, the path-stored values are decoded from it and
+  enter the draft before lifecycle. A path that does not decode fails with
+  `path_value_missing` naming the first such field in `fields` order. A
+  request or lifecycle value for a path-stored field that differs from the
+  decoded value after normalization fails with `invalid_request`, the field,
+  and `details.reason: path_value_mismatch`.
+- Path-stored fields are removed from the persisted frontmatter, and the
+  result reports their values in `effective_frontmatter`.
 
 Static JSON Schema defaults MAY be used by editor and create interfaces.
 Validation-time mutation occurs when the create operation explicitly copies a
@@ -108,7 +124,8 @@ Pipeline:
    replacement or `body_edits`
 3. re-match and freeze types when type-affecting fields or path changed
 4. apply lifecycle `on_update`
-5. verify type membership did not change as a lifecycle side effect
+5. derive the new path when a path-stored field changed (below), and verify
+   type membership did not change as a lifecycle side effect or by the move
 6. validate JSON Schema
 7. run collection validators, applying the validation tiers of Chapter 04
 8. write the changed frontmatter entries with format fidelity (Chapter 12A)
@@ -130,6 +147,8 @@ A structured update accepts:
   document record (Chapter 03) is `invalid_request`
 - `body_edits` with `body_base`: optional text edits to the body against a
   known base body, as an alternative to `body`; see below
+- `update_refs`: optional, with the meaning and default it has for rename;
+  it applies when the update moves the record
 
 Unsetting a key that is already missing is not an error. A request that names
 the same field in `patch` and `unset`, names a field inside a key that `patch`
@@ -174,6 +193,37 @@ not require `uniqueItems`. A list emptied by `remove` stays as an empty list.
 
 **Provisional (rc.5).** `add` and `remove` address top-level fields
 only, like `patch`, because the merge unit is the top-level field.
+
+### Path-stored fields
+
+An update that changes the value of a path-stored field (Chapter 07), through
+`patch` or a lifecycle `on_update` action, moves the record. A value changes
+when, after normalization, it differs from the decoded value:
+
+- The value is normalized, and the new path is derived as Chapter 07
+  defines, after lifecycle has run.
+- A new path with the same path key and the same spelling as the current
+  path is no move. A new path with the same path key and a different
+  spelling, such as a change of case, respells the path.
+- A new path whose path key belongs to another record fails with
+  `path_conflict`, and nothing is written.
+- A new path at which a type that stored the field no longer matches fails
+  with `type_membership_changed`.
+- `unset` of a path-stored field fails with `path_value_missing`, and a null
+  value fails as Chapter 07 defines.
+
+The move, the changed values, and, when `update_refs` is enabled, the link
+rewrites of a rename to the new path are one atomic change: one record is
+moved and changed, and the referring records are rewritten. The move keeps the
+record's identity, as a rename does. The result is the record document at its
+new `path`, with `references_updated` as for rename when references were
+updated.
+
+A `document` replacement whose frontmatter has a key named by a path-stored
+field supplies that field's value: a value equal to the current one after
+normalization is dropped from the persisted frontmatter, and a different
+value moves the record as above. Links are rewritten only when the request
+enables `update_refs`.
 
 ### Body edits
 
@@ -273,6 +323,12 @@ Tools MUST reject target paths that escape the collection root. A target whose
 path key equals that of a different existing record fails with
 `path_conflict`. A target whose path key equals the source's own path key only
 changes the path's spelling, such as its case, and is not a conflict.
+
+A rename sets the record's path-stored values (Chapter 07) to what the target
+path decodes to. When a type that matches the record at the target path stores
+fields and the target does not decode against its pattern, the rename fails
+with `path_value_missing` naming the first such field in `fields` order, and
+nothing is written.
 
 If reference updating is enabled, the rename updates the links that
 reference the renamed record: the links that, before the rename, resolve to it
@@ -508,8 +564,9 @@ diagnostics: []
 
 `valid` is false when any error-severity diagnostic applies. Successful
 `create`, `update`, and `rename` operations MUST return the complete,
-authoritative post-write record document defined in Chapter 03. `rename` adds
-its rename-specific metadata to that document.
+authoritative post-write record document defined in Chapter 03. `rename`, and
+an `update` that moves a record, add their rename-specific metadata to that
+document.
 
 The document MUST be derived from the bytes actually persisted after lifecycle
 hooks, normalization, validation, and the atomic write complete. Clients and
@@ -529,5 +586,11 @@ runtime state, or revisions.
 After a successful mutation, tools MAY emit watch/runtime events. A tool that
 reports moves of files edited outside it uses the move detection of Chapter
 12A. Events MUST be
-delivered after the derived read/query state is consistent. Watch consumers and
+delivered after the derived read/query state is consistent.
+
+A change of path that changes path-stored values, whether by an update, a
+rename, or a detected move, is reported as `record_renamed` followed by
+`record_modified`, whose `changed_fields` includes each path-stored field whose
+value changed (Chapter 14). An update that moves a record is therefore
+reported exactly like a rename to the new path combined with a modification. Watch consumers and
 workflow runtimes may subscribe to the same stream.
