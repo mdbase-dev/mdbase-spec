@@ -4,7 +4,9 @@ This is not an engine. It models the normative rules the seed-upgrade
 conformance fixtures exercise: manifest validation of `upgrade_from`, the lock's
 seed `origin_digest`, the ordered choice of an upgrade baseline, and a
 structural three-way merge of type frontmatter that keeps the live body.
-Contract-implementation merging and other engine detail are out of scope.
+Contract validation, contract-implementation merging and other engine detail
+are out of scope: an inferred merge "still implements the desired contracts"
+when its `implements` entries cover the desired type's.
 """
 
 from __future__ import annotations
@@ -195,26 +197,46 @@ class Collection:
             if entry is None:
                 return Planned(resource.target, "create", resource.document, resource.digest)
             return Planned(resource.target, "preserve", None, previous_origin)
-        if live == resource.document:
+        if same_type_document(live, resource.document):
             return Planned(resource.target, "preserve", None, resource.digest)
         if not resource.declares_upgrade:
             return Planned(resource.target, "preserve", None, previous_origin)
         for baseline in resource.baselines:
-            if live == baseline.document:
+            if same_type_document(live, baseline.document):
                 return Planned(resource.target, "update", resource.document, resource.digest, baseline=baseline)
         if previous_origin == resource.digest:
             return Planned(resource.target, "preserve", None, previous_origin)
         baseline = next((item for item in resource.baselines if item.digest == previous_origin), None)
         if baseline is None:
-            return Planned(
-                resource.target, "preserve", None, previous_origin,
-                reason=f"{resource.target}: no upgrade baseline applies to this type's origin",
-            )
+            return self._infer(resource, live, previous_origin)
         try:
             merged = merge_documents(baseline.document, live, resource.document)
         except MergeConflict as conflict:
             return Planned(resource.target, "conflict", None, previous_origin, reason=f"{resource.target}: {conflict}")
         return Planned(resource.target, "update", merged, resource.digest, baseline=baseline)
+
+    def _infer(self, resource: Resource, live: bytes, previous_origin: str | None) -> Planned:
+        """No known origin: merge against the nearest listed baseline that merges cleanly."""
+        live_frontmatter, _ = split_document(live)
+        candidates = sorted(
+            resource.baselines,
+            key=lambda baseline: differences(live_frontmatter, split_document(baseline.document)[0]),
+        )
+        for baseline in candidates:
+            try:
+                merged = merge_documents(baseline.document, live, resource.document)
+            except MergeConflict:
+                continue
+            if implements_as_desired(merged, resource.document):
+                if same_type_document(merged, live):
+                    return Planned(resource.target, "preserve", None, resource.digest)
+                return Planned(resource.target, "update", merged, resource.digest, baseline=baseline)
+        if "implements" in split_document(resource.document)[0] and implements_as_desired(live, resource.document):
+            return Planned(resource.target, "preserve", None, previous_origin)
+        return Planned(
+            resource.target, "preserve", None, previous_origin,
+            reason=f"{resource.target}: no upgrade baseline applies to this type's origin",
+        )
 
     def _plan_managed(self, resource: Resource, entry: dict[str, Any] | None, live: bytes | None) -> Planned:
         if live is None:
@@ -224,6 +246,32 @@ class Collection:
         if entry is not None and digest(live) == entry["digest"]:
             return Planned(resource.target, "update", resource.document, None)
         return Planned(resource.target, "conflict", None, None, reason=f"{resource.target} changed")
+
+
+def same_type_document(a: bytes, b: bytes) -> bool:
+    """Equal as type documents: the same frontmatter values and the same body."""
+    if a == b:
+        return True
+    try:
+        return split_document(a) == split_document(b)
+    except ValueError:
+        return False
+
+
+def differences(a: Any, b: Any) -> int:
+    """How many frontmatter leaves differ, for choosing an inferred merge base."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        return sum(differences(a[key], b[key]) if key in a and key in b else 1 for key in {*a, *b})
+    if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+        return sum(differences(x, y) for x, y in zip(a, b))
+    return int(a != b)
+
+
+def implements_as_desired(candidate: bytes, desired: bytes) -> bool:
+    def implemented(document: bytes) -> set[tuple[str, str]]:
+        entries = split_document(document)[0].get("implements") or []
+        return {(str(entry.get("contract")), str(entry.get("version"))) for entry in entries if isinstance(entry, dict)}
+    return implemented(desired) <= implemented(candidate)
 
 
 def merge_documents(base: bytes, live: bytes, desired: bytes) -> bytes:
@@ -257,4 +305,6 @@ def merge_values(base: Any, live: Any, desired: Any, path: str) -> Any:
             if value is not MISSING:
                 merged[key] = value
         return merged
+    if all(isinstance(value, list) for value in (base, live, desired)) and len(base) == len(live) == len(desired):
+        return [merge_values(b, l, d, f"{path}/{index}") for index, (b, l, d) in enumerate(zip(base, live, desired))]
     raise MergeConflict(f"competing changes at {path or '/'}")

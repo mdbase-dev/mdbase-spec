@@ -338,7 +338,7 @@ groups:
           ---
     tests:
       - id: seed-upgrade-unknown-origin-preserved
-        name: "a user-owned type at a seed target is never merged into a starter"
+        name: "a user-owned type at a seed target that merges cleanly with no starter is preserved"
         operation: apply_type_pack
         input:
           pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
@@ -357,6 +357,65 @@ groups:
           target_unchanged: [_types/note.md]
           lock_origin:
             _types/note.md: absent
+        covers:
+          - type_packs.seed_type_upgrade
+
+  - name: "an edited seed with no recorded origin merges against the nearest baseline"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          validation: error
+      files:
+        _types/note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          description: A note.
+          match:
+            where:
+              type: note
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                mood: { type: string }
+              additionalProperties: true
+          ---
+          # Note
+
+          My notes, as I keep them.
+    tests:
+      - id: seed-upgrade-unknown-origin-inferred
+        name: "the v1 baseline is nearest, merges cleanly, and keeps the user's edits"
+        operation: apply_type_pack
+        input:
+          pack: "examples/v0.3/seed-upgrades/v3/mdbase-pack.yaml"
+          history:
+            - apply: "examples/v0.3/seed-upgrades/v1/mdbase-pack.yaml"
+        expect:
+          valid: true
+          runs:
+            - valid: true
+              status: upgrade
+              actions: [update]
+          resources:
+            - target: _types/note.md
+              action: update
+              upgrade_baseline_version: 1
+          target_frontmatter:
+            _types/note.md:
+              /version: 3
+              /schema/value/properties/created: { type: string, format: date-time }
+              /schema/value/properties/mood: { type: string }
+          target_body_contains:
+            _types/note.md: ["My notes, as I keep them."]
+          lock_origin:
+            _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
         covers:
           - type_packs.seed_type_upgrade
 

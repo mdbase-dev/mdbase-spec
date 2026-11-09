@@ -195,10 +195,14 @@ Bases, seed type upgrades, and saved-view identification.
   baselines, each a digest-pinned starter the publisher previously shipped
   (`{ digest, document, version? }`), so a collection can upgrade from any
   supported starter, not only the latest. The engine chooses the merge
-  baseline from the seed's origin and never guesses: an unedited seed equal to
-  any baseline is replaced with the exact desired bytes; an edited seed merges
-  against the baseline it descends from; a seed whose origin is unknown or not
-  listed is preserved with a reason rather than merged or made to conflict.
+  baseline from the seed's origin: an unedited seed equal to any baseline is
+  replaced with the exact desired bytes; an edited seed merges against the
+  baseline it descends from. A seed whose origin is unknown or not listed
+  merges against the nearest listed baseline that merges cleanly into a type
+  still implementing the desired contracts; failing that, it is kept, with a
+  reason unless it already implements them, rather than made to conflict.
+  Type documents compare by frontmatter values and body, not bytes, and
+  equal-length arrays merge item by item.
   Competing changes still fail closed, publication is atomic, and the
   assessment reports the baseline used. Engines that do not support the member
   must reject the manifest. Records are never migrated this way.
