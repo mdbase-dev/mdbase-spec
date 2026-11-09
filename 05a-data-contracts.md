@@ -395,30 +395,52 @@ The lock records it (see Pack Identity And Portable Provenance). When the target
 exists, is not an intentionally preserved seed target, and the resource declares
 `upgrade_from`, the engine plans exactly one of these, in order:
 
-1. The live bytes equal the desired document: `preserve`.
-2. The live bytes equal a baseline's document: `update`, writing the desired
-   document byte-for-byte. Byte equality proves the origin, whatever the lock
+Two type documents are **equal** when their frontmatter values are equal and
+their Markdown bodies are identical; YAML formatting and key order do not
+matter, because other writers may re-serialize a type file.
+
+1. The live type equals the desired document: `preserve`.
+2. The live type equals a baseline's document: `update`, writing the desired
+   document byte-for-byte. Equality proves the origin, whatever the lock
    records.
 3. The origin is the desired document: `preserve`. The seed was already upgraded
    and has been edited since.
 4. The origin is a baseline: `update` by a three-way merge of that baseline, the
    live type, and the desired type.
-5. Otherwise, because the origin is unknown or is not a listed baseline:
-   `preserve`, with a `reason` stating that no upgrade baseline applies. The
-   type is left as it is; it does not make the pack conflict.
+5. Otherwise the origin is unknown (a lock written before origins were
+   recorded, or none) or is not a listed baseline, and the engine **infers** a
+   merge base. It orders the listed baselines by how many frontmatter leaf
+   values differ from the live type's (a key present on one side only counts
+   once; equal-length arrays compare item by item; any other differing value
+   counts once), fewest first and in listed order on a tie. It takes the first
+   baseline whose three-way merge succeeds and whose merged type validates and
+   implements every exact contract version the desired type does, judged over
+   the pack's own contract resources: `update` with that merge, or `preserve`
+   when the merge changes nothing.
+6. Otherwise, when the desired type declares `implements` and the live type
+   already validates and implements every exact contract version the desired
+   type does: `preserve`. The seed already fits the pack.
+7. Otherwise: `preserve`, with a `reason` stating that no upgrade baseline
+   applies. The type is left as it is; it does not make the pack conflict.
 
-An engine MUST NOT choose a merge baseline any other way. In particular, it MUST
-NOT merge against a baseline the seed is not known to descend from, because the
-differences between that baseline and the seed's actual origin would be applied
-as if they were the user's edits. The assessment reports, for every seed
-`update`, the baseline used as `upgrade_baseline: { digest, version? }`.
+In cases 1, 2, 3, and 5 the lock's origin becomes the desired document; in the
+others it is carried forward. An engine MUST NOT choose a merge baseline any
+other way. An inferred base (case 5) may not be the seed's true origin, so the
+differences between them could be applied as if they were the user's edits; the
+conservative merge bounds this, since a seed whose `version` or other setting
+differs from both sides is a competing change and fails. The assessment
+reports, for every seed `update`, the baseline used as
+`upgrade_baseline: { digest, version? }`, so the change is reviewed like any
+other.
 
 A three-way merge is conservative. The type kind and name MUST match. Unchanged publisher
 settings retain live customizations; unchanged live settings accept publisher
 changes. Object settings merge recursively. Contract implementations merge by
 contract ID only when unambiguous, retaining customized field mappings and
 bindings while updating exact version references. Competing changes (including
-ambiguous implementation lists) MUST fail closed. Other arrays are indivisible.
+ambiguous implementation lists) MUST fail closed. Other arrays merge item by
+item when the baseline, live, and desired arrays have the same length, and are
+otherwise indivisible.
 Missing values and explicit null are distinct. Top-level setting removal
 requires separate manual review. The live Markdown body and unrelated YAML
 nodes MUST be preserved. Reformatting a changed YAML node is permitted.
