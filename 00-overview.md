@@ -270,7 +270,8 @@ explicitly opts into `enforce: write`.
 
 When two edits to one record meet, for example an application update and an
 edit made in a text editor, a tool that reconciles them uses the three-way
-record merge of Chapter 12A. Different fields merge, timestamps take the
+record merge of the
+[concurrent edits profile](./concurrent-edits/0.1.md). Different fields merge, timestamps take the
 later value, set-like lists take the union, appends to the body are both kept,
 and only real disagreements are conflicts. How a tool surfaces a conflict, and
 whether it replicates collections at all, is outside this specification.
@@ -310,7 +311,7 @@ keep those claims precise and independently testable.
 | --- | --- |
 | [01-concepts.md](./01-concepts.md) | Core terminology and data model |
 | [02-collection-layout.md](./02-collection-layout.md) | Collection discovery, paths, and reserved state |
-| [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing and YAML value semantics |
+| [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing, record identity, and YAML value semantics |
 | [04-configuration.md](./04-configuration.md) | The `mdbase.yaml` configuration file |
 | [05-type-files.md](./05-type-files.md) | JSON Schema type wrappers and metadata |
 | [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts and type implementations |
@@ -320,8 +321,7 @@ keep those claims precise and independently testable.
 | [09-lifecycle.md](./09-lifecycle.md) | Managed values and mutation-time policy |
 | [10-cel-profile.md](./10-cel-profile.md) | Portable expressions and host bindings |
 | [11-querying.md](./11-querying.md) | Filters, ordering, projection, and result envelopes |
-| [12-operations.md](./12-operations.md) | Read and write operations, concurrency, and diagnostics |
-| [12a-concurrent-edits.md](./12a-concurrent-edits.md) | Record identity, move detection, three-way merge, and writer format fidelity |
+| [12-operations.md](./12-operations.md) | Read and write operations, writer format fidelity, concurrency, and diagnostics |
 | [13-migrations-and-compatibility.md](./13-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
 | [14-conformance.md](./14-conformance.md) | Profiles, claims, fixtures, and runners |
 
@@ -330,6 +330,7 @@ chapters:
 
 | Document | Description |
 | --- | --- |
+| [concurrent-edits/0.1.md](./concurrent-edits/0.1.md) | Concurrent edits profile 0.1: move detection and the three-way record merge |
 | [type-packs/0.1.md](./type-packs/0.1.md) | Type packs profile 0.1: pack manifests, the lock file, assessment, and transactional apply |
 | [interop/0.1.md](./interop/0.1.md) | Event and action interoperability profile 0.1 |
 | [runtime/0.2.md](./runtime/0.2.md) | Durable runtime companion profile 0.2: standard pack, authorization, admission, execution, and recovery |
@@ -354,6 +355,7 @@ Companion profiles, artifacts, and schemas carry their own versions:
 | Versioned thing | Declared by | Current | Format |
 | --- | --- | --- | --- |
 | collection specification | `spec_version` in `mdbase.yaml` | `0.3.0` | semantic version |
+| concurrent edits profile | profile IDs `merge/0.1` and `move_detection/0.1` | `0.1` | major.minor |
 | type packs profile | profile ID `type_packs/0.1` | `0.1` | major.minor |
 | event/action interoperability profile | conformance claim `interop_profile_version` | `0.1` | major.minor |
 | durable runtime profile | conformance claim `runtime_profile_version` | `0.2` | major.minor |

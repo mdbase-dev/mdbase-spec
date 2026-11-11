@@ -204,8 +204,12 @@
       "then": { "properties": { "profiles": { "contains": { "const": "collection_semantics" } } } }
     },
     {
-      "if": { "properties": { "profiles": { "contains": { "const": "merge" } } } },
+      "if": { "properties": { "profiles": { "contains": { "const": "merge/0.1" } } } },
       "then": { "properties": { "profiles": { "contains": { "const": "core_write" } } } }
+    },
+    {
+      "if": { "properties": { "profiles": { "contains": { "const": "move_detection/0.1" } } } },
+      "then": { "properties": { "profiles": { "contains": { "const": "watch" } } } }
     },
     {
       "if": { "properties": { "profiles": { "contains": { "const": "lifecycle" } } } },
@@ -261,7 +265,8 @@
         "cel_query",
         "links",
         "core_write",
-        "merge",
+        "merge/0.1",
+        "move_detection/0.1",
         "type_packs/0.1",
         "lifecycle",
         "event_action_interop/0.1",

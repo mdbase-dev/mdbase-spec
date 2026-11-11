@@ -128,7 +128,7 @@ claim_profiles:
       - path_stored_writes  # since 0.3.0-rc.6
       - path_value_normalized  # since 0.3.0-rc.6
       - create_membership_path  # since 0.3.0-rc.6
-  - id: merge  # since 0.3.0-rc.5
+  - id: merge/0.1  # since 0.3.0-rc.5; a companion profile since 0.3.0-rc.6
     status: coverage_complete
     requires: [core_write]
     requirements:
@@ -211,7 +211,11 @@ claim_profiles:
       - per_subject_ordering
       - notification_coalescing
       - listener_isolation
-      - move_detection  # since 0.3.0-rc.5
+  - id: move_detection/0.1  # since 0.3.0-rc.6; move_detection/0.1.move_pairing in rc.5
+    status: coverage_complete
+    requires: [watch]
+    requirements:
+      - move_pairing
 
 fixture_sets:
   - id: schema_artifacts
@@ -286,12 +290,12 @@ fixture_sets:
       - workflow-execution/workflow-execution.yaml
   - id: merge
     description: Three-way record merge and merge declarations, including the mdbase-next prototype merge fixtures (since 0.3.0-rc.5).
-    coverage_targets: [merge, collection_semantics]
+    coverage_targets: [merge/0.1, collection_semantics]
     files:
       - merge/merge.yaml
       - merge/body-edits.yaml
-  - id: watch
+  - id: move_detection
     description: Move detection for externally moved files (since 0.3.0-rc.5).
-    coverage_targets: [watch]
+    coverage_targets: [move_detection/0.1]
     files:
       - watch/move-detection.yaml

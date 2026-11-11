@@ -106,7 +106,8 @@ validation level, and it is not reported when the record is read later.
 
 Writes that do not go through an engine's write operations are never rejected.
 That includes edits made by other tools, files that appear through a file
-system or synchronization tool, and the results of the merge in Chapter 12A.
+system or synchronization tool, and the results of a merge
+([concurrent edits profile](./concurrent-edits/0.1.md)).
 Their issues are reported when the record is read or validated.
 
 ## Validation Levels

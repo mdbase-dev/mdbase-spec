@@ -76,6 +76,25 @@ application owns, such as Obsidian `.base` files (see the
 [Obsidian Bases adapter](./adapters/obsidian-bases.md)), without a second
 storage, discovery, or authorization model.
 
+## Record Identity
+
+A record is identified by its collection-relative path. Record files carry no
+required mdbase metadata:
+
+- An implementation MAY keep an internal identity for each record, for example
+  to follow it across moves or to key its history.
+- Such identities, revisions, merge bases, and other bookkeeping MUST be kept
+  outside record files, for example in `.mdbase/` or the implementation's own
+  storage.
+- An implementation MUST NOT write an identity into a record's frontmatter or
+  body, and MUST NOT require one to read, validate, query, or write a record.
+
+A collection may still store its own identifiers in frontmatter, such as a
+TaskNotes `id` field. When `settings.id_field` names such a field, it is used
+for ID-based link resolution (Chapter 08) and as an identity hint for the move
+detection of the [concurrent edits profile](./concurrent-edits/0.1.md). It
+remains ordinary user data.
+
 ## Frontmatter Value
 
 Frontmatter MUST parse to a YAML mapping. Empty frontmatter is an empty mapping.
@@ -199,7 +218,7 @@ update that supplies a non-empty body for a YAML document record fails with
 (Chapter 12) is written exactly as supplied.
 
 A write that changes some frontmatter keys of an existing record follows the
-format fidelity rule of Chapter 12A: it re-emits only the changed top-level
+writer format fidelity rule of Chapter 12: it re-emits only the changed top-level
 entries, keeps every other entry byte-identical, including comments, quoting,
 blank lines, and order, and keeps a changed entry's collection style. The rule
 applies to Markdown records and YAML document records alike.

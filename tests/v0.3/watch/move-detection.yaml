@@ -1,4 +1,4 @@
-# Move detection (Chapter 12A). Each test lists what disappeared and what
+# Move detection (concurrent edits profile 0.1). Each test lists what disappeared and what
 # appeared within one observation window. file_id stands for a platform file
 # identity such as a device and inode; omit it when the platform cannot supply
 # one. Cases follow the identity measurements in the mdbase-next prototype
@@ -6,16 +6,16 @@
 # same bytes, delete and create of an edited file, and unrelated files.
 name: "move detection"
 spec_version: "0.3.0"
-fixture_set: watch
+fixture_set: move_detection
 category: watch
-spec_ref: v0.3/12A
+spec_ref: concurrent-edits/0.1
 groups:
   - name: pairing disappearances and appearances within one observation window
     tests:
       - name: a rename with unchanged bytes is a move
         id: watch.moves_rename_same_content
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -59,7 +59,7 @@ groups:
       - name: a rename followed by an edit keeps the file identity
         id: watch.moves_rename_then_edit
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -102,7 +102,7 @@ groups:
       - name: "delete and create with identical bytes is a move (git checkout)"
         id: watch.moves_delete_create_same_bytes
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -146,7 +146,7 @@ groups:
       - name: delete and create of an edited file with the same name in another folder is a move
         id: watch.moves_same_name_edited
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -190,7 +190,7 @@ groups:
       - name: the same name with similarity below 0.8 and no file identity is not a move
         id: watch.moves_same_name_too_different
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -229,7 +229,7 @@ groups:
       - name: an unrelated delete and create are never paired
         id: watch.moves_unrelated_files
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -264,7 +264,7 @@ groups:
       - name: equal id_field values pair even when the content changed completely
         id: watch.moves_identity_hint_pairs
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           id_field: id
@@ -293,7 +293,7 @@ groups:
       - name: "different id_field values never pair, even with the same name and file identity"
         id: watch.moves_identity_hint_vetoes
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           id_field: id
@@ -322,7 +322,7 @@ groups:
       - name: "when two appearances match equally, the smaller path pairs"
         id: watch.moves_copies_pair_deterministically
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:
@@ -378,7 +378,7 @@ groups:
       - name: identical bytes outrank a same-name match
         id: watch.moves_identical_bytes_beat_name
         since: 0.3.0-rc.5
-        covers: [watch.move_detection]
+        covers: [move_detection/0.1.move_pairing]
         operation: detect_moves
         input:
           disappeared:

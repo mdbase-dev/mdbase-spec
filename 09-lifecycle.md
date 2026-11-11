@@ -125,7 +125,7 @@ or `{ today: true }` merges with the `max` strategy by default (Chapter 07),
 so two concurrent updates that both refresh `dateModified` keep the later
 value instead of conflicting. A merge does not run lifecycle: lifecycle values
 in a merged record come from the two sides through their merge strategies
-(Chapter 12A).
+([concurrent edits profile](./concurrent-edits/0.1.md)).
 
 ## Place In The Write Order
 

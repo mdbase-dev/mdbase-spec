@@ -311,7 +311,7 @@ SHOULD generate them with lifecycle `ulid` or `uuid`.
 An `enforce: write` rule rejects only writes that introduce a duplicate. A
 write that leaves a record's covered values unchanged succeeds even when the
 record already violates the rule, for example after an external edit. Edits
-made by other tools and the results of a merge (Chapter 12A) are never
+made by other tools and the results of a merge are never
 rejected; their violations are reported.
 
 **Provisional (rc.5).** An `enforce: write` rule applies at every
@@ -526,7 +526,7 @@ rules. In summary:
 
 The collision rule of Chapter 02 still applies to paths no single write
 chose: records created concurrently, records copied onto another file system,
-and merged paths (Chapter 12A). Its suffix then becomes part of the decoded
+and merged paths. Its suffix then becomes part of the decoded
 value, such as `Call Bob (2)`.
 
 **Provisional (rc.6).** Only string fields can be path-stored, and FORMAT
@@ -537,7 +537,7 @@ before runs of spaces are collapsed and before the ends are trimmed.
 ## Merge Strategies
 
 `collection.merge` declares how each top-level frontmatter field combines when
-two concurrent edits of a record are merged (Chapter 12A):
+two concurrent edits of a record are merged:
 
 ```yaml
 collection:
@@ -558,7 +558,8 @@ strategy:
 | `min` | the lesser of the two values |
 | `union` | an observed-remove set union of the two lists |
 
-Chapter 12A defines each strategy exactly. A strategy matters only when both
+The [concurrent edits profile](./concurrent-edits/0.1.md)
+defines each strategy exactly. A strategy matters only when both
 sides changed the same field differently. A field changed on one side always
 takes that side's value, and a field changed identically on both sides takes
 the shared value.

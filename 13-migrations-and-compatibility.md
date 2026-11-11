@@ -11,7 +11,9 @@ Migration never rewrites a record.
 
 ## Changes Since rc.4
 
-0.3.0-rc.5 adds the concurrent-edit semantics of Chapter 12A and relaxes
+0.3.0-rc.5 adds concurrent-edit semantics (record identity in Chapter 03,
+writer format fidelity in Chapter 12, and the
+[concurrent edits profile](./concurrent-edits/0.1.md)) and relaxes
 several write-time checks. Collections keep `spec_version: "0.3.0"` and need
 no edit. Record files, type files, contracts, type packs, view records, and
 queries that were valid under rc.4 stay valid.
@@ -29,7 +31,7 @@ worked under rc.4 stops loading.
 | `unique.scope` | listed, but its comparison set was underspecified | a rule governs records of its type; `scope` selects the records they must differ from; raw values compare without coercion; the default scope is `type` | nothing; check reports for records in the now exact scope |
 | link `validate_exists` and `target_type` | at level `error`, a write with a broken link fails | reported, never blocking | no equivalent; cross-record checks never block |
 | a successful write with cross-record issues | not applicable | returns `valid: true` with `warning` diagnostics | nothing |
-| concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (Chapter 12A); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
+| concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (concurrent edits profile); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
 | lifecycle `now` and `today` fields, `tags`, `uniqueItems` arrays | no merge semantics | merge as `max`, `union`, and `union` by default | declare `conflict` in `collection.merge` |
 | update | `patch`, `unset`, `body`, `document` | adds `add` and `remove` list operations, and `body_edits` against a `body_base` digest | nothing |
 | regular expressions in CEL `matches()`, JSON Schema `pattern`, and `match.where` | engine-dependent; Unicode-aware classes were implied | one profile everywhere: RE2 syntax with ASCII-only `\d`, `\w`, `\s`, `\b`, and case folding (Chapter 10); `\p{...}` is invalid | none; list non-ASCII characters explicitly, or lowercase text before matching |
@@ -74,9 +76,10 @@ An engine moving from rc.4 to rc.5:
 - implements `add` and `remove`, path keys and the collision rule,
   `path_value_invalid`, and the writer format fidelity rule
 - stops supplying `if_revision` on a caller's behalf
-- implements the merge of Chapter 12A if it reconciles concurrent edits, and
-  claims the `merge` profile
-- implements move detection if it reports renames of externally moved files
+- implements the merge of the [concurrent edits profile](./concurrent-edits/0.1.md)
+  if it reconciles concurrent edits, and claims the `merge/0.1` profile
+- implements move detection, and claims the `move_detection/0.1` profile, if
+  it reports renames of externally moved files
 - reports `nondeterministic_match`, `path_collision`, and `ambiguous_link`
 - applies the filename tiebreakers exactly, and rewrites on rename only the
   links that resolved to the renamed record

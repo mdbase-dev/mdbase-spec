@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Executable model of the pure concurrent-edit functions in Chapters 02, 07, and 12A.
+"""Executable model of the pure functions in Chapters 02, 07, and 12 and in
+the concurrent edits profile 0.1.
 
 This is not an mdbase implementation. It models the functions that the
 0.3.0-rc.5 conformance fixtures can check without a collection engine:
@@ -8,11 +9,13 @@ This is not an mdbase implementation. It models the functions that the
 - path-pattern derivation and placeholder validation (Chapter 07)
 - path-stored field normalization and decoding (Chapter 07, since rc.6)
 - default and declared merge strategies (Chapter 07)
-- the three-way record merge and writer format fidelity (Chapter 12A)
-- move detection pairing (Chapter 12A)
+- the three-way record merge (concurrent edits profile) and writer format
+  fidelity (Chapter 12)
+- move detection pairing (concurrent edits profile)
 - the mdbase regex profile (Chapter 10), approximated with Python `re` in
   ASCII mode for the constructs the fixtures use
-- body edits and their rebase onto a changed body (Chapters 12 and 12A)
+- body edits and their rebase onto a changed body (Chapter 12 and the
+  concurrent edits profile)
 
 `scripts/check_v03_tests.py` runs the corresponding fixtures against it
 through `run_fixture`.
@@ -750,7 +753,7 @@ def merge_body(base: str, first: str, second: str) -> str | None:
 
 
 def _lcs_pairs(a: list[str], b: list[str]) -> list[tuple[int, int]]:
-    """The Chapter 12A alignment: Myers' linear-space algorithm.
+    """The concurrent edits profile's alignment: Myers' linear-space algorithm.
 
     Common prefixes and suffixes are matched first; the rest splits at the
     middle snake found by `_bisect` and each part is aligned the same way.
@@ -996,7 +999,7 @@ def _take(result: Document, side: Document, key: str, eol: str) -> None:
 
 
 def _append_entry(result: Document, entry: Entry) -> None:
-    """Insert a new entry after the last existing entry (Chapter 12A rule 4)."""
+    """Insert a new entry after the last existing entry (Chapter 12, writer format fidelity rule 4)."""
     last = max((i for i, item in enumerate(result.items) if isinstance(item, Entry)), default=-1)
     result.items.insert(last + 1, entry)
 

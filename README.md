@@ -112,6 +112,8 @@ order_by:
 | Create a collection | [Collection Layout](./02-collection-layout.md), [Configuration](./04-configuration.md), [Type Files](./05-type-files.md), and [Data Contracts](./05a-data-contracts.md) |
 | Validate, query, or save views over records | [JSON Schema Profile](./06-json-schema-profile.md), [CEL Profile](./10-cel-profile.md), and [Querying](./11-querying.md) |
 | Add links or managed fields | [Links](./08-links.md) and [Lifecycle](./09-lifecycle.md) |
+| Reconcile concurrent edits | [Concurrent Edits Profile](./concurrent-edits/0.1.md) |
+| Install and upgrade types | [Type Packs Profile](./type-packs/0.1.md) |
 | Connect applications | [Event and Action Interoperability](./interop/0.1.md) |
 | Define durable automation | [Durable Runtime Companion Profile](./runtime/0.2.md) and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./13-migrations-and-compatibility.md) |
@@ -139,14 +141,18 @@ independently.
 
 The specification is organized by topic:
 
-- Chapters 00–04 introduce the model, records, collection layout, and
+- Chapters 00–04 introduce the model, collection layout, records, and
   configuration.
 - Chapters 05–09 and 05A define types, data contracts, schemas, collection
   semantics, links, and lifecycle policy.
 - Chapters 10–12 define CEL expressions, queries, and record operations.
-- Chapters 13–14 define the optional durable runtime companion built on core
-  contracts and event/action interoperability.
-- Chapters 15–16 cover migration, compatibility, and conformance.
+- Chapters 13–14 cover migration, compatibility, and conformance.
+
+Optional behavior lives in companion profiles with their own versions:
+[concurrent edits](./concurrent-edits/0.1.md) (move detection and the
+three-way merge), [type packs](./type-packs/0.1.md),
+[event and action interoperability](./interop/0.1.md), and the
+[durable runtime](./runtime/0.2.md).
 
 The [v0.2.1 archive](./v0.2/README.md) preserves the earlier specification and
 implementer material. Legacy fixtures are documented in

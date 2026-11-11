@@ -161,7 +161,8 @@ Pipeline:
    type membership did not change as a lifecycle side effect or by the move
 6. validate JSON Schema
 7. run collection validators, applying the validation tiers of Chapter 04
-8. write the changed frontmatter entries with format fidelity (Chapter 12A)
+8. write the changed frontmatter entries with format fidelity (Writer Format
+   Fidelity, below)
    and preserve the body
 9. update derived indexes
 10. emit watch/runtime events
@@ -291,16 +292,20 @@ The update applies the edits as follows:
 
 1. If the record's current body has the digest `body_base`, the edits are
    applied to it directly.
-2. Otherwise the implementation obtains the base body, from `body_base_text`
-   or from bodies it has retained, and rebases the edits onto the current
-   body with the three-way body merge of Chapter 12A, where the current body
-   is the first version and the base with the edits applied is the second.
-   A merged body is written. A body conflict fails the update with
-   `concurrent_modification`, `details.reason: body_conflict`, and the
+2. Otherwise an implementation that claims the `merge/0.1` profile obtains
+   the base body, from `body_base_text` or from bodies it has retained, and
+   rebases the edits onto the current body with the three-way body merge of
+   the [concurrent edits profile](./concurrent-edits/0.1.md), where the
+   current body is the first version and the base with the edits applied is
+   the second. A merged body is written. A body conflict fails the update
+   with `concurrent_modification`, `details.reason: body_conflict`, and the
    conflict; nothing is written.
 3. If the base body cannot be obtained, the update fails with
    `concurrent_modification` and `details.reason: body_base_unavailable`.
    The caller can retry with `body_base_text` or against the current body.
+   An implementation that does not claim `merge/0.1` does not rebase: it
+   treats every base body as unavailable, whether or not the request
+   carries `body_base_text`.
 
 A request is `invalid_request` before any write when it combines `body_edits`
 with `body` or `document`, has `body_edits` without `body_base`, has an
@@ -310,11 +315,11 @@ has no body. Body edits combine with `patch`, `unset`, `add`, and `remove` in
 one update, and lifecycle runs once for the whole update.
 
 Body edits need no live-collaboration machinery. An implementation that only
-ever applies them directly, case 1 above, conforms, as long as it reports the
-other cases as specified.
+ever applies them directly, case 1 above, conforms to Core Write, as long as
+it reports every other case as `body_base_unavailable`.
 
 Conflicts are found at line granularity, because they come from the
-line-based body merge of Chapter 12A: two edits to different words of one line
+line-based body merge of the concurrent edits profile: two edits to different words of one line
 conflict. A later release may detect conflicts at a finer granularity; that
 is a compatible refinement, because it only turns some conflicts into merges.
 
@@ -380,8 +385,8 @@ referring record's `path`, the `field` that held the link (or
 `location: body`), `old_value`, and `new_value`, ordered by referring path.
 
 A rename keeps the record's identity: internal identity, history, and merge
-bases follow the record to its new path, as for a move detected under Chapter
-12A, and a tool that reports watch notifications reports it as
+bases follow the record to its new path, as for a move detected under the
+[concurrent edits profile](./concurrent-edits/0.1.md), and a tool that reports watch notifications reports it as
 `record_renamed`.
 
 An implementation MAY commit a rename and its reference updates as one atomic
@@ -559,6 +564,45 @@ Update and delete use the concurrency behavior defined below. A successful
 create or update returns the same fields as `read_view_source`; a successful
 delete returns `path` and `deleted: true`.
 
+## Writer Format Fidelity
+
+Every tool that writes changes to the frontmatter of an existing record,
+through an update, a lifecycle assignment, a merge, or a reference update
+after a rename, MUST follow this rule. It applies to Markdown records and YAML
+document records alike.
+
+A frontmatter source consists of **top-level entries** and the lines between
+them. An entry is a line that begins a top-level key at column 0, together
+with every following line up to the last line of that key's value, and then
+any directly following blank and indented comment lines up to the last
+indented comment line. Lines inside the value belong to the entry even when
+they are blank or column-0 comments, such as a comment between two `- ` items
+of a block sequence at column 0. Blank lines and comment lines at column 0
+after the value are not part of any entry.
+
+1. An entry whose key the write does not change MUST stay byte-identical,
+   including its comments, quoting, indentation, and position.
+2. Lines that are not part of any entry MUST be kept, except that removing an
+   entry removes its own lines only.
+3. A changed entry is re-emitted in place. When the previous value was a flow
+   collection, such as `tags: [a, b]`, the new value MUST be written as a flow
+   collection, and a block collection MUST stay in block style. Writers
+   SHOULD keep a scalar's quoting style and a trailing comment on the entry's
+   first line when the new value can be written that way.
+4. A new key is appended after the last entry.
+5. A value that a merge takes unchanged from one side MUST be copied verbatim
+   from that side's source text for the entry.
+6. The byte-order mark, the frontmatter delimiters, the line ending style, and
+   the body, unless the write changes the body, MUST stay as they were.
+
+A whole-document `document` replacement is written exactly as supplied and
+is outside this rule.
+
+The rule keeps unrelated bytes stable, so files diff cleanly in Git and a
+write never manufactures a change on a line it did not mean to touch. Byte
+changes beyond the edited keys would also turn into needless conflicts in the
+next merge.
+
 ## Concurrency
 
 Write-capable tools SHOULD detect external modification between read and write
@@ -578,7 +622,8 @@ A write without `if_revision` describes its own change: the keys it sets or
 removes, its list operations, and its body edit. When the record changed after
 the caller read it, an implementation either applies that change to the
 current record, as the update pipeline above does, or reconciles the two
-versions with the three-way record merge of Chapter 12A. It MUST NOT discard
+versions with the three-way record merge of the
+[concurrent edits profile](./concurrent-edits/0.1.md). It MUST NOT discard
 the other change silently. A conflict found by the merge is reported; how it
 is held, shown, and resolved is implementation behavior.
 
@@ -617,8 +662,8 @@ runtime state, or revisions.
 ## Events
 
 After a successful mutation, tools MAY emit watch/runtime events. A tool that
-reports moves of files edited outside it uses the move detection of Chapter
-12A. Events MUST be
+reports moves of files edited outside it uses the move detection of the
+[concurrent edits profile](./concurrent-edits/0.1.md). Events MUST be
 delivered after the derived read/query state is consistent.
 
 A change of path that changes path-stored values, whether by an update, a

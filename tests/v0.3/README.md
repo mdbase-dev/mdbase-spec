@@ -18,7 +18,7 @@ The tests below are grouped into thirteen fixture sets:
 10. `runtime_contracts`
 11. `workflow_execution`
 12. `merge` (since rc.5)
-13. `watch` (since rc.5)
+13. `move_detection` (since rc.5; named `watch` before rc.6)
 
 The suite covers JSON Schema artifacts, type wrappers, first-class data
 contracts and projections, collection semantics, CEL host bindings, saved

@@ -16,6 +16,8 @@ profiles:
   - cel_query
   - links
   - core_write
+  - merge/0.1
+  - move_detection/0.1
   - type_packs/0.1
   - lifecycle
   - event_action_interop/0.1

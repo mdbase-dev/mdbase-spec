@@ -69,7 +69,7 @@ groups:
       - name: body_base_text lets a stale base rebase
         id: core_write.body_edits_base_text
         since: "0.3.0-rc.5"
-        covers: [core_write.body_edits, merge.body_edit_rebase]
+        covers: [merge/0.1.body_edit_rebase]
         operation: update
         input:
           path: notes/meeting.md

@@ -16,7 +16,6 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Query | evaluate contextual CEL filters, projections, grouping, summaries, and query envelopes |
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
-| Merge | merge concurrent versions of a record with declared field strategies |
 | Lifecycle | apply standard managed-field policy during writes |
 | Watch | report ordered collection changes after consistent state |
 
@@ -24,6 +23,8 @@ Companion profiles add optional behavior on top of these:
 
 | Companion profile | Purpose |
 | --- | --- |
+| Move Detection 0.1 | recognize a file moved outside the implementation as the same record |
+| Merge 0.1 | merge concurrent versions of a record with declared field strategies |
 | Type Packs 0.1 | assess and transactionally apply managed type packs |
 | Event/Action Interoperability 0.1 | exchange CloudEvents and admitted action invocations through independently claimable roles |
 | Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
@@ -40,7 +41,6 @@ Normative profile IDs and dependencies of this specification are:
 | `cel_query` | `collection_semantics`, `cel` |
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
-| `merge` | `core_write` |
 | `lifecycle` | `core_write`, `cel` |
 | `watch` | `collection_semantics` |
 
@@ -49,6 +49,8 @@ their profile IDs carry their version:
 
 | Profile ID | Requires | Defined by |
 | --- | --- | --- |
+| `move_detection/0.1` | `watch` | [concurrent edits profile](./concurrent-edits/0.1.md) |
+| `merge/0.1` | `core_write` | [concurrent edits profile](./concurrent-edits/0.1.md) |
 | `type_packs/0.1` | `data_contracts`, `core_write` | [type packs profile](./type-packs/0.1.md) |
 | `event_action_interop/0.1` | none | [event/action interoperability profile](./interop/0.1.md) |
 | `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` | [durable runtime profile](./runtime/0.2.md) |
@@ -84,7 +86,8 @@ or specification version and SHOULD report stale evidence.
 ### Conformance Suites
 
 The shared fixtures live in `tests/v0.3/`, and `tests/v0.3/README.md` defines
-their format. That includes the `merge_records` form, which states a merge case
+their format. That includes the `merge_records` form of the `merge/0.1`
+profile, which states a merge case
 as a base version, two edited versions, and the type declarations, with the
 exact merged bytes and conflicts as the expected result. Each test added in a
 release candidate after rc.4 records that release candidate, such as
@@ -373,11 +376,11 @@ Core Write implementations MUST:
 - validate a complete draft before writing, rejecting only request and
   safety failures and, at level `error`, single-record issues
 - preserve unrelated Markdown body content
-- follow the writer format fidelity rule of Chapter 12A
+- follow the writer format fidelity rule of Chapter 12
 - apply `add` and `remove` list operations to the current value
-- apply `body_edits` directly when the body matches `body_base`, rebase them
-  with the Chapter 12A body merge when the base body is available, and report
-  `body_conflict` and `body_base_unavailable` otherwise
+- apply `body_edits` directly when the body matches `body_base`, and
+  otherwise report `body_base_unavailable` unless they rebase them under the
+  `merge/0.1` profile
 - reject paths that escape the collection root
 - when a rename updates references, rewrite the links that resolved to the
   renamed record and would no longer resolve to it, including
@@ -401,24 +404,6 @@ Core Write implementations MUST:
 - return the canonical operation envelope and final record revision
 - update derived state before reporting a successful mutation
 
-## Merge Requirements
-
-Merge implementations MUST:
-
-- merge frontmatter one top-level key at a time with the three-way rules of
-  Chapter 12A
-- apply declared and default `conflict`, `max`, `min`, and `union`
-  strategies exactly
-- treat end-of-body append-append as a union, earlier-ordered side first
-- merge other body changes line by line and report overlapping changes as a
-  `body` conflict
-- keep the first version's value at every conflict and report the conflict
-  with its base, first, and second values
-- never reject a merged version or turn it into a conflict because it is
-  invalid
-- copy values taken unchanged from one side verbatim from that side's source
-  text
-
 ## Lifecycle Requirements
 
 Lifecycle implementations MUST:
@@ -432,6 +417,11 @@ Lifecycle implementations MUST:
 - evaluate membership once after lifecycle and report
   `type_membership_changed`
 - report conflicts between matched lifecycle policies
+
+## Concurrent Edits Requirements
+
+The requirements of the `move_detection/0.1` and `merge/0.1` profiles are
+defined by the [concurrent edits profile](./concurrent-edits/0.1.md).
 
 ## Type Packs Requirements
 
@@ -481,9 +471,13 @@ An implementation that also claims `data_contracts` reports `contract_changed`
 with the contract file `path` after the contract registry and type
 implementations have been re-resolved. Implementations MAY also report
 `schema_changed`, `view_changed`, and `lock_changed`, each with a `path`, for
-referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename that move
-detection (Chapter 12A) does not pair is reported as `record_deleted` followed
-by `record_created`.
+referenced local schema files, saved-view sources, and `mdbase.lock.yaml`.
+
+A file moved outside the implementation is reported as `record_renamed` only
+by an implementation that claims `move_detection/0.1`, and only when the
+move detection of the [concurrent edits profile](./concurrent-edits/0.1.md)
+pairs it. Every other such move is reported as `record_deleted` followed by
+`record_created`.
 
 `record_created` and `record_modified` include current effective frontmatter.
 `record_renamed` includes `path`, `previous_path`, and current effective
@@ -506,5 +500,3 @@ Watch implementations MUST:
 - coalesce duplicate host notifications for one logical change and report the
   final observed state
 - isolate listener failures so later notifications continue to be delivered
-- pair disappearances and appearances with the move detection of Chapter 12A
-  when reporting renames of files changed outside the implementation
