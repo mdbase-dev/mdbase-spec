@@ -32,7 +32,6 @@ claim_profiles:
       - raw_schema_validation
       - machine_readable_diagnostics
       - invalid_records_reported  # since 0.3.0-rc.5
-      - path_equivalence  # since 0.3.0-rc.5
       - regex_profile  # since 0.3.0-rc.5
       - frontmatter_delimiters  # since 0.3.0-rc.6
   - id: collection_semantics
@@ -49,6 +48,7 @@ claim_profiles:
       - cross_record_reporting  # since 0.3.0-rc.5
       - merge_declarations  # since 0.3.0-rc.5
       - path_stored_fields  # since 0.3.0-rc.6
+      - path_equivalence  # since 0.3.0-rc.5; core_read.path_equivalence before 0.3.0-rc.6
   - id: data_contracts
     status: coverage_complete
     requires: [core_read]

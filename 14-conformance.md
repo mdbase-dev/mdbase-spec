@@ -8,8 +8,8 @@ queries, writes, runtime preflight, workflow execution, and watching.
 
 | Profile | Purpose |
 | --- | --- |
-| Core Read | discover collections, parse records, load types, match records, and validate JSON Schema |
-| Collection Semantics | apply defaults, uniqueness, path policy, multi-type composition, and collection diagnostics |
+| Core Read | discover collections, parse records, load types, match records, and validate JSON Schema, one record at a time |
+| Collection Semantics | apply defaults, uniqueness, path equivalence, path policy, multi-type composition, and collection diagnostics |
 | Data Contracts | load contracts, resolve type implementations, compute digests, and project contract views |
 | CEL | compile and evaluate the shared mdbase CEL language and host contract |
 | CEL Match | evaluate `match.expr` against raw candidate records |
@@ -203,8 +203,6 @@ Core Read implementations MUST:
   `unsupported_profile`
 - report diagnostics in the canonical machine-readable shape
 - read, index, and report invalid records rather than skip them
-- compute path keys and report `path_collision` for discovered records with
-  equivalent paths
 
 ## Data Contracts Requirements
 
@@ -230,6 +228,8 @@ Collection Semantics implementations MUST:
   comparison set, comparing raw values without coercion
 - report cross-record issues without blocking writes, except for
   `enforce: write` uniqueness rules
+- compute path keys and report `path_collision` for discovered records with
+  equivalent paths
 - load `collection.merge` declarations and derive default merge strategies
 - validate portable `collection.path` policies for write-capable tools
 - decode path-stored fields from record paths and use the decoded values

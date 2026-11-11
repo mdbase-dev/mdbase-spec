@@ -361,7 +361,7 @@ groups:
       - name: "both files are records and both report path_collision"
         id: paths.discovered_collision
         since: 0.3.0-rc.5
-        covers: [core_read.path_equivalence]
+        covers: [collection_semantics.path_equivalence]
         operation: read
         input:
           path: "notes/plan.md"
