@@ -311,38 +311,16 @@ arbitrarily selected provider.
 Multiple applications may consume the same type implementation. Implementing a
 contract does not create an owner, lease, or exclusive provider relationship.
 
-When several types implement one compatible contract requirement:
+A tool MUST NOT silently choose one of several implementations, for example
+the first filesystem entry. A create through a contract names one
+implementing type.
 
-- read and list experiences SHOULD initially offer their explicit union
-- user-facing approval MUST show every included type
-- an existing approval MUST pin the exact type names, contract digest, and
-  implementation digests
-- a later implementation MUST NOT silently join that approval
-- creation MUST use one explicitly selected implementing type
-
-A product may let a user select a subset instead of the union. It MUST NOT hide
-the selection or silently choose the first filesystem entry.
-
-These rules separate interoperability from authorization. A type's
-`implements` claim says what it can mean; it does not say which application may
-read or mutate it.
-
-## Contract Access And Whole Records
-
-The portable contract view contains only mapped contract fields. A gateway that
-grants access "through a contract" MUST expose only that view plus the minimum
-record identity needed by its protocol. If a record has several approved views
-and the operation does not identify one unambiguously, the gateway MUST require
-an explicit contract ID, exact version, and implementing type rather than merge
-or guess.
-
-Access to unmapped frontmatter, the Markdown body, or arbitrary records is
-whole-record or whole-collection access and MUST be requested and presented
-explicitly. Merely implementing a contract never grants either form of access.
-
-Core collection APIs remain authorization-neutral. This distinction is
-normative for gateways and application protocols that use data contracts as an
-authorization boundary.
+A type's `implements` claim says what the type can mean; it does not say which
+application may read or mutate it. Collection APIs are authorization-neutral,
+and implementing a contract grants no access. The rules for a gateway that
+grants access through a contract, including what an approval shows and pins,
+are in the
+[event/action interoperability profile](./interop/0.1.md).
 
 ## Diagnostics
 
