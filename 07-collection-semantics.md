@@ -487,8 +487,14 @@ path-stored field written `{field}` is placed in a path, it is normalized:
 4. leading and trailing characters that are `.` or a space are removed.
 
 The normalized value replaces the value that was written: it is the record's
-value and the value the operation result reports. Normalizing a normalized
-value changes nothing. A value that is not a string, or that is empty after
+value and the value the operation result reports. When normalization changes
+a value that the request or a lifecycle action set, the operation result
+carries a `warning` diagnostic with code `path_value_normalized`, the field,
+`details.written` holding the value as it was set, and `details.stored`
+holding the normalized value, so a caller that wrote `Plan: Q3/Q4` learns
+that the record's title is `Plan Q3Q4` without comparing the two itself. The
+diagnostic belongs to the operation, not to the record: reading the record
+later does not report it. Normalizing a normalized value changes nothing. A value that is not a string, or that is empty after
 normalization, fails with `path_value_invalid` naming the field, and so does a
 value that gives the derived path a segment the portable path rules of
 Chapter 02 forbid, such as the Windows device name `CON` or a segment longer

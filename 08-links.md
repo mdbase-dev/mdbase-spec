@@ -26,6 +26,39 @@ Parsed links expose:
 
 `format` is one of `wikilink`, `markdown`, or `path`.
 
+## Link Syntax
+
+A **wikilink** is `[[`, a target, an optional `#anchor`, an optional `|alias`,
+and `]]`, on one line. The alias is the text after the first `|`. In the text
+before the alias, the anchor is the text after the first `#` and the target
+is the text before it, with leading and trailing whitespace removed. A
+wikilink with an empty target is not a link. The link ends at the first `]]`,
+except that a `]` closing a `[` opened inside the link belongs to the link:
+`[[Person [draft]]]` has the target `Person [draft]`. `![[...]]` is an embed.
+
+A **Markdown link** is `[text](destination)`, where `text` contains no `[` or
+line break and `(` directly follows `]`. `![text](destination)` is an embed.
+The destination has one of two forms:
+
+- `<...>`: the destination is the text between the angle brackets exactly as
+  written. Only whitespace or a title that begins with `"` may follow it
+  before `)`.
+- otherwise the destination is the text up to the first space or `)`. Text
+  between a space and `)`, such as a `"title"`, is ignored, and each `%20` in
+  the destination is read as a space. No other percent-encoding is decoded,
+  so a destination that contains a space or `)` is written with `%20` or in
+  angle brackets.
+
+The anchor is the text after the first `#` of the destination, and the target
+is the text before it. A Markdown link is not a record link, and is ignored,
+when its destination is empty, begins with `#`, or begins with a URI scheme:
+an ASCII letter, then ASCII letters, digits, `+`, `-`, or `.`, then `:`, as in
+`https:` or `mailto:`.
+
+A **bare path** is a complete field value that is neither of the above, is
+not empty, contains no `[`, `]`, or line break, and does not begin with a URI
+scheme. Its anchor is the text after the first `#`.
+
 ## Resolution
 
 Resolution is performed against the collection root and the containing file.
@@ -40,6 +73,10 @@ General rules:
   resolve from the collection root.
 - Simple wikilinks without path separators resolve by filename, matching the
   target against record filenames with or without their record extension.
+- A path that names no record as written, and whose last segment does not
+  end in a record extension, is tried with each extension of
+  `settings.record_extensions` appended, in the configured order. The first
+  path that names a record is the target.
 - When `settings.id_field` is configured, a simple wikilink first tries
   ID-based resolution against that field and falls back to filename
   resolution only when no record has that ID. When `settings.id_field` is
@@ -49,7 +86,13 @@ A record has an ID when its persisted `id_field` value is a non-empty string.
 ID-based resolution compares the wikilink target with record IDs exactly,
 without case folding or normalization.
 
-After normalization, a link that escapes the collection root is invalid.
+Targets are compared with record paths and filenames by path key (Chapter
+02), so `[[Alice]]` and `[[people/Alice]]` resolve to `people/alice.md`. Two
+records whose paths have the same path key are already a `path_collision`.
+An ID is compared exactly, as above.
+
+After `.` and `..` segments are resolved, a link that escapes the collection
+root is invalid.
 
 ## Ambiguity
 
@@ -139,18 +182,44 @@ backlinks.
 Backlinks are derived from the current collection state. After a successful
 write, subsequent reads and queries observe backlinks that reflect it.
 
+## Code In The Body
+
 Links and tags inside fenced code blocks and inline code MUST be ignored by
-body extraction.
+body extraction. Body extraction reads the body one line at a time and
+recognizes code as follows, which is a subset of CommonMark:
+
+- A **fenced code block** opens on a line that is indented by fewer than
+  four spaces and whose first other characters are a run of at least three
+  backticks or at least three tildes. A backtick run opens a block only when
+  the rest of its line contains no backtick. The block closes on a line that
+  is indented by fewer than four spaces and begins with a run of the same
+  character at least as long as the opening run, followed only by
+  whitespace. A block that is never closed runs to the end of the body. The
+  opening and closing lines are part of the block.
+- **Inline code** begins, on a line outside a fenced code block, at a run of
+  backticks, and ends after the next place on the same line where that many
+  backticks occur. A run with no such place is ordinary text.
+- A backslash makes the character after it ordinary text, so `\[[x]]` is not
+  a link and a backtick after a backslash opens no inline code.
+
+Indented code blocks are not recognized: a link or tag on an indented line is
+extracted.
 
 ## Tags
 
-`file.tags` includes:
+`file.tags` lists, in this order and without de-duplication:
 
-- frontmatter tags from `tags` when the field is string or list of strings
-- inline body tags beginning with `#`
+- the frontmatter `tags` value when it is a string, or its string items when
+  it is a list, each with any leading `#` characters removed
+- the inline tags of the body, in order of appearance
 
-Inline tags must begin at the start of a line or after whitespace. URL
-fragments MUST NOT be treated as tags.
+An inline tag is a `#` that is the first character of its line or follows a
+whitespace character (Unicode `White_Space`), followed by the longest run of tag characters. A tag
+character is a letter or digit (Unicode `Alphabetic`, or general category
+`Nd`, `Nl`, or `No`), `_`, `-`, or `/`. The tag is the run, without the `#`.
+A run that is empty, or that consists only of ASCII digits, is not a tag, so
+`# Heading`, `#123`, and the fragment of `https://example.com/a#section` are
+not tags, while `#2026-plan` and `#project/alpha` are.
 
 `file.hasTag("project")` uses complete tag-segment prefixes. It matches
 `#project` and `#project/alpha`; its result for `#projection` is false.

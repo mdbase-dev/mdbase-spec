@@ -33,11 +33,27 @@ status: open
 Body text.
 ```
 
-If the first non-byte-order-mark bytes are not `---` followed by a line ending,
-the file has no frontmatter and the full file is body text.
+The **opening delimiter** is `---` followed by a line ending (`\n` or
+`\r\n`), as the first bytes of the file after an optional byte-order mark.
+The **closing delimiter** is the first later line that is exactly `---`,
+ended by a line ending or by the end of the file. The frontmatter source is
+the text between the two delimiter lines, and the body is everything after
+the closing delimiter's line ending, so a blank line that follows the
+delimiter is part of the body.
 
-Whitespace or a blank line before the opening delimiter means there is no
-frontmatter.
+A file has no frontmatter, and the whole file is body text, when:
+
+- it does not begin with the opening delimiter; whitespace or a blank line
+  before `---`, and `---` followed by a space or any other character, are
+  not an opening delimiter
+- no later line is a closing delimiter; an opening delimiter that is never
+  closed does not make the rest of the file frontmatter
+
+Only `---` closes frontmatter. The YAML document end marker `...`, a `---`
+line with leading or trailing whitespace, and a longer run of dashes do not.
+The first line that is exactly `---` closes it even when a YAML parser would
+read that line as part of a block scalar, so every tool finds the same
+frontmatter without parsing YAML.
 
 ## YAML Document Record Structure
 

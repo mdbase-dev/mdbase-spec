@@ -100,6 +100,10 @@ exception is a uniqueness rule that explicitly opts into `enforce: write`
 single-record checks whose severity is always `warning`: they are reported at
 levels `warn` and `error` and never reject a write.
 
+`path_value_normalized` (Chapter 07) is not a validation issue. It is a
+warning in the result of the write that normalized the value, at every
+validation level, and it is not reported when the record is read later.
+
 Writes that do not go through an engine's write operations are never rejected.
 That includes edits made by other tools, files that appear through a file
 system or synchronization tool, and the results of the merge in Chapter 12A.

@@ -73,10 +73,25 @@ An implementation MAY offer a sequence provider under an `x-*` extension; such
 a provider is not portable, and its allocation and coordination are
 implementation behavior.
 
-`slugify` lowercases the value, transliterates it to ASCII where a
-transliteration exists, replaces each run of other characters with `-`, and
-trims leading and trailing `-`. A missing, null, or non-string source value
-produces null. `copy` of a missing field removes the target key.
+`slugify` builds its slug from a string value in four steps:
+
+1. Decompose the value to Unicode Normalization Form D and remove every
+   combining mark (general category `Mn`, `Mc`, or `Me`), using the Unicode
+   version of Chapter 02.
+2. Replace each ASCII letter `A` to `Z` with its lowercase letter.
+3. Replace each run of characters other than `a` to `z` and `0` to `9` with
+   one `-`.
+4. Remove a leading and a trailing `-`.
+
+So `Café — Crème Brûlée!` gives `cafe-creme-brulee`. Only canonical
+decomposition removes an accent: a character that does not decompose to an
+ASCII letter is a separator like any other, so `Straße` gives `stra-e`,
+`Ærø` gives `r`, and a value without any ASCII letter or digit, such as
+`日本語`, gives the empty string. There is no other transliteration, so every
+tool produces the same slug.
+
+A missing, null, or non-string source value produces null. `copy` of a
+missing field removes the target key.
 
 ## Guards
 
@@ -112,24 +127,21 @@ value instead of conflicting. A merge does not run lifecycle: lifecycle values
 in a merged record come from the two sides through their merge strategies
 (Chapter 12A).
 
-## Validation Order
+## Place In The Write Order
 
-For create and update:
+Chapter 12 defines the complete order of a create and of an update. Within
+it, lifecycle:
 
-1. parse input
-2. build a draft frontmatter object
-3. determine and freeze type membership from the draft and target path
-4. apply the lifecycle actions of every matched type
-5. re-evaluate membership and fail with `type_membership_changed` if it differs
-6. validate JSON Schema
-7. run collection validators
-8. write the file
-
-Lifecycle MUST run before final validation so generated IDs and timestamps can
-satisfy required schema fields. It also runs before a path is derived from
-path-stored fields (Chapter 07): the draft holds the persisted values,
-including path-stored values, and a lifecycle action that sets a path-stored
-field determines the record's path. Chapters 05 and 12 define membership freezing.
+- runs once per operation, after type membership is frozen from the draft,
+  for exactly the frozen types
+- runs before JSON Schema and collection validation, so generated IDs and
+  timestamps can satisfy required schema fields
+- runs before a path is derived from path-stored fields (Chapter 07): the
+  draft holds the persisted values, including path-stored values, and a
+  lifecycle action that sets a path-stored field determines the record's
+  path
+- is followed by a second evaluation of membership, which fails the
+  operation with `type_membership_changed` when lifecycle changed it
 
 Read defaults MUST NOT run as lifecycle policy unless a write operation
 explicitly asks to materialize them.

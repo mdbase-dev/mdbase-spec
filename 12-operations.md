@@ -49,19 +49,52 @@ Create builds a new record.
 
 Pipeline:
 
-1. determine target type or types from explicit input or path/match policy
-2. build draft frontmatter
-3. freeze pre-lifecycle type membership
-4. apply lifecycle `on_create`
-5. verify type membership did not change as a lifecycle side effect
-6. validate JSON Schema
-7. run collection validators, applying the validation tiers of Chapter 04
-8. choose or validate path policy; the final path's extension fixes the
-   record's format (Chapter 03), and a body is rejected when that format is a
-   YAML document
-9. write Markdown file
-10. update derived indexes
-11. emit watch/runtime events after state is consistent
+1. select the target type or types from explicit input, contract selection,
+   or path and match policy
+2. build the draft frontmatter from the request, with the declaration of a
+   selected type (below); with an explicit `path`, add the path-stored
+   values decoded from it
+3. choose the membership path and freeze type membership (below)
+4. apply lifecycle `on_create` of the frozen types
+5. when there is a membership path, evaluate membership again for the draft
+   after lifecycle and fail with `type_membership_changed` if it differs
+6. normalize the path-stored values that the request or lifecycle set
+   (Chapter 07), and derive the path when the request gave none
+7. check the final path: path safety, the record extension, collisions, and
+   that every frozen type matches the record at it, failing with
+   `type_membership_changed` otherwise; the path's extension fixes the
+   record's format (Chapter 03), and a body is rejected when that format is
+   a YAML document
+8. validate JSON Schema for every type that matches at the final path
+9. run collection validators, applying the validation tiers of Chapter 04
+10. write the file
+11. update derived indexes
+12. emit watch/runtime events after state is consistent
+
+This list and the update pipeline below are the write order. Chapters 05 and
+09 describe type membership and lifecycle within it.
+
+The **membership path** is the path that `match` rules read in step 3,
+before lifecycle has run and before a path can always be derived:
+
+- An explicit `path` is the membership path.
+- Otherwise, when no selected or matched type has path-stored fields and the
+  path pattern can already be derived from the draft, the derived path is
+  the membership path. The pattern is that of the selected type, or else of
+  the first type in canonical order that the draft matches without a path.
+  This path is provisional: it is used only to evaluate membership, it is
+  not checked for collisions, and the final path is derived again in step 6,
+  after lifecycle.
+- Otherwise there is no membership path. Membership is evaluated from the
+  draft's frontmatter with an empty path, and step 5 is skipped. A pattern
+  with path-stored fields never gives a provisional path, because its values
+  are normalized only after lifecycle.
+
+The frozen membership is the types that match the draft at the membership
+path, together with the selected type. Lifecycle runs for exactly those
+types. A type that matches only through the final path, when there was no
+membership path, joins the record for validation in steps 8 and 9, and its
+lifecycle does not run.
 
 An explicit `path` whose path key (Chapter 02) equals that of an existing
 record fails with `path_conflict`. A path derived from `collection.path.pattern`
@@ -70,7 +103,7 @@ free suffixed path from Chapter 02, and the result reports the final path.
 
 When a selected type has path-stored fields (Chapter 07):
 
-- Without an explicit `path`, the path is derived in step 8 from the values
+- Without an explicit `path`, the path is derived in step 6 from the values
   after lifecycle `on_create`, so a lifecycle action can supply a
   path-stored value. Each path-stored value is normalized first. A derived
   path whose path key equals that of an existing record fails with

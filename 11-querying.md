@@ -165,10 +165,43 @@ order_by:
     direction: desc
 ```
 
-Null values sort last in ascending order and first in descending order.
+Every pair of values has a defined order, so a result order never depends on
+the tool. In ascending order, values sort first by kind:
 
-When all ordering fields compare equal, tools MUST tie-break by ascending
-`file.path` for deterministic results.
+| Rank | Kind | Order within the kind |
+| --- | --- | --- |
+| 1 | boolean | `false` before `true` |
+| 2 | number | by exact numeric value; integers and non-integers share one order, so `2` sorts before `2.5` and equals `2.0` |
+| 3 | date or date-time | by instant; a date is the start of that day in UTC |
+| 4 | string | by Unicode code point, without case folding or normalization |
+| 5 | list | by number of items |
+| 6 | map | by number of keys |
+| 7 | null or missing | all equal |
+
+A string is of the date or date-time kind only when the tool knows it is one:
+
+- the value of a field of a typed record, when every type the record
+  matches declares the same `format: date` or the same `format: date-time`
+  for that field, and the value is valid for that format and, for a
+  date-time, has an offset
+- a projection or selection value that is a CEL timestamp
+
+Every other string is of the string kind, however it is written: a string
+that merely looks like a date is not guessed to be one, and an invalid value
+in a `format: date` field sorts as a string, after every valid date.
+
+Two lists with the same number of items, and two maps with the same number
+of keys, compare equal whatever they contain. A query that needs an order
+over such values orders by a projection.
+
+`direction: desc` reverses this whole order for its term, so null and missing
+values sort last in ascending order and first in descending order.
+
+When all ordering terms compare equal, tools MUST tie-break by ascending
+`file.path` in Unicode code-point order, whatever the terms' directions. Paths
+are unique, so the order of a result set is total, and `limit` and `offset`
+always select the same records from the same collection state. A tool that
+pages with its own continuation tokens MUST return the pages of this order.
 
 ## Grouping And Summaries
 
@@ -183,7 +216,7 @@ group_by:
 
 Each distinct ordered tuple of grouping values creates one group. Null and
 missing values form the same null group. Group tuple ordering applies the same
-direction and null rules as `order_by`. Results within a group retain query
+value order and direction as `order_by`. Results within a group retain query
 order.
 
 Queries MAY define custom summary functions and apply built-in or custom

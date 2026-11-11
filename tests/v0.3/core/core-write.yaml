@@ -472,3 +472,120 @@ groups:
             label: managed
             slug: caller-label
             stamp: second
+
+  - name: "create membership path"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          explicit_type_keys: []
+      types:
+        note.md: |
+          ---
+          kind: mdbase.type
+          name: note
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+          collection:
+            path:
+              pattern: "notes/{title}.md"
+          ---
+        stamped.md: |
+          ---
+          kind: mdbase.type
+          name: stamped
+          version: 1
+          match:
+            path_glob: "notes/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                stamp: { type: string }
+          lifecycle:
+            on_create:
+              set:
+                stamp: { literal: applied }
+          ---
+        generated.md: |
+          ---
+          kind: mdbase.type
+          name: generated
+          version: 1
+          match:
+            path_glob: "gen/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+                slug: { type: string }
+          collection:
+            path:
+              pattern: "gen/{slug}.md"
+          lifecycle:
+            on_create:
+              set:
+                slug: { slugify: title }
+          ---
+        audited.md: |
+          ---
+          kind: mdbase.type
+          name: audited
+          version: 1
+          match:
+            path_glob: "gen/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                audited: { type: string }
+          lifecycle:
+            on_create:
+              set:
+                audited: { literal: applied }
+          ---
+      files: {}
+    tests:
+      - name: "a path the draft already derives freezes membership, so a path-matched type's lifecycle runs"
+        id: core_write.create_provisional_path
+        since: 0.3.0-rc.6
+        covers: [core_write.create_membership_path]
+        operation: create
+        input:
+          type: note
+          frontmatter:
+            title: Plan
+        expect:
+          valid: true
+          path: "notes/Plan.md"
+          types: [note, stamped]
+          frontmatter_contains:
+            stamp: applied
+
+      - name: "without a membership path only the selected type's lifecycle runs, and a path-matched type joins for validation"
+        id: core_write.create_no_membership_path
+        since: 0.3.0-rc.6
+        covers: [core_write.create_membership_path]
+        operation: create
+        input:
+          type: generated
+          frontmatter:
+            title: Hello World
+        expect:
+          valid: true
+          path: "gen/hello-world.md"
+          types: [audited, generated]
+          frontmatter_contains:
+            slug: hello-world
+          frontmatter_not_contains: [audited]

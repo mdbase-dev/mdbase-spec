@@ -34,6 +34,7 @@ claim_profiles:
       - invalid_records_reported  # since 0.3.0-rc.5
       - path_equivalence  # since 0.3.0-rc.5
       - regex_profile  # since 0.3.0-rc.5
+      - frontmatter_delimiters  # since 0.3.0-rc.6
   - id: collection_semantics
     status: coverage_complete
     requires: [core_read]
@@ -94,6 +95,8 @@ claim_profiles:
       - named_projections
       - grouping_and_summaries
       - query_evaluation_diagnostics
+      - value_order  # since 0.3.0-rc.6
+      - path_tiebreak  # since 0.3.0-rc.6
   - id: links
     status: draft
     requires: [collection_semantics, cel]
@@ -105,6 +108,9 @@ claim_profiles:
       - id_field_no_default  # since 0.3.0-rc.5
       - ambiguous_id_link  # since 0.3.0-rc.5
       - filename_tiebreakers  # since 0.3.0-rc.5
+      - path_key_matching  # since 0.3.0-rc.6
+      - markdown_destinations  # since 0.3.0-rc.6
+      - body_code_and_tags  # since 0.3.0-rc.6
   - id: core_write
     status: draft
     requires: [collection_semantics]
@@ -120,6 +126,8 @@ claim_profiles:
       - rename_references  # since 0.3.0-rc.5
       - body_edits  # since 0.3.0-rc.5
       - path_stored_writes  # since 0.3.0-rc.6
+      - path_value_normalized  # since 0.3.0-rc.6
+      - create_membership_path  # since 0.3.0-rc.6
   - id: merge  # since 0.3.0-rc.5
     status: coverage_complete
     requires: [core_write]
@@ -155,6 +163,7 @@ claim_profiles:
     requires: [core_write, cel]
     requirements:
       - ordered_actions
+      - slugify  # since 0.3.0-rc.6
   - id: event_action_interop/0.1
     status: draft
     requires: []
@@ -254,6 +263,7 @@ fixture_sets:
       - cel/cel-profile.yaml
       - cel/match-determinism.yaml
       - cel/regex-profile.yaml
+      - cel/query-order.yaml
   - id: views
     description: Ordinary view records resolve named queries, invocation context, and advisory presentation.
     coverage_targets: [cel_query]

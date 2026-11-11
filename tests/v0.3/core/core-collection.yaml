@@ -716,3 +716,87 @@ groups:
           valid: false
           error:
             code: path_traversal
+
+  - name: "frontmatter delimiters"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        notes/closed-at-eof.md: "---\ntitle: Eof\n---"
+        notes/blank-after.md: "---\ntitle: Blank\n---\n\nBody\n"
+        notes/unclosed.md: "---\ntitle: Unclosed\n\nBody\n"
+        notes/document-end.md: "---\ntitle: Dots\n...\nBody\n"
+        notes/opening-space.md: "--- \ntitle: Space\n---\nBody\n"
+        notes/blank-first.md: "\n---\ntitle: Late\n---\nBody\n"
+    tests:
+      - name: "a closing delimiter may end the file"
+        id: core_read.frontmatter_closed_at_eof
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/closed-at-eof.md"
+        expect:
+          valid: true
+          frontmatter: { title: Eof }
+          body: ""
+
+      - name: "the body starts after the closing delimiter's line ending"
+        id: core_read.frontmatter_body_start
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/blank-after.md"
+        expect:
+          valid: true
+          frontmatter: { title: Blank }
+          body: "\nBody\n"
+
+      - name: "an opening delimiter that is never closed means no frontmatter"
+        id: core_read.frontmatter_unclosed
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/unclosed.md"
+        expect:
+          valid: true
+          frontmatter: {}
+          body: "---\ntitle: Unclosed\n\nBody\n"
+
+      - name: "the YAML document end marker does not close frontmatter"
+        id: core_read.frontmatter_document_end
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/document-end.md"
+        expect:
+          valid: true
+          frontmatter: {}
+          body: "---\ntitle: Dots\n...\nBody\n"
+
+      - name: "an opening delimiter followed by a space is not a delimiter"
+        id: core_read.frontmatter_opening_space
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/opening-space.md"
+        expect:
+          valid: true
+          frontmatter: {}
+          body: "--- \ntitle: Space\n---\nBody\n"
+
+      - name: "a blank line before the opening delimiter means no frontmatter"
+        id: core_read.frontmatter_blank_first
+        since: 0.3.0-rc.6
+        covers: [core_read.frontmatter_delimiters]
+        operation: read
+        input:
+          path: "notes/blank-first.md"
+        expect:
+          valid: true
+          frontmatter: {}
+          body: "\n---\ntitle: Late\n---\nBody\n"

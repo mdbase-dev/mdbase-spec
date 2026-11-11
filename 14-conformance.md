@@ -152,7 +152,8 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `projection_shadowed`, `link_not_found`, `link_target_type_mismatch`,
 `ambiguous_link`, `duplicate_value`, `path_conflict`, `path_collision`,
 `type_conflict`, `type_membership_changed`, `path_value_missing`,
-`path_value_invalid`, `path_value_inconsistent`, `path_field_in_frontmatter`,
+`path_value_invalid`, `path_value_normalized`, `path_value_inconsistent`,
+`path_field_in_frontmatter`,
 `unknown_path_key`, `invalid_type`, `nondeterministic_match`, `invalid_pattern`,
 `schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
@@ -287,7 +288,8 @@ Query implementations MUST:
 - evaluate `where` filters against the effective query context
 - evaluate requested CEL projections
 - support OR-based type filtering
-- support deterministic ordering and pagination
+- order values with the comparator of Chapter 11 and tie-break by ascending
+  `file.path`, so ordering and pagination are deterministic
 - support deterministic grouping and built-in and custom summaries
 - return total-count and has-more metadata
 - return context, grouping, and summary metadata when requested
@@ -390,8 +392,9 @@ Core Write implementations MUST:
 - reject an explicit path that collides under path equivalence with
   `path_conflict`, give a colliding derived path the first free suffix, and
   reject invalid path-pattern values with `path_value_invalid`
-- never persist path-stored fields to frontmatter, normalize their values,
-  derive paths from them after lifecycle, reject a colliding derived path
+- never persist path-stored fields to frontmatter, normalize their values
+  and report `path_value_normalized` when that changes one, derive paths
+  from them after lifecycle, reject a colliding derived path
   with `path_conflict`, and move a record atomically when an update changes
   a path-stored field
 - enforce `enforce: write` uniqueness rules in a single write order

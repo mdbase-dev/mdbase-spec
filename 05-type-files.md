@@ -81,7 +81,7 @@ and collection rules.
 Write operations use the same model around lifecycle processing: determine
 membership from the requested draft, run the applicable lifecycle assignments,
 then confirm membership once before final validation. The complete write order
-is defined in Chapters 09 and 12.
+is defined in Chapter 12.
 
 ## Required Frontmatter
 
@@ -250,6 +250,7 @@ participates independently in each declaring type's uniqueness set.
 
 Write operations determine membership from the requested draft and target path
 before lifecycle runs. Explicit declarations use the same precedence as reads.
+Chapter 12 defines which path a create uses when the request gives none.
 
 After lifecycle has run, the implementation MUST evaluate membership once more.
 If the final membership differs from the pre-lifecycle membership, the operation
