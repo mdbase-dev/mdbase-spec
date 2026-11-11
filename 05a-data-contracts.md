@@ -27,8 +27,10 @@ The complete collection contract model has three intentionally small parts:
    interface using JSON Schema 2020-12.
 2. For a `record` contract, a type's `implements` entry maps that interface to
    the type and supplies contract-specific binding data.
-3. An optional managed `mdbase.type-pack` groups contracts, types, and their
-   referenced schemas for transactional installation and evolution.
+3. An optional `mdbase.type-pack` groups contracts, types, and their
+   referenced schemas for transactional installation and evolution. It is
+   defined by the separately versioned
+   [type packs profile](./type-packs/0.1.md).
 
 Event sources and action providers make runtime declarations because they are
 executable, instance-specific implementations rather than record types.
@@ -159,7 +161,8 @@ Different content for the same ID and version is
 
 Resolution is collection-local and offline. Core implementations MUST NOT fetch
 a missing contract from the network. Applications and installers carry the
-contract files they require, usually in a type pack.
+contract files they require, usually in a
+[type pack](./type-packs/0.1.md).
 
 ## Type Implementations
 
@@ -341,263 +344,6 @@ Core collection APIs remain authorization-neutral. This distinction is
 normative for gateways and application protocols that use data contracts as an
 authorization boundary.
 
-## Type Packs
-
-A type pack is a directory or archive with an `mdbase-pack.yaml` manifest that
-validates against `schemas/v0.3/type-pack.schema.json`.
-
-```yaml
-kind: mdbase.type-pack
-id: example.tasks
-version: 1.0.0
-name: Example task types
-resources:
-  - kind: contract
-    mode: managed
-    source: contracts/example.task.md
-    target: _contracts/example.task.md
-    digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-  - kind: type
-    mode: managed
-    source: types/task.md
-    target: _types/task.md
-    digest: sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
-```
-
-`mode` is required. A `managed` resource remains owned by the pack and may be
-updated or retired by a later pack version only while its live bytes still
-match the installed digest. A `seed` resource is created only when its target
-is absent and becomes user-owned immediately; later pack versions neither
-replace nor delete it unless an explicit seed-type upgrade is declared below.
-
-A seed **type** resource MAY declare `upgrade_from`: one baseline, or a
-non-empty list of baselines. A baseline is `{ digest, document }` with an
-optional integer `version`. `document` is the exact bytes of a starter the
-publisher previously shipped for this resource, pinned by SHA-256 in `digest`;
-it is not an assertion that the user's current document is unchanged. `version`,
-when present, is the `version` that document declares and is only for
-presentation. A single baseline is equivalent to a list containing it. Listing
-every previously shipped starter that remains supported lets a collection
-upgrade from any of them, not only from the most recent. This declaration is
-part of the reviewed manifest and its digest. Ordinary seeds are unaffected.
-Engines that do not support this member MUST reject the manifest.
-
-The manifest is invalid (`invalid_type_pack`) when `upgrade_from` appears on a
-resource that is not a seed type, when it is an empty list, when a baseline lacks
-`digest` or `document`, when a baseline's digest is not the SHA-256 of
-its document, when two baselines share a digest, when a baseline's digest equals
-the resource's own digest, when a baseline document's frontmatter `kind` or
-`name` differs from the desired document's, or when a baseline's `version`
-differs from the `version` its document's frontmatter declares.
-
-A seed's **origin** is the publisher document its live target descends from.
-The lock records it (see Pack Identity And Portable Provenance). When the target
-exists, is not an intentionally preserved seed target, and the resource declares
-`upgrade_from`, the engine plans exactly one of these, in order:
-
-Two type documents are **equal** when their frontmatter values are equal and
-their Markdown bodies are identical; YAML formatting and key order do not
-matter, because other writers may re-serialize a type file.
-
-1. The live type equals the desired document: `preserve`.
-2. The live type equals a baseline's document: `update`, writing the desired
-   document byte-for-byte. Equality proves the origin, whatever the lock
-   records.
-3. The origin is the desired document: `preserve`. The seed was already upgraded
-   and has been edited since.
-4. The origin is a baseline: `update` by a three-way merge of that baseline, the
-   live type, and the desired type.
-5. Otherwise the origin is unknown (a lock written before origins were
-   recorded, or none) or is not a listed baseline, and the engine **infers** a
-   merge base. It orders the listed baselines by how many frontmatter leaf
-   values differ from the live type's (a key present on one side only counts
-   once; equal-length arrays compare item by item; any other differing value
-   counts once), fewest first and in listed order on a tie. It takes the first
-   baseline whose three-way merge succeeds and whose merged type validates and
-   implements every exact contract version the desired type does, judged over
-   the pack's own contract resources: `update` with that merge, or `preserve`
-   when the merge changes nothing.
-6. Otherwise, when the desired type declares `implements` and the live type
-   already validates and implements every exact contract version the desired
-   type does: `preserve`. The seed already fits the pack.
-7. Otherwise: `preserve`, with a `reason` stating that no upgrade baseline
-   applies. The type is left as it is; it does not make the pack conflict.
-
-In cases 1, 2, 3, and 5 the lock's origin becomes the desired document; in the
-others it is carried forward. An engine MUST NOT choose a merge baseline any
-other way. An inferred base (case 5) may not be the seed's true origin, so the
-differences between them could be applied as if they were the user's edits; the
-conservative merge bounds this, since a seed whose `version` or other setting
-differs from both sides is a competing change and fails. The assessment
-reports, for every seed `update`, the baseline used as
-`upgrade_baseline: { digest, version? }`, so the change is reviewed like any
-other.
-
-A three-way merge is conservative. The type kind and name MUST match. Unchanged publisher
-settings retain live customizations; unchanged live settings accept publisher
-changes. Object settings merge recursively. Contract implementations merge by
-contract ID only when unambiguous, retaining customized field mappings and
-bindings while updating exact version references. Competing changes (including
-ambiguous implementation lists) MUST fail closed. Other arrays merge item by
-item when the baseline, live, and desired arrays have the same length, and are
-otherwise indivisible.
-Missing values and explicit null are distinct. Top-level setting removal
-requires separate manual review. The live Markdown body and unrelated YAML
-nodes MUST be preserved. Reformatting a changed YAML node is permitted.
-
-The merged resource digest MUST appear in the assessment. Normal assessment
-and collection revision guards still apply. The upgrade, contract resources,
-and provenance MUST publish atomically only after validating the staged
-collection. A remaining reference to a removed exact contract MUST block the
-whole upgrade; implementations MUST NOT rewrite additional types implicitly.
-Record documents MUST NOT be migrated by this mechanism. An intentionally
-preserved seed target MUST NOT be upgraded.
-
-This is not version negotiation or grant migration. Callers coordinating
-applications must retain old contracts and implementations when supported
-applications still require them, or arrange a separately reviewed coordinated
-upgrade. Existing grants never acquire the new contract version implicitly.
-
-Resource digests are SHA-256 over the exact resource bytes. Source and target
-paths are relative, forward-slash paths without traversal.
-A directory, archive, repository, or package that distributes a pack MUST
-preserve those bytes exactly, including line endings. Rewriting a text resource
-from LF to CRLF therefore creates a different resource and MUST fail digest
-verification. Distributors that store packs in version control SHOULD disable
-line-ending conversion for pack resources.
-
-Type packs are installation units, not record types and not permission grants.
-A pack may include several contracts, several implementing or auxiliary types,
-and local JSON Schemas referenced by those artifacts.
-
-## Pack Identity And Portable Provenance
-
-The pack digest is SHA-256 over RFC 8785 JSON Canonicalization Scheme bytes for
-the complete validated manifest, prefixed with `sha256:`. Because every
-resource digest is part of the manifest, the pack digest identifies the exact
-manifest and exact resource bytes without incorporating their distribution
-location.
-
-Managed pack state is stored in `mdbase.lock.yaml` at the collection root and
-validates against `schemas/v0.3/type-pack-lock.schema.json`. The lock is
-portable collection source, not derived cache state. It records each installed
-pack's exact ID, version, pack digest, stable installer identity, and the kind,
-mode, canonical source, resolved target, and installed digest of every resource. Tools write it
-deterministically and users MAY inspect or version it. Tools MUST NOT infer
-ownership from filenames, application names, or `x-*` metadata.
-
-A seed resource's entry also records `origin_digest`, the digest of the
-publisher document its target descends from, when that is known. Because a seed
-becomes user-owned, the installed digest of a seed describes the pack, not the
-target, and MUST NOT be used as its origin. An apply sets `origin_digest` to the
-desired resource digest when it creates the seed, when it upgrades it (by exact
-replacement or by merge), and whenever the target's live bytes equal the desired
-document, whatever else applies. Otherwise it carries the previous entry's
-`origin_digest` for that target forward unchanged, or omits it when there is
-none. A seed target that existed before the pack was installed, and an
-intentionally preserved seed target, therefore have no origin unless their bytes
-equal the desired document. A lock entry without `origin_digest` means the
-origin is unknown. Locks written before `origin_digest` existed carry none, so
-an edited seed under such a lock is preserved with a reason rather than merged
-until it is upgraded or recreated; an unedited seed still upgrades, because its
-bytes prove its origin. `origin_digest` is defined only for seed resources and
-MUST NOT appear on a managed resource. An apply that changes only seed origins leaves the pack's
-status `current`; it is not a reconfiguration.
-
-Full collection snapshots, authority transfers, and unscoped synchronization
-MUST carry `mdbase.lock.yaml` when it exists. A scoped application projection
-MAY omit it to avoid disclosing unrelated pack metadata. A storage provider
-MUST NOT reject the lock under a per-document limit that the collection owner
-cannot remediate, because tools generate it.
-
-An absent lock means no resource is pack-managed, including resources created
-by older one-shot installers. Adopting existing files into managed ownership is
-a separate explicit operation and MUST verify their exact digests.
-
-## Assessment And Transactional Apply
-
-Pack evolution has two public phases: `assess_type_pack` is read-only and
-`apply_type_pack` consumes a reviewed assessment. A caller supplies the desired
-manifest, exact resources, and a stable reverse-domain `installed_by`
-application or tool identity. Optional `target_overrides` map canonical manifest
-targets to collection-specific paths without changing the publisher-owned pack
-identity. Overrides are validated as safe collection paths, are included in the
-assessment digest, and the resolved targets are written to the receipt.
-
-Assessment reports one of `current`, `install`, `upgrade`, `downgrade`,
-`reconfigure`, or `conflict`, the current and desired pack identities, and every resource in a
-stable exact diff. Resource actions are `create`, `update`, `delete`,
-`adopt`, `unchanged`, `preserve`, or `conflict`. `adopt` records an existing
-byte-identical managed resource without rewriting it. `preserve` is used for seed resources
-and for seed resources retired from a newer pack. A conflicting assessment is
-not applicable. The assessment also reports the planned `mdbase.lock.yaml`
-action (`create`, `update`, or `unchanged`) and its resulting digest, so storage
-adapters can persist the complete authority transaction without inferring
-hidden engine writes.
-
-`reconfigure` means the exact same immutable pack is being resolved to different
-collection targets. Managed resources are relocated only when their installed
-bytes are unchanged; modified resources conflict. Seed resources are never
-moved or deleted automatically. A caller may name seed targets in
-`preserve_seed_targets` to record an intentional omission, such as when a user
-maps the contract to an existing type instead of accepting the starter. Unknown
-or non-seed preservation targets MUST be rejected.
-
-When guided setup maps a provided contract to an existing user-owned type, the
-reviewed `contract_setups` choices are part of the same assessment and apply.
-The assessment reports their exact type-resource diff and binds the selected
-type revisions, field mappings, and bindings into `assessment_digest`. Apply
-MUST stage those edits together with the managed resources and lock, validate
-the combined collection, and commit them in the same transaction. A stale type
-revision therefore leaves both the user-owned type and every pack resource
-unchanged. A connector MUST NOT install the pack first and apply the reviewed
-mapping as a later independent mutation.
-
-The assessment includes a deterministic `assessment_digest` over the desired
-pack identity, current lock entry, and every relevant live target digest. Apply
-MUST recompute it inside the collection mutation boundary and fail with
-`concurrent_modification` before writing when it differs. Downgrades require an
-explicit `allow_downgrade` decision.
-
-An unmanaged target with different bytes is a conflict unless the assessment
-request contains an explicit adoption decision naming that target and its exact
-current digest. An accepted adoption may plan `update`, records the adopted
-digest in the diff, and is covered by `assessment_digest`. This is the safe
-upgrade bridge for collections created before pack receipts existed: tools can
-show the files that will become package-managed, require informed approval, and
-remain race-safe. Unknown targets, seed targets, and stale adoption digests MUST
-be rejected. Adoption is never inferred from application access or install
-intent.
-
-A pack-aware apply implementation MUST:
-
-1. validate the manifest, safe paths, source bytes, and resource digests
-2. stage every resource and reviewed existing-type setup without changing the live collection
-3. resolve the complete staged contract and type registries
-4. validate every contract, implementation, type, reference, and affected
-   existing record
-5. compute and present the exact resource diff and assessment digest
-6. acquire its collection mutation boundary and recheck the assessment
-7. commit all resource changes and the lock as one recoverable transaction
-8. reopen the collection and verify the committed registry and lock
-
-An invalid resource aborts before any live write. A conflict or concurrent
-change aborts with the live collection unchanged. Implementations may use an
-atomic directory exchange or a durable backup journal with rollback. After a
-crash, recovery MUST restore either the complete pre-install state or the
-complete committed state before normal collection operations resume.
-
-Revoking an application's access does not uninstall its type pack. Uninstall is
-a separate, explicitly requested operation because records may still depend on
-the installed types.
-
-Applying a current pack is valid and reports every managed resource as
-`unchanged`; it MUST NOT create a new logical collection revision. Applying an
-upgrade deletes a retired managed target only when its live digest still
-matches the lock. User-modified managed resources produce `conflict` and no
-live write. Successful apply reports the committed receipt, exact resource
-diff, and `cleanup_deferred` when transaction-journal cleanup must be retried.
-
 ## Diagnostics
 
 Data-contract-aware tools use these codes:
@@ -611,9 +357,6 @@ Data-contract-aware tools use these codes:
 | `data_contract_binding_invalid` | implementation binding fails its binding schema |
 | `data_contract_field_invalid` | a mapped contract or record field is missing or incompatible |
 | `data_contract_record_invalid` | a projected contract view fails the contract schema |
-| `invalid_type_pack` | a pack manifest, lock, resource, path, or digest is invalid |
-| `type_pack_conflict` | ownership, live bytes, or an untracked target prevents a safe apply |
-| `type_pack_apply_failed` | transactional commit or recovery did not complete normally |
 
 Diagnostics use the canonical shape from Chapter 14 and identify the contract
 ID, exact version, type name, and relevant field mapping in `details`.

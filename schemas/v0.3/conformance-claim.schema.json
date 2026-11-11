@@ -187,7 +187,7 @@
       "then": { "properties": { "profiles": { "contains": { "const": "core_read" } } } }
     },
     {
-      "if": { "properties": { "profiles": { "contains": { "const": "type_packs" } } } },
+      "if": { "properties": { "profiles": { "contains": { "const": "type_packs/0.1" } } } },
       "then": {
         "properties": {
           "profiles": {
@@ -262,7 +262,7 @@
         "links",
         "core_write",
         "merge",
-        "type_packs",
+        "type_packs/0.1",
         "lifecycle",
         "event_action_interop/0.1",
         "runtime/0.2",

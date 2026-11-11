@@ -313,7 +313,7 @@ keep those claims precise and independently testable.
 | [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing and YAML value semantics |
 | [04-configuration.md](./04-configuration.md) | The `mdbase.yaml` configuration file |
 | [05-type-files.md](./05-type-files.md) | JSON Schema type wrappers and metadata |
-| [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts, type implementations, and transactional type packs |
+| [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts and type implementations |
 | [06-json-schema-profile.md](./06-json-schema-profile.md) | Supported JSON Schema vocabulary and reference rules |
 | [07-collection-semantics.md](./07-collection-semantics.md) | Matching, defaults, uniqueness, links, and paths |
 | [08-links.md](./08-links.md) | Link syntax, resolution, traversal, and backlinks |
@@ -330,6 +330,7 @@ chapters:
 
 | Document | Description |
 | --- | --- |
+| [type-packs/0.1.md](./type-packs/0.1.md) | Type packs profile 0.1: pack manifests, the lock file, assessment, and transactional apply |
 | [interop/0.1.md](./interop/0.1.md) | Event and action interoperability profile 0.1 |
 | [runtime/0.2.md](./runtime/0.2.md) | Durable runtime companion profile 0.2: standard pack, authorization, admission, execution, and recovery |
 | [adapters/obsidian-bases.md](./adapters/obsidian-bases.md) | Obsidian Bases saved-view adapter |
@@ -353,6 +354,7 @@ Companion profiles, artifacts, and schemas carry their own versions:
 | Versioned thing | Declared by | Current | Format |
 | --- | --- | --- | --- |
 | collection specification | `spec_version` in `mdbase.yaml` | `0.3.0` | semantic version |
+| type packs profile | profile ID `type_packs/0.1` | `0.1` | major.minor |
 | event/action interoperability profile | conformance claim `interop_profile_version` | `0.1` | major.minor |
 | durable runtime profile | conformance claim `runtime_profile_version` | `0.2` | major.minor |
 | interoperability testbed protocol | testbed evidence | `0.1` | major.minor |

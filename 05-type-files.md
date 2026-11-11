@@ -196,7 +196,8 @@ implementing type matches `type: view` and maps every contract field to the
 same-named frontmatter field.
 
 A collection that stores portable view records SHOULD install that contract and
-a type implementing it, normally through the `mdbase.view` type pack. A
+a type implementing it, normally through the `mdbase.view`
+[type pack](./type-packs/0.1.md). A
 collection MAY instead implement the contract with its own type name, match
 rule, and field mapping.
 

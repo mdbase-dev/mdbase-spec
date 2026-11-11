@@ -89,6 +89,7 @@ const SPEC_FILES = [
   { file: '12a-concurrent-edits.md',      num: '12A', title: 'Concurrent Edits',    id: 'section-12a' },
   { file: '13-migrations-and-compatibility.md', num: '13', title: 'Migrations & Compatibility', id: 'section-13' },
   { file: '14-conformance.md',            num: '14', title: 'Conformance',          id: 'section-14' },
+  { file: 'type-packs/0.1.md',            num: 'P',  title: 'Type Packs',           id: 'companion-type-packs', group: 'Companion Profiles' },
   { file: 'interop/0.1.md',               num: 'I',  title: 'Event & Action Interoperability', id: 'companion-interop', group: 'Companion Profiles' },
   { file: 'runtime/0.2.md',               num: 'R',  title: 'Durable Runtime',      id: 'companion-runtime', group: 'Companion Profiles' },
   { file: 'adapters/obsidian-bases.md',   num: 'O',  title: 'Obsidian Bases Adapter', id: 'companion-obsidian-bases', group: 'Companion Profiles' },
@@ -188,6 +189,7 @@ renderer.link = function ({ href, title, text }) {
   }
 
   const companions = {
+    'type-packs/0.1.md': '#companion-type-packs',
     'interop/0.1.md': '#companion-interop',
     'runtime/0.2.md': '#companion-runtime',
     'adapters/obsidian-bases.md': '#companion-obsidian-bases',

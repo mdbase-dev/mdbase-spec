@@ -17,13 +17,18 @@ queries, writes, runtime preflight, workflow execution, and watching.
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
 | Merge | merge concurrent versions of a record with declared field strategies |
-| Type Packs | assess and transactionally apply managed type packs |
 | Lifecycle | apply standard managed-field policy during writes |
-| Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
-| Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
 | Watch | report ordered collection changes after consistent state |
 
-Normative profile IDs and dependencies are:
+Companion profiles add optional behavior on top of these:
+
+| Companion profile | Purpose |
+| --- | --- |
+| Type Packs 0.1 | assess and transactionally apply managed type packs |
+| Event/Action Interoperability 0.1 | exchange CloudEvents and admitted action invocations through independently claimable roles |
+| Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
+
+Normative profile IDs and dependencies of this specification are:
 
 | Profile ID | Requires |
 | --- | --- |
@@ -36,11 +41,17 @@ Normative profile IDs and dependencies are:
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
 | `merge` | `core_write` |
-| `type_packs` | `data_contracts`, `core_write` |
 | `lifecycle` | `core_write`, `cel` |
-| `event_action_interop/0.1` | none |
-| `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` |
 | `watch` | `collection_semantics` |
+
+Companion profiles are versioned independently of this specification, and
+their profile IDs carry their version:
+
+| Profile ID | Requires | Defined by |
+| --- | --- | --- |
+| `type_packs/0.1` | `data_contracts`, `core_write` | [type packs profile](./type-packs/0.1.md) |
+| `event_action_interop/0.1` | none | [event/action interoperability profile](./interop/0.1.md) |
+| `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` | [durable runtime profile](./runtime/0.2.md) |
 
 An implementation claims a profile after passing every required behavior and
 test for that profile. `optional_features` records additional work outside the
@@ -163,7 +174,6 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `invalid_data_contract`, `data_contract_not_found`, `data_contract_conflict`,
 `data_contract_version_mismatch`, `data_contract_binding_invalid`,
 `data_contract_field_invalid`, `data_contract_record_invalid`,
-`invalid_type_pack`, `type_pack_conflict`, `type_pack_apply_failed`,
 `invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
 06. Runtime profile 0.2 reuses interoperability codes such as
 `unknown_contract`, `contract_digest_conflict`, `no_provider`,
@@ -206,22 +216,6 @@ Data Contracts implementations MUST:
   implementation
 - return every conforming implementation of a contract rather than selecting
   one
-
-## Type Packs Requirements
-
-Type Packs implementations MUST:
-
-- validate pack manifests, safe resource paths, and resource digests
-- read and write `mdbase.lock.yaml` deterministically
-- produce a read-only assessment with an exact resource diff and
-  `assessment_digest`
-- honor managed and seed resource ownership, explicit adoption, and target
-  overrides
-- recheck the assessment inside the mutation boundary and fail with
-  `concurrent_modification` when it changed
-- commit resources, reviewed type setups, and the lock as one recoverable
-  transaction
-- treat reapplying a current pack as a no-op
 
 ## Collection Semantics Requirements
 
@@ -438,6 +432,12 @@ Lifecycle implementations MUST:
 - evaluate membership once after lifecycle and report
   `type_membership_changed`
 - report conflicts between matched lifecycle policies
+
+## Type Packs Requirements
+
+The `type_packs/0.1` profile's requirements, and the diagnostic codes
+`invalid_type_pack`, `type_pack_conflict`, and `type_pack_apply_failed`, are
+defined by the [type packs profile](./type-packs/0.1.md).
 
 ## Event/Action Interoperability Requirements
 

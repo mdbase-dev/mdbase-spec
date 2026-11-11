@@ -30,11 +30,11 @@ groups:
           lock_exists: true
           implementations: 1
         covers:
-          - type_packs.transactional_type_pack_preflight
-          - type_packs.exact_type_pack_diff
-          - type_packs.idempotent_type_pack_apply
-          - type_packs.managed_type_pack_provenance
-          - type_packs.managed_type_pack_assessment
+          - type_packs/0.1.transactional_type_pack_preflight
+          - type_packs/0.1.exact_type_pack_diff
+          - type_packs/0.1.idempotent_type_pack_apply
+          - type_packs/0.1.managed_type_pack_provenance
+          - type_packs/0.1.managed_type_pack_assessment
 
   - name: "preflight failure is atomic"
     setup:
@@ -55,7 +55,7 @@ groups:
             code: invalid_type_pack
           targets_exist: [false, false]
         covers:
-          - type_packs.type_pack_atomicity
+          - type_packs/0.1.type_pack_atomicity
 
   - name: "target conflicts are atomic"
     setup:
@@ -78,7 +78,7 @@ groups:
             code: type_pack_conflict
           targets_exist: [true, false]
         covers:
-          - type_packs.type_pack_atomicity
+          - type_packs/0.1.type_pack_atomicity
 
   - name: "managed upgrade conflict and concurrency"
     setup:
@@ -99,7 +99,7 @@ groups:
           applicable: false
           actions: [conflict, unchanged]
         covers:
-          - type_packs.managed_type_pack_assessment
+          - type_packs/0.1.managed_type_pack_assessment
       - id: type-pack-stale-assessment
         name: "apply rejects a target changed after assessment without writing"
         operation: apply_type_pack
@@ -111,7 +111,7 @@ groups:
           error:
             code: concurrent_modification
         covers:
-          - type_packs.managed_type_pack_concurrency
+          - type_packs/0.1.managed_type_pack_concurrency
 
   - name: "explicit adoption of legacy definitions"
     setup:
@@ -138,7 +138,7 @@ groups:
           lock_exists: true
           implementations: 1
         covers:
-          - type_packs.managed_type_pack_adoption
+          - type_packs/0.1.managed_type_pack_adoption
 
   - name: "seed type upgrades follow the seed's origin"
     setup:
@@ -173,7 +173,7 @@ groups:
           lock_origin:
             _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
       - id: seed-upgrade-single-baseline-object
         name: "a single baseline object is a list of one"
@@ -195,7 +195,7 @@ groups:
           target_matches_source:
             _types/note.md: "examples/v0.3/seed-upgrades/v2/_types/note.md"
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
       - id: seed-upgrade-edited-merges-against-origin
         name: "an edited seed merges against the baseline it was installed from, keeping the user's edits"
@@ -234,7 +234,7 @@ groups:
           lock_origin:
             _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
       - id: seed-upgrade-origin-survives-preserve
         name: "a pack version that preserves a seed keeps its origin, so a later upgrade merges against the true baseline"
@@ -264,7 +264,7 @@ groups:
               /schema/value/properties/created: { type: string, format: date-time }
               /schema/value/properties/mood: { type: string }
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
       - id: seed-upgrade-unlisted-origin-preserved
         name: "an edited seed whose origin is not a listed baseline is preserved with a reason, without a conflict"
@@ -291,7 +291,7 @@ groups:
           lock_origin:
             _types/note.md: "examples/v0.3/seed-upgrades/v1/_types/note.md"
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
       - id: seed-upgrade-edited-after-upgrade-preserved
         name: "a seed edited after its upgrade is preserved without a reason"
@@ -315,7 +315,7 @@ groups:
               action: preserve
               reason: false
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
   - name: "a seed target that existed before installation has no origin"
     setup:
@@ -358,7 +358,7 @@ groups:
           lock_origin:
             _types/note.md: absent
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
   - name: "an edited seed with no recorded origin merges against the nearest baseline"
     setup:
@@ -417,7 +417,7 @@ groups:
           lock_origin:
             _types/note.md: "examples/v0.3/seed-upgrades/v3/_types/note.md"
         covers:
-          - type_packs.seed_type_upgrade
+          - type_packs/0.1.seed_type_upgrade
 
   - name: "upgrade baselines are validated"
     setup:
@@ -436,7 +436,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-self-baseline
         name: "invalid upgrade_from (self-baseline) rejects the manifest"
         operation: assess_type_pack
@@ -447,7 +447,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-version-mismatch
         name: "invalid upgrade_from (version-mismatch) rejects the manifest"
         operation: assess_type_pack
@@ -458,7 +458,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-name-mismatch
         name: "invalid upgrade_from (name-mismatch) rejects the manifest"
         operation: assess_type_pack
@@ -469,7 +469,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-managed-upgrade
         name: "invalid upgrade_from (managed-upgrade) rejects the manifest"
         operation: assess_type_pack
@@ -480,7 +480,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-baseline-digest
         name: "invalid upgrade_from (baseline-digest) rejects the manifest"
         operation: assess_type_pack
@@ -491,7 +491,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-empty-baselines
         name: "invalid upgrade_from (empty-baselines) rejects the manifest with invalid_type_pack"
         operation: assess_type_pack
@@ -502,7 +502,7 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation
       - id: seed-upgrade-invalid-incomplete-baseline
         name: "invalid upgrade_from (incomplete-baseline) rejects the manifest with invalid_type_pack"
         operation: assess_type_pack
@@ -513,4 +513,4 @@ groups:
           error:
             code: invalid_type_pack
         covers:
-          - type_packs.seed_type_upgrade_validation
+          - type_packs/0.1.seed_type_upgrade_validation

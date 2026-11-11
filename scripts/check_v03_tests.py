@@ -79,7 +79,7 @@ CONFORMANCE_PROFILES = {
     "links",
     "core_write",
     "merge",
-    "type_packs",
+    "type_packs/0.1",
     "lifecycle",
     "event_action_interop/0.1",
     "runtime/0.2",

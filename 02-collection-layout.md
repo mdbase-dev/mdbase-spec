@@ -45,7 +45,8 @@ record scan unless explicitly excluded.
 The following paths are reserved by default:
 
 - `mdbase.yaml`
-- `mdbase.lock.yaml`, when managed type packs are installed
+- `mdbase.lock.yaml`, when managed
+  [type packs](./type-packs/0.1.md) are installed
 - the configured types folder, default `_types/`
 - the configured contracts folder, default `_contracts/`
 - `.mdbase/` for derived implementation state

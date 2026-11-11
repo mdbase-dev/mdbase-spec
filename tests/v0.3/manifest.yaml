@@ -144,7 +144,7 @@ claim_profiles:
       - merge_format_fidelity
       - path_merge
       - body_edit_rebase  # since 0.3.0-rc.5
-  - id: type_packs
+  - id: type_packs/0.1
     status: draft
     requires: [data_contracts, core_write]
     requirements:
@@ -248,7 +248,7 @@ fixture_sets:
       - data-contracts/data-contracts.yaml
   - id: type_packs
     description: Complete type packs validate, report exact diffs, install atomically, reinstall idempotently, and upgrade seed types from their recorded origin.
-    coverage_targets: [type_packs]
+    coverage_targets: [type_packs/0.1]
     files:
       - type-packs/type-packs.yaml
   - id: lifecycle
