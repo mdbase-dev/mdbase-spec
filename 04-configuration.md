@@ -32,7 +32,10 @@ settings:
 is the compatibility boundary. A v0.3 tool MUST reject v0.2 and v0.4
 collections unless an explicit compatibility adapter is enabled.
 
-Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
+The value is exactly `"0.3.0"`, throughout the release-candidate series and
+after it. A release candidate is a version of this specification, which a
+tool names in its conformance claim (Chapter 14); it is never a version of a
+collection, and a value such as `0.3.0-rc.5` is invalid.
 
 ## Settings
 

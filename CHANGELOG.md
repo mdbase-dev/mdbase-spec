@@ -115,6 +115,44 @@ Eight places where two conforming tools could disagree. See
   order whatever the directions of the terms, and applies to tools that page
   with their own continuation tokens.
 
+### Shape of the specification
+
+#### Changed
+
+- Chapter 12A is divided. Move detection and the three-way record merge are
+  the [concurrent edits profile 0.1](./concurrent-edits/0.1.md), with profile
+  IDs `move_detection/0.1` (requires `watch`) and `merge/0.1` (requires
+  `core_write`). Record identity is in Chapter 03 and writer format fidelity
+  in Chapter 12. The moved text is unchanged.
+- Type packs move from Chapter 05A to the
+  [type packs profile 0.1](./type-packs/0.1.md). The profile ID is
+  `type_packs/0.1`.
+- The rules for a gateway that grants record access through a contract, and
+  for what an approval shows and pins, move from Chapter 05A to section 10
+  of the interoperability profile. Its later sections are renumbered.
+- Core Write no longer requires the body merge. An implementation that does
+  not claim `merge/0.1` applies `body_edits` only when the body matches
+  `body_base` and otherwise reports `body_base_unavailable`.
+- Watch no longer requires move detection. Only an implementation that
+  claims `move_detection/0.1` reports an externally moved file as
+  `record_renamed`; every other reports a delete and a create.
+- Path equivalence moves from Core Read to Collection Semantics
+  (`collection_semantics.path_equivalence`). Core Read computes no path keys
+  and reports no `path_collision`.
+- The regex profile (Chapter 10) and the line alignment of the body merge
+  are defined by the text alone. The `regex-lite` crate and
+  diff-match-patch's `bisect` are named only in informative notes, and the
+  alignment is written out as a procedure.
+- `spec_version` is exactly `"0.3.0"`. The sentence in Chapter 04 that
+  allowed draft versions by a compatibility setting is removed.
+- Chapter 00 states how the release-candidate series closes: rc.6 is the
+  last one that adds or changes behavior, and 0.3.0 is stable when no
+  Provisional paragraph remains in chapters 00 to 14 and the implementations
+  of the release contract hold verified claims. The release contract lists
+  the thirteen remaining Provisional paragraphs.
+- The fixture set `watch` is renamed `move_detection`. Fixture files keep
+  their paths.
+
 ## 0.3.0-rc.5 (draft, untagged)
 
 The fifth release candidate specifies the data semantics that let several

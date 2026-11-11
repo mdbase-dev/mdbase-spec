@@ -112,7 +112,39 @@ write sets the title, which removes the key.
 An engine moving from rc.5 to rc.6 decodes path-stored fields on read, never
 writes them to frontmatter, derives paths from them after lifecycle, moves a
 record when an update changes one, and reports `unknown_path_key`,
-`path_value_inconsistent`, and `path_field_in_frontmatter`.
+`path_value_inconsistent`, `path_field_in_frontmatter`, and
+`path_value_normalized`.
+
+rc.6 also writes down rules that rc.5 left to the implementation. An engine
+checks its behavior against each:
+
+| Area | rc.6 rule |
+| --- | --- |
+| `slugify` (Chapter 09) | NFD without combining marks, ASCII lowercase, other runs to `-`, trimmed; no transliteration |
+| link targets (Chapter 08) | compared with paths and filenames by path key; IDs exactly |
+| Markdown link destinations (Chapter 08) | in angle brackets as written, or up to the first space or `)` with only `%20` decoded |
+| inline tags and code in the body (Chapter 08) | one tag grammar; one rule for fenced blocks, inline code, and backslashes, shared by links and tags |
+| frontmatter delimiters (Chapter 03) | only a line that is exactly `---` closes frontmatter |
+| create (Chapter 12) | membership is frozen at the membership path before lifecycle runs |
+| `order_by` (Chapter 11) | one order of value kinds; the final tie-break is ascending `file.path` |
+
+### Profiles in rc.6
+
+rc.6 moves optional behavior out of the chapters into companion profiles
+with their own versions, and renames the profile IDs to match. No behavior
+changes except where the table says so. A conformance claim written for rc.5
+changes its profile IDs as follows:
+
+| rc.5 | rc.6 | Change |
+| --- | --- | --- |
+| `merge` (Chapter 12A) | `merge/0.1` ([concurrent edits profile](./concurrent-edits/0.1.md)) | rebasing `body_edits` onto a changed body is required here, no longer by `core_write` |
+| `watch` requirement `move_detection` (Chapter 12A) | `move_detection/0.1` ([concurrent edits profile](./concurrent-edits/0.1.md)) | `watch` alone reports an externally moved file as a delete and a create |
+| `type_packs` (Chapter 05A) | `type_packs/0.1` ([type packs profile](./type-packs/0.1.md)) | none |
+| `core_read` requirement `path_equivalence` | `collection_semantics` requirement `path_equivalence` | Core Read computes no path keys and reports no `path_collision` |
+
+Record identity is now in Chapter 03 and writer format fidelity in Chapter
+12. The gateway access and approval rules of Chapter 05A are now section 10
+of the [event/action interoperability profile](./interop/0.1.md).
 
 ## From v0.2 To v0.3
 
