@@ -865,6 +865,54 @@ groups:
             code: path_value_missing
             field: title
 
+      - name: "a create that normalizes a stored value reports path_value_normalized"
+        id: path_fields.create_normalized_warning
+        since: 0.3.0-rc.6
+        covers: [core_write.path_value_normalized]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: "Plan: Q3/Q4", status: open }
+        expect:
+          valid: true
+          path: "tasks/Plan Q3Q4.md"
+          effective_frontmatter: { title: "Plan Q3Q4" }
+          diagnostics:
+            - code: path_value_normalized
+              severity: warning
+              field: title
+              details: { written: "Plan: Q3/Q4", stored: "Plan Q3Q4" }
+
+      - name: "an update whose value normalizes to the current one warns and does not move"
+        id: path_fields.update_normalized_warning
+        since: 0.3.0-rc.6
+        covers: [core_write.path_value_normalized]
+        operation: update
+        input:
+          path: "tasks/Call Bob.md"
+          patch: { title: "Call Bob?" }
+        expect:
+          valid: true
+          path: "tasks/Call Bob.md"
+          diagnostics:
+            - code: path_value_normalized
+              severity: warning
+              field: title
+              details: { written: "Call Bob?", stored: "Call Bob" }
+
+      - name: "a value that normalization leaves unchanged reports nothing"
+        id: path_fields.unchanged_value_no_warning
+        since: 0.3.0-rc.6
+        covers: [core_write.path_value_normalized]
+        operation: create
+        input:
+          type: task
+          frontmatter: { title: "Email Carol", status: open }
+        expect:
+          valid: true
+          path: "tasks/Email Carol.md"
+          diagnostics: []
+
   - name: "id and title in the filename"
     setup:
       config: |

@@ -11,7 +11,9 @@ Migration never rewrites a record.
 
 ## Changes Since rc.4
 
-0.3.0-rc.5 adds the concurrent-edit semantics of Chapter 12A and relaxes
+0.3.0-rc.5 adds concurrent-edit semantics (record identity in Chapter 03,
+writer format fidelity in Chapter 12, and the
+[concurrent edits profile](./concurrent-edits/0.1.md)) and relaxes
 several write-time checks. Collections keep `spec_version: "0.3.0"` and need
 no edit. Record files, type files, contracts, type packs, view records, and
 queries that were valid under rc.4 stay valid.
@@ -29,7 +31,7 @@ worked under rc.4 stops loading.
 | `unique.scope` | listed, but its comparison set was underspecified | a rule governs records of its type; `scope` selects the records they must differ from; raw values compare without coercion; the default scope is `type` | nothing; check reports for records in the now exact scope |
 | link `validate_exists` and `target_type` | at level `error`, a write with a broken link fails | reported, never blocking | no equivalent; cross-record checks never block |
 | a successful write with cross-record issues | not applicable | returns `valid: true` with `warning` diagnostics | nothing |
-| concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (Chapter 12A); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
+| concurrent edits | whole-record revision checks | tools that reconcile edits merge field by field (concurrent edits profile); `if_revision` is opt-in and never added on a caller's behalf | pass `if_revision` explicitly |
 | lifecycle `now` and `today` fields, `tags`, `uniqueItems` arrays | no merge semantics | merge as `max`, `union`, and `union` by default | declare `conflict` in `collection.merge` |
 | update | `patch`, `unset`, `body`, `document` | adds `add` and `remove` list operations, and `body_edits` against a `body_base` digest | nothing |
 | regular expressions in CEL `matches()`, JSON Schema `pattern`, and `match.where` | engine-dependent; Unicode-aware classes were implied | one profile everywhere: RE2 syntax with ASCII-only `\d`, `\w`, `\s`, `\b`, and case folding (Chapter 10); `\p{...}` is invalid | none; list non-ASCII characters explicitly, or lowercase text before matching |
@@ -74,9 +76,10 @@ An engine moving from rc.4 to rc.5:
 - implements `add` and `remove`, path keys and the collision rule,
   `path_value_invalid`, and the writer format fidelity rule
 - stops supplying `if_revision` on a caller's behalf
-- implements the merge of Chapter 12A if it reconciles concurrent edits, and
-  claims the `merge` profile
-- implements move detection if it reports renames of externally moved files
+- implements the merge of the [concurrent edits profile](./concurrent-edits/0.1.md)
+  if it reconciles concurrent edits, and claims the `merge/0.1` profile
+- implements move detection, and claims the `move_detection/0.1` profile, if
+  it reports renames of externally moved files
 - reports `nondeterministic_match`, `path_collision`, and `ambiguous_link`
 - applies the filename tiebreakers exactly, and rewrites on rename only the
   links that resolved to the renamed record
@@ -109,7 +112,39 @@ write sets the title, which removes the key.
 An engine moving from rc.5 to rc.6 decodes path-stored fields on read, never
 writes them to frontmatter, derives paths from them after lifecycle, moves a
 record when an update changes one, and reports `unknown_path_key`,
-`path_value_inconsistent`, and `path_field_in_frontmatter`.
+`path_value_inconsistent`, `path_field_in_frontmatter`, and
+`path_value_normalized`.
+
+rc.6 also writes down rules that rc.5 left to the implementation. An engine
+checks its behavior against each:
+
+| Area | rc.6 rule |
+| --- | --- |
+| `slugify` (Chapter 09) | NFD without combining marks, ASCII lowercase, other runs to `-`, trimmed; no transliteration |
+| link targets (Chapter 08) | compared with paths and filenames by path key; IDs exactly |
+| Markdown link destinations (Chapter 08) | in angle brackets as written, or up to the first space or `)` with only `%20` decoded |
+| inline tags and code in the body (Chapter 08) | one tag grammar; one rule for fenced blocks, inline code, and backslashes, shared by links and tags |
+| frontmatter delimiters (Chapter 03) | only a line that is exactly `---` closes frontmatter |
+| create (Chapter 12) | membership is frozen at the membership path before lifecycle runs |
+| `order_by` (Chapter 11) | one order of value kinds; the final tie-break is ascending `file.path` |
+
+### Profiles in rc.6
+
+rc.6 moves optional behavior out of the chapters into companion profiles
+with their own versions, and renames the profile IDs to match. No behavior
+changes except where the table says so. A conformance claim written for rc.5
+changes its profile IDs as follows:
+
+| rc.5 | rc.6 | Change |
+| --- | --- | --- |
+| `merge` (Chapter 12A) | `merge/0.1` ([concurrent edits profile](./concurrent-edits/0.1.md)) | rebasing `body_edits` onto a changed body is required here, no longer by `core_write` |
+| `watch` requirement `move_detection` (Chapter 12A) | `move_detection/0.1` ([concurrent edits profile](./concurrent-edits/0.1.md)) | `watch` alone reports an externally moved file as a delete and a create |
+| `type_packs` (Chapter 05A) | `type_packs/0.1` ([type packs profile](./type-packs/0.1.md)) | none |
+| `core_read` requirement `path_equivalence` | `collection_semantics` requirement `path_equivalence` | Core Read computes no path keys and reports no `path_collision` |
+
+Record identity is now in Chapter 03 and writer format fidelity in Chapter
+12. The gateway access and approval rules of Chapter 05A are now section 10
+of the [event/action interoperability profile](./interop/0.1.md).
 
 ## From v0.2 To v0.3
 

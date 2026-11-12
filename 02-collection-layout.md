@@ -45,7 +45,8 @@ record scan unless explicitly excluded.
 The following paths are reserved by default:
 
 - `mdbase.yaml`
-- `mdbase.lock.yaml`, when managed type packs are installed
+- `mdbase.lock.yaml`, when managed
+  [type packs](./type-packs/0.1.md) are installed
 - the configured types folder, default `_types/`
 - the configured contracts folder, default `_contracts/`
 - `.mdbase/` for derived implementation state
@@ -224,9 +225,11 @@ collides, whatever file system it runs on:
   `tasks/todo.md` to `tasks/Todo.md`, changes only the spelling of the path
   and is not a collision.
 - When record discovery finds several files with one path key, which can
-  happen on a case-sensitive file system, each file is still a record. Core
-  Read reports a `path_collision` warning on every record of the group, with
-  `details.paths` listing the group in code-point order.
+  happen on a case-sensitive file system, each file is still a record. A
+  tool that claims Collection Semantics reports a `path_collision` warning
+  on every record of the group, with `details.paths` listing the group in
+  code-point order. Core Read alone reads each file as written and computes
+  no path keys.
 
   **Provisional (rc.5).** A tool that keeps records in a log or replicates
   them across file systems cannot hold two records with one path key. It

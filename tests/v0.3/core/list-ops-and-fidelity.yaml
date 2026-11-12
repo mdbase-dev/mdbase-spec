@@ -1,11 +1,11 @@
 # Core Write additions in 0.3.0-rc.5: list operations (Chapter 12), writer format
-# fidelity (Chapter 12A), and path collisions on create and rename (Chapters
+# fidelity (Chapter 12), and path collisions on create and rename (Chapters
 # 02 and 12). expect.document is the exact post-write source.
 name: "core write additions"
 spec_version: "0.3.0"
 fixture_set: core_collection
 category: operations
-spec_ref: "v0.3/02, v0.3/03, v0.3/12, v0.3/12A"
+spec_ref: "v0.3/02, v0.3/03, v0.3/12"
 
 groups:
   - name: "list operations and format fidelity"
@@ -361,7 +361,7 @@ groups:
       - name: "both files are records and both report path_collision"
         id: paths.discovered_collision
         since: 0.3.0-rc.5
-        covers: [core_read.path_equivalence]
+        covers: [collection_semantics.path_equivalence]
         operation: read
         input:
           path: "notes/plan.md"

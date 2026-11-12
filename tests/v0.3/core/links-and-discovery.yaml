@@ -226,3 +226,143 @@ groups:
             - code: ambiguous_link
               field: parent
               details: { candidates: ["tasks/a.md", "tasks/b.md"] }
+
+  - name: "targets compare by path key"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        people/alice.md: |
+          ---
+          title: Alice
+          ---
+        notes/ref.md: |
+          ---
+          simple: "[[Alice]]"
+          rooted: "[[People/ALICE]]"
+          with_ext: "[[people/Alice.MD]]"
+          missing: "[[Alicia]]"
+          ---
+    tests:
+      - name: "a simple wikilink matches a filename that differs only in case"
+        id: links.filename_case_insensitive
+        since: 0.3.0-rc.6
+        covers: [links.path_key_matching]
+        operation: evaluate_cel
+        input:
+          path: "notes/ref.md"
+          expression: 'link(simple).asFile().file.path == "people/alice.md"'
+        expect:
+          valid: true
+          value: true
+
+      - name: "a path target matches a path that differs only in case, with or without the extension"
+        id: links.path_case_insensitive
+        since: 0.3.0-rc.6
+        covers: [links.path_key_matching]
+        operation: evaluate_cel
+        input:
+          path: "notes/ref.md"
+          expression: 'link(rooted).asFile().file.path == "people/alice.md" && link(with_ext).asFile().file.path == "people/alice.md" && link(missing).asFile() == null'
+        expect:
+          valid: true
+          value: true
+
+  - name: "Markdown link destinations"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        people/alice smith.md: |
+          ---
+          title: Alice Smith
+          ---
+        notes/md.md: |
+          ---
+          title: Markdown links
+          ---
+          [encoded](../people/alice%20smith.md)
+          [angle](<../people/alice smith.md>)
+          [titled](../people/alice%20smith.md "Alice")
+          [web](https://example.com/people/alice.md)
+          [mail](mailto:alice@example.com)
+          [fragment](#section)
+          [anchored](../people/alice%20smith.md#bio)
+    tests:
+      - name: "%20 is a space, angle brackets are literal, titles are dropped, and URIs and fragments are not record links"
+        id: links.markdown_destinations
+        since: 0.3.0-rc.6
+        covers: [links.markdown_destinations]
+        operation: evaluate_cel
+        input:
+          path: "notes/md.md"
+          expression: 'file.links == ["../people/alice smith.md", "../people/alice smith.md", "../people/alice smith.md", "../people/alice smith.md"]'
+        expect:
+          valid: true
+          value: true
+
+      - name: "each destination resolves to the record"
+        id: links.markdown_destinations_resolve
+        since: 0.3.0-rc.6
+        covers: [links.markdown_destinations]
+        operation: evaluate_cel
+        input:
+          path: "people/alice smith.md"
+          expression: 'file.backlinks.size() == 1'
+        expect:
+          valid: true
+          value: true
+
+  - name: "code and inline tags in the body"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        notes/real.md: |
+          ---
+          title: Real
+          ---
+        notes/tags.md: |
+          ---
+          tags: ["#fm", plain]
+          ---
+          # Heading
+          #first tag, #project/alpha and x#nope
+          See https://example.com/a#fragment and issue #123 and #2026-plan.
+          `#code` and ``a ` #code2`` then #after
+          \[[escaped]] [[real]]
+
+          ```md
+          #fenced [[fenced]]
+          ```
+
+          ~~~~
+          ```
+          #still-fenced [[still-fenced]]
+          ~~~~
+              #indented
+          #café_日本
+    tests:
+      - name: "inline tags follow the tag grammar and skip code"
+        id: links.inline_tags
+        since: 0.3.0-rc.6
+        covers: [links.body_code_and_tags]
+        operation: evaluate_cel
+        input:
+          path: "notes/tags.md"
+          expression: 'file.tags == ["fm", "plain", "first", "project/alpha", "2026-plan", "after", "indented", "café_日本"]'
+        expect:
+          valid: true
+          value: true
+
+      - name: "links in fenced blocks, inline code, and after a backslash are ignored"
+        id: links.body_code_links
+        since: 0.3.0-rc.6
+        covers: [links.body_code_and_tags]
+        operation: evaluate_cel
+        input:
+          path: "notes/tags.md"
+          expression: 'file.links == ["[[real]]"] && file.hasTag("project") && !file.hasTag("proj")'
+        expect:
+          valid: true
+          value: true

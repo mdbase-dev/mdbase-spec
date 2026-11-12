@@ -8,22 +8,28 @@ queries, writes, runtime preflight, workflow execution, and watching.
 
 | Profile | Purpose |
 | --- | --- |
-| Core Read | discover collections, parse records, load types, match records, and validate JSON Schema |
-| Collection Semantics | apply defaults, uniqueness, path policy, multi-type composition, and collection diagnostics |
+| Core Read | discover collections, parse records, load types, match records, and validate JSON Schema, one record at a time |
+| Collection Semantics | apply defaults, uniqueness, path equivalence, path policy, multi-type composition, and collection diagnostics |
 | Data Contracts | load contracts, resolve type implementations, compute digests, and project contract views |
 | CEL | compile and evaluate the shared mdbase CEL language and host contract |
 | CEL Match | evaluate `match.expr` against raw candidate records |
 | Query | evaluate contextual CEL filters, projections, grouping, summaries, and query envelopes |
 | Links | parse, resolve, validate, and traverse links |
 | Core Write | create, update, delete, rename, and batch records |
-| Merge | merge concurrent versions of a record with declared field strategies |
-| Type Packs | assess and transactionally apply managed type packs |
 | Lifecycle | apply standard managed-field policy during writes |
-| Event/Action Interoperability | exchange CloudEvents and admitted action invocations through independently claimable roles |
-| Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
 | Watch | report ordered collection changes after consistent state |
 
-Normative profile IDs and dependencies are:
+Companion profiles add optional behavior on top of these:
+
+| Companion profile | Purpose |
+| --- | --- |
+| Move Detection 0.1 | recognize a file moved outside the implementation as the same record |
+| Merge 0.1 | merge concurrent versions of a record with declared field strategies |
+| Type Packs 0.1 | assess and transactionally apply managed type packs |
+| Event/Action Interoperability 0.1 | exchange CloudEvents and admitted action invocations through independently claimable roles |
+| Durable Runtime 0.2 | validate standard runtime records, admit exact plans through interoperability declarations, and execute/recover them durably |
+
+Normative profile IDs and dependencies of this specification are:
 
 | Profile ID | Requires |
 | --- | --- |
@@ -35,12 +41,19 @@ Normative profile IDs and dependencies are:
 | `cel_query` | `collection_semantics`, `cel` |
 | `links` | `collection_semantics`, `cel` |
 | `core_write` | `collection_semantics` |
-| `merge` | `core_write` |
-| `type_packs` | `data_contracts`, `core_write` |
 | `lifecycle` | `core_write`, `cel` |
-| `event_action_interop/0.1` | none |
-| `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` |
 | `watch` | `collection_semantics` |
+
+Companion profiles are versioned independently of this specification, and
+their profile IDs carry their version:
+
+| Profile ID | Requires | Defined by |
+| --- | --- | --- |
+| `move_detection/0.1` | `watch` | [concurrent edits profile](./concurrent-edits/0.1.md) |
+| `merge/0.1` | `core_write` | [concurrent edits profile](./concurrent-edits/0.1.md) |
+| `type_packs/0.1` | `data_contracts`, `core_write` | [type packs profile](./type-packs/0.1.md) |
+| `event_action_interop/0.1` | none | [event/action interoperability profile](./interop/0.1.md) |
+| `runtime/0.2` | `data_contracts`, `event_action_interop/0.1`, `cel` | [durable runtime profile](./runtime/0.2.md) |
 
 An implementation claims a profile after passing every required behavior and
 test for that profile. `optional_features` records additional work outside the
@@ -73,7 +86,8 @@ or specification version and SHOULD report stale evidence.
 ### Conformance Suites
 
 The shared fixtures live in `tests/v0.3/`, and `tests/v0.3/README.md` defines
-their format. That includes the `merge_records` form, which states a merge case
+their format. That includes the `merge_records` form of the `merge/0.1`
+profile, which states a merge case
 as a base version, two edited versions, and the type declarations, with the
 exact merged bytes and conflicts as the expected result. Each test added in a
 release candidate after rc.4 records that release candidate, such as
@@ -152,7 +166,8 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `projection_shadowed`, `link_not_found`, `link_target_type_mismatch`,
 `ambiguous_link`, `duplicate_value`, `path_conflict`, `path_collision`,
 `type_conflict`, `type_membership_changed`, `path_value_missing`,
-`path_value_invalid`, `path_value_inconsistent`, `path_field_in_frontmatter`,
+`path_value_invalid`, `path_value_normalized`, `path_value_inconsistent`,
+`path_field_in_frontmatter`,
 `unknown_path_key`, `invalid_type`, `nondeterministic_match`, `invalid_pattern`,
 `schema_ref_forbidden`,
 `schema_ref_unresolved`, `schema_ref_cycle`, `format_invalid`,
@@ -162,7 +177,6 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `invalid_data_contract`, `data_contract_not_found`, `data_contract_conflict`,
 `data_contract_version_mismatch`, `data_contract_binding_invalid`,
 `data_contract_field_invalid`, `data_contract_record_invalid`,
-`invalid_type_pack`, `type_pack_conflict`, `type_pack_apply_failed`,
 `invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
 06. Runtime profile 0.2 reuses interoperability codes such as
 `unknown_contract`, `contract_digest_conflict`, `no_provider`,
@@ -189,8 +203,6 @@ Core Read implementations MUST:
   `unsupported_profile`
 - report diagnostics in the canonical machine-readable shape
 - read, index, and report invalid records rather than skip them
-- compute path keys and report `path_collision` for discovered records with
-  equivalent paths
 
 ## Data Contracts Requirements
 
@@ -206,22 +218,6 @@ Data Contracts implementations MUST:
 - return every conforming implementation of a contract rather than selecting
   one
 
-## Type Packs Requirements
-
-Type Packs implementations MUST:
-
-- validate pack manifests, safe resource paths, and resource digests
-- read and write `mdbase.lock.yaml` deterministically
-- produce a read-only assessment with an exact resource diff and
-  `assessment_digest`
-- honor managed and seed resource ownership, explicit adoption, and target
-  overrides
-- recheck the assessment inside the mutation boundary and fail with
-  `concurrent_modification` when it changed
-- commit resources, reviewed type setups, and the lock as one recoverable
-  transaction
-- treat reapplying a current pack as a no-op
-
 ## Collection Semantics Requirements
 
 Collection Semantics implementations MUST:
@@ -232,6 +228,8 @@ Collection Semantics implementations MUST:
   comparison set, comparing raw values without coercion
 - report cross-record issues without blocking writes, except for
   `enforce: write` uniqueness rules
+- compute path keys and report `path_collision` for discovered records with
+  equivalent paths
 - load `collection.merge` declarations and derive default merge strategies
 - validate portable `collection.path` policies for write-capable tools
 - decode path-stored fields from record paths and use the decoded values
@@ -287,7 +285,8 @@ Query implementations MUST:
 - evaluate `where` filters against the effective query context
 - evaluate requested CEL projections
 - support OR-based type filtering
-- support deterministic ordering and pagination
+- order values with the comparator of Chapter 11 and tie-break by ascending
+  `file.path`, so ordering and pagination are deterministic
 - support deterministic grouping and built-in and custom summaries
 - return total-count and has-more metadata
 - return context, grouping, and summary metadata when requested
@@ -377,11 +376,11 @@ Core Write implementations MUST:
 - validate a complete draft before writing, rejecting only request and
   safety failures and, at level `error`, single-record issues
 - preserve unrelated Markdown body content
-- follow the writer format fidelity rule of Chapter 12A
+- follow the writer format fidelity rule of Chapter 12
 - apply `add` and `remove` list operations to the current value
-- apply `body_edits` directly when the body matches `body_base`, rebase them
-  with the Chapter 12A body merge when the base body is available, and report
-  `body_conflict` and `body_base_unavailable` otherwise
+- apply `body_edits` directly when the body matches `body_base`, and
+  otherwise report `body_base_unavailable` unless they rebase them under the
+  `merge/0.1` profile
 - reject paths that escape the collection root
 - when a rename updates references, rewrite the links that resolved to the
   renamed record and would no longer resolve to it, including
@@ -390,8 +389,9 @@ Core Write implementations MUST:
 - reject an explicit path that collides under path equivalence with
   `path_conflict`, give a colliding derived path the first free suffix, and
   reject invalid path-pattern values with `path_value_invalid`
-- never persist path-stored fields to frontmatter, normalize their values,
-  derive paths from them after lifecycle, reject a colliding derived path
+- never persist path-stored fields to frontmatter, normalize their values
+  and report `path_value_normalized` when that changes one, derive paths
+  from them after lifecycle, reject a colliding derived path
   with `path_conflict`, and move a record atomically when an update changes
   a path-stored field
 - enforce `enforce: write` uniqueness rules in a single write order
@@ -403,24 +403,6 @@ Core Write implementations MUST:
   `dry_run`, reject duplicate batch paths, and report per-operation results
 - return the canonical operation envelope and final record revision
 - update derived state before reporting a successful mutation
-
-## Merge Requirements
-
-Merge implementations MUST:
-
-- merge frontmatter one top-level key at a time with the three-way rules of
-  Chapter 12A
-- apply declared and default `conflict`, `max`, `min`, and `union`
-  strategies exactly
-- treat end-of-body append-append as a union, earlier-ordered side first
-- merge other body changes line by line and report overlapping changes as a
-  `body` conflict
-- keep the first version's value at every conflict and report the conflict
-  with its base, first, and second values
-- never reject a merged version or turn it into a conflict because it is
-  invalid
-- copy values taken unchanged from one side verbatim from that side's source
-  text
 
 ## Lifecycle Requirements
 
@@ -435,6 +417,17 @@ Lifecycle implementations MUST:
 - evaluate membership once after lifecycle and report
   `type_membership_changed`
 - report conflicts between matched lifecycle policies
+
+## Concurrent Edits Requirements
+
+The requirements of the `move_detection/0.1` and `merge/0.1` profiles are
+defined by the [concurrent edits profile](./concurrent-edits/0.1.md).
+
+## Type Packs Requirements
+
+The `type_packs/0.1` profile's requirements, and the diagnostic codes
+`invalid_type_pack`, `type_pack_conflict`, and `type_pack_apply_failed`, are
+defined by the [type packs profile](./type-packs/0.1.md).
 
 ## Event/Action Interoperability Requirements
 
@@ -478,9 +471,13 @@ An implementation that also claims `data_contracts` reports `contract_changed`
 with the contract file `path` after the contract registry and type
 implementations have been re-resolved. Implementations MAY also report
 `schema_changed`, `view_changed`, and `lock_changed`, each with a `path`, for
-referenced local schema files, saved-view sources, and `mdbase.lock.yaml`. A rename that move
-detection (Chapter 12A) does not pair is reported as `record_deleted` followed
-by `record_created`.
+referenced local schema files, saved-view sources, and `mdbase.lock.yaml`.
+
+A file moved outside the implementation is reported as `record_renamed` only
+by an implementation that claims `move_detection/0.1`, and only when the
+move detection of the [concurrent edits profile](./concurrent-edits/0.1.md)
+pairs it. Every other such move is reported as `record_deleted` followed by
+`record_created`.
 
 `record_created` and `record_modified` include current effective frontmatter.
 `record_renamed` includes `path`, `previous_path`, and current effective
@@ -503,5 +500,3 @@ Watch implementations MUST:
 - coalesce duplicate host notifications for one logical change and report the
   final observed state
 - isolate listener failures so later notifications continue to be delivered
-- pair disappearances and appearances with the move detection of Chapter 12A
-  when reporting renames of files changed outside the implementation

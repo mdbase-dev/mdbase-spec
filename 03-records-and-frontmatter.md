@@ -33,11 +33,27 @@ status: open
 Body text.
 ```
 
-If the first non-byte-order-mark bytes are not `---` followed by a line ending,
-the file has no frontmatter and the full file is body text.
+The **opening delimiter** is `---` followed by a line ending (`\n` or
+`\r\n`), as the first bytes of the file after an optional byte-order mark.
+The **closing delimiter** is the first later line that is exactly `---`,
+ended by a line ending or by the end of the file. The frontmatter source is
+the text between the two delimiter lines, and the body is everything after
+the closing delimiter's line ending, so a blank line that follows the
+delimiter is part of the body.
 
-Whitespace or a blank line before the opening delimiter means there is no
-frontmatter.
+A file has no frontmatter, and the whole file is body text, when:
+
+- it does not begin with the opening delimiter; whitespace or a blank line
+  before `---`, and `---` followed by a space or any other character, are
+  not an opening delimiter
+- no later line is a closing delimiter; an opening delimiter that is never
+  closed does not make the rest of the file frontmatter
+
+Only `---` closes frontmatter. The YAML document end marker `...`, a `---`
+line with leading or trailing whitespace, and a longer run of dashes do not.
+The first line that is exactly `---` closes it even when a YAML parser would
+read that line as part of a block scalar, so every tool finds the same
+frontmatter without parsing YAML.
 
 ## YAML Document Record Structure
 
@@ -59,6 +75,25 @@ YAML document records let a collection type and query files that another
 application owns, such as Obsidian `.base` files (see the
 [Obsidian Bases adapter](./adapters/obsidian-bases.md)), without a second
 storage, discovery, or authorization model.
+
+## Record Identity
+
+A record is identified by its collection-relative path. Record files carry no
+required mdbase metadata:
+
+- An implementation MAY keep an internal identity for each record, for example
+  to follow it across moves or to key its history.
+- Such identities, revisions, merge bases, and other bookkeeping MUST be kept
+  outside record files, for example in `.mdbase/` or the implementation's own
+  storage.
+- An implementation MUST NOT write an identity into a record's frontmatter or
+  body, and MUST NOT require one to read, validate, query, or write a record.
+
+A collection may still store its own identifiers in frontmatter, such as a
+TaskNotes `id` field. When `settings.id_field` names such a field, it is used
+for ID-based link resolution (Chapter 08) and as an identity hint for the move
+detection of the [concurrent edits profile](./concurrent-edits/0.1.md). It
+remains ordinary user data.
 
 ## Frontmatter Value
 
@@ -183,7 +218,7 @@ update that supplies a non-empty body for a YAML document record fails with
 (Chapter 12) is written exactly as supplied.
 
 A write that changes some frontmatter keys of an existing record follows the
-format fidelity rule of Chapter 12A: it re-emits only the changed top-level
+writer format fidelity rule of Chapter 12: it re-emits only the changed top-level
 entries, keeps every other entry byte-identical, including comments, quoting,
 blank lines, and order, and keeps a changed entry's collection style. The rule
 applies to Markdown records and YAML document records alike.

@@ -270,7 +270,8 @@ explicitly opts into `enforce: write`.
 
 When two edits to one record meet, for example an application update and an
 edit made in a text editor, a tool that reconciles them uses the three-way
-record merge of Chapter 12A. Different fields merge, timestamps take the
+record merge of the
+[concurrent edits profile](./concurrent-edits/0.1.md). Different fields merge, timestamps take the
 later value, set-like lists take the union, appends to the body are both kept,
 and only real disagreements are conflicts. How a tool surfaces a conflict, and
 whether it replicates collections at all, is outside this specification.
@@ -310,18 +311,17 @@ keep those claims precise and independently testable.
 | --- | --- |
 | [01-concepts.md](./01-concepts.md) | Core terminology and data model |
 | [02-collection-layout.md](./02-collection-layout.md) | Collection discovery, paths, and reserved state |
-| [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing and YAML value semantics |
+| [03-records-and-frontmatter.md](./03-records-and-frontmatter.md) | Markdown parsing, record identity, and YAML value semantics |
 | [04-configuration.md](./04-configuration.md) | The `mdbase.yaml` configuration file |
 | [05-type-files.md](./05-type-files.md) | JSON Schema type wrappers and metadata |
-| [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts, type implementations, and transactional type packs |
+| [05a-data-contracts.md](./05a-data-contracts.md) | versioned data contracts and type implementations |
 | [06-json-schema-profile.md](./06-json-schema-profile.md) | Supported JSON Schema vocabulary and reference rules |
 | [07-collection-semantics.md](./07-collection-semantics.md) | Matching, defaults, uniqueness, links, and paths |
 | [08-links.md](./08-links.md) | Link syntax, resolution, traversal, and backlinks |
 | [09-lifecycle.md](./09-lifecycle.md) | Managed values and mutation-time policy |
 | [10-cel-profile.md](./10-cel-profile.md) | Portable expressions and host bindings |
 | [11-querying.md](./11-querying.md) | Filters, ordering, projection, and result envelopes |
-| [12-operations.md](./12-operations.md) | Read and write operations, concurrency, and diagnostics |
-| [12a-concurrent-edits.md](./12a-concurrent-edits.md) | Record identity, move detection, three-way merge, and writer format fidelity |
+| [12-operations.md](./12-operations.md) | Read and write operations, writer format fidelity, concurrency, and diagnostics |
 | [13-migrations-and-compatibility.md](./13-migrations-and-compatibility.md) | Migration from earlier versions and compatibility |
 | [14-conformance.md](./14-conformance.md) | Profiles, claims, fixtures, and runners |
 
@@ -330,6 +330,8 @@ chapters:
 
 | Document | Description |
 | --- | --- |
+| [concurrent-edits/0.1.md](./concurrent-edits/0.1.md) | Concurrent edits profile 0.1: move detection and the three-way record merge |
+| [type-packs/0.1.md](./type-packs/0.1.md) | Type packs profile 0.1: pack manifests, the lock file, assessment, and transactional apply |
 | [interop/0.1.md](./interop/0.1.md) | Event and action interoperability profile 0.1 |
 | [runtime/0.2.md](./runtime/0.2.md) | Durable runtime companion profile 0.2: standard pack, authorization, admission, execution, and recovery |
 | [adapters/obsidian-bases.md](./adapters/obsidian-bases.md) | Obsidian Bases saved-view adapter |
@@ -342,17 +344,33 @@ directly comparable without making one product's internal API normative.
 ## Versioning
 
 This specification uses semantic versioning. The current version is **0.3.0**,
-in its fifth release candidate (`0.3.0-rc.5`); the sixth (`0.3.0-rc.6`) is
-in draft. 0.3.0 is declared stable once
-implementations pass the conformance suite.
+in its sixth release candidate (`0.3.0-rc.6`), which is in draft.
 Collections declare their specification version with `spec_version` in
-`mdbase.yaml`. Tools declare the profiles and versions they implement.
+`mdbase.yaml`, which is `0.3.0` for every release candidate. Tools declare
+the profiles and versions they implement.
+
+rc.6 is the last release candidate that adds or changes behavior. A later
+release candidate only confirms or removes a provisional choice, corrects an
+error, or adds tests. 0.3.0 is declared stable when both of these hold:
+
+1. No paragraph marked **Provisional** remains in chapters 00 to 14. Each is
+   confirmed, by removing its marker, or removed together with the behavior
+   it describes.
+2. The implementations named in the
+   [release contract](./release/v0.3.0.md) hold verified conformance claims
+   (Chapter 14) against that release candidate for the profiles of this
+   specification that the contract lists for them.
+
+Companion profiles are not part of that gate. They keep their own versions
+and can change after 0.3.0 is stable.
 
 Companion profiles, artifacts, and schemas carry their own versions:
 
 | Versioned thing | Declared by | Current | Format |
 | --- | --- | --- | --- |
 | collection specification | `spec_version` in `mdbase.yaml` | `0.3.0` | semantic version |
+| concurrent edits profile | profile IDs `merge/0.1` and `move_detection/0.1` | `0.1` | major.minor |
+| type packs profile | profile ID `type_packs/0.1` | `0.1` | major.minor |
 | event/action interoperability profile | conformance claim `interop_profile_version` | `0.1` | major.minor |
 | durable runtime profile | conformance claim `runtime_profile_version` | `0.2` | major.minor |
 | interoperability testbed protocol | testbed evidence | `0.1` | major.minor |
@@ -371,11 +389,18 @@ The keywords `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are to be
 interpreted as described in RFC 2119.
 
 Draft notes use ordinary prose and are non-normative. A paragraph that begins
-with **Provisional (rc.5).** or **Provisional (rc.6).** records a choice made where the design input
-left a detail open. It is normative in the release candidate and may change
-before 0.3.0 is declared stable. The
-[0.3.0-rc.5 release notes](./docs/releases/0.3.0-rc.5.md) list every such
-choice.
+with **Provisional (rc.5).** or **Provisional (rc.6).** records a choice made
+where the design input left a detail open. It is normative in the release
+candidate, and it is confirmed or removed before 0.3.0 is declared stable
+(see Versioning). The [release contract](./release/v0.3.0.md) lists every
+such paragraph. A companion profile marks such a choice with its own version,
+as in **Provisional (0.1).**, and may change it in a later version of the
+profile.
+
+A paragraph that begins with *Note (informative).* is not normative. Where
+the specification names a library or an implementation, it does so only in
+such a note: the text of the specification, not the behavior of any
+implementation, defines conformance.
 
 ## License
 

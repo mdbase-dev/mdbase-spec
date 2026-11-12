@@ -54,6 +54,105 @@ values of [SN-056](./notes/SN-056.md); see [SN-102](./notes/SN-102.md).
 - `path_value_missing` and `path_value_invalid` on a write are listed in the
   request and safety tier (Chapter 04).
 
+### Rules that tools previously had to guess
+
+Eight places where two conforming tools could disagree. See
+[SN-103](./notes/SN-103.md).
+
+#### Added
+
+- `slugify` is an algorithm (Chapter 09): decompose to NFD and drop
+  combining marks, lowercase ASCII letters, replace each run of other
+  characters with one `-`, and trim `-`. There is no transliteration, so
+  `Straße` gives `stra-e` and `日本語` gives the empty string.
+- Link targets are compared with record paths and filenames by path key, so
+  `[[Alice]]` resolves to `people/alice.md`. IDs are still compared exactly.
+  A path without a record extension is tried with each configured extension
+  in order (Chapter 08).
+- Link syntax (Chapter 08): the wikilink grammar, including a `]` that
+  closes a `[` opened inside the link; Markdown link destinations, in angle
+  brackets as written or up to the first space or `)` with `%20` read as a
+  space and no other decoding; destinations that are empty, begin with `#`,
+  or begin with a URI scheme are not record links.
+- Code in the body (Chapter 08): which lines open and close a fenced code
+  block, where inline code ends, and that a backslash makes the next
+  character ordinary text. Link and tag extraction use the same rule.
+- Inline tag grammar (Chapter 08): `#` at the start of a line or after
+  whitespace, then letters, digits, `_`, `-`, or `/`. A run of ASCII digits
+  alone is not a tag. A leading `#` in a frontmatter `tags` value is
+  removed.
+- Frontmatter delimiters (Chapter 03): the opening delimiter is `---` and a
+  line ending at the start of the file; the closing delimiter is the first
+  later line that is exactly `---`. `...`, `--- `, and a longer dash run do
+  not close frontmatter, and a file whose frontmatter is never closed has
+  none.
+- `order_by` value order (Chapter 11): booleans, numbers, dates and
+  date-times, strings, lists, maps, then null and missing. A string is a
+  date or date-time only where every matched type declares that format for
+  the field. Lists and maps compare by length.
+- `path_value_normalized` (Chapters 07 and 14): a warning in the result of a
+  write when normalization changed a path-stored value, with the written and
+  stored values.
+- Fixtures marked `since: 0.3.0-rc.6` in `core/links-and-discovery.yaml`,
+  `core/core-collection.yaml`, `core/core-write.yaml`,
+  `core/path-fields.yaml`, `lifecycle/lifecycle.yaml`, and the new
+  `cel/query-order.yaml`. New requirements
+  `core_read.frontmatter_delimiters`, `links.path_key_matching`,
+  `links.markdown_destinations`, `links.body_code_and_tags`,
+  `cel_query.value_order`, `cel_query.path_tiebreak`,
+  `core_write.path_value_normalized`, `core_write.create_membership_path`,
+  and `lifecycle.slugify`.
+
+#### Changed
+
+- Chapter 12 holds the one write order. The create pipeline names the
+  membership path: the explicit path, or the path the draft derives before
+  lifecycle when the pattern has no path-stored field, or none. Types are
+  frozen at that path, lifecycle runs for the frozen types, and every frozen
+  type must still match at the final path. Chapters 05 and 09 point to
+  Chapter 12 instead of repeating the order.
+- The final `order_by` tie-break is ascending `file.path` in code-point
+  order whatever the directions of the terms, and applies to tools that page
+  with their own continuation tokens.
+
+### Shape of the specification
+
+#### Changed
+
+- Chapter 12A is divided. Move detection and the three-way record merge are
+  the [concurrent edits profile 0.1](./concurrent-edits/0.1.md), with profile
+  IDs `move_detection/0.1` (requires `watch`) and `merge/0.1` (requires
+  `core_write`). Record identity is in Chapter 03 and writer format fidelity
+  in Chapter 12. The moved text is unchanged.
+- Type packs move from Chapter 05A to the
+  [type packs profile 0.1](./type-packs/0.1.md). The profile ID is
+  `type_packs/0.1`.
+- The rules for a gateway that grants record access through a contract, and
+  for what an approval shows and pins, move from Chapter 05A to section 10
+  of the interoperability profile. Its later sections are renumbered.
+- Core Write no longer requires the body merge. An implementation that does
+  not claim `merge/0.1` applies `body_edits` only when the body matches
+  `body_base` and otherwise reports `body_base_unavailable`.
+- Watch no longer requires move detection. Only an implementation that
+  claims `move_detection/0.1` reports an externally moved file as
+  `record_renamed`; every other reports a delete and a create.
+- Path equivalence moves from Core Read to Collection Semantics
+  (`collection_semantics.path_equivalence`). Core Read computes no path keys
+  and reports no `path_collision`.
+- The regex profile (Chapter 10) and the line alignment of the body merge
+  are defined by the text alone. The `regex-lite` crate and
+  diff-match-patch's `bisect` are named only in informative notes, and the
+  alignment is written out as a procedure.
+- `spec_version` is exactly `"0.3.0"`. The sentence in Chapter 04 that
+  allowed draft versions by a compatibility setting is removed.
+- Chapter 00 states how the release-candidate series closes: rc.6 is the
+  last one that adds or changes behavior, and 0.3.0 is stable when no
+  Provisional paragraph remains in chapters 00 to 14 and the implementations
+  of the release contract hold verified claims. The release contract lists
+  the thirteen remaining Provisional paragraphs.
+- The fixture set `watch` is renamed `move_detection`. Fixture files keep
+  their paths.
+
 ## 0.3.0-rc.5 (draft, untagged)
 
 The fifth release candidate specifies the data semantics that let several

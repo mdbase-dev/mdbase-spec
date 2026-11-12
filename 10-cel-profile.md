@@ -318,9 +318,11 @@ pattern the same way on every platform, which matters because a tool that
 replays or re-verifies a write must reach the same result as the tool that
 made it.
 
-The profile is RE2 syntax with ASCII-only character classes, the semantics of
-the Rust `regex-lite` crate. CEL specifies RE2 syntax for `matches()`; the
-profile keeps that syntax and removes Unicode classes from it.
+The profile is RE2 syntax with ASCII-only character classes. CEL specifies
+RE2 syntax for `matches()`; the profile keeps that syntax and removes Unicode
+classes from it. This section defines the profile completely: the syntax
+list, the limits, and the semantics below are normative, and no
+implementation's behavior is.
 
 **Syntax.** A pattern may use:
 
@@ -341,14 +343,14 @@ profile keeps that syntax and removes Unicode classes from it.
 
 A pattern that uses anything else is invalid. In particular, Unicode classes
 such as `\p{L}` and `\pN`, backreferences, and look-around are invalid, and
-so are constructs that `regex-lite` accepts beyond this list: `\b{start}` and
+so are these constructs, which some RE2-family engines accept: `\b{start}` and
 the other `\b{...}` boundaries, `(?<name>...)` (use `(?P<name>...)`), the
 `U` and `R` flags, escapes of letters or digits other than those listed (such
 as `\a` and `\u0041`), nested bracket classes, and class set operations
 (`&&`, `--`, `~~`). A `{` that does not begin a valid repetition, and a `]` or
 `}` outside a class, are invalid too; escape them. `\<` and `\>` are
-literal `<` and `>`, as the escape rule above says, although `regex-lite`
-itself reads them as word boundaries.
+literal `<` and `>`, as the escape rule above says, although some engines
+read them as word boundaries.
 
 **Limits.** Every tool accepts and rejects the same patterns:
 
@@ -363,8 +365,8 @@ itself reads them as word boundaries.
   `+`, and `?`; and the operand times `max(n, m, 1) + 1` for `{n}`, `{n,}`,
   and `{n,m}`.
 
-`regex-lite`'s own size limit depends on the platform's pointer width, so it
-cannot be the portable limit.
+An engine's own size limit usually depends on the platform, for example on
+its pointer width, so it cannot be the portable limit.
 
 **Semantics.** Matching runs over Unicode scalar values, and a match is
 unanchored unless the pattern anchors it, as in RE2 and JSON Schema. Among
@@ -391,10 +393,13 @@ during evaluation that turns out invalid raises an evaluation error. An
 invalid JSON Schema `pattern` or `match.where` pattern makes its type file
 invalid.
 
-**Provisional (rc.5).** The profile follows `regex-lite` because it keeps the
-WebAssembly runtime about 740 KB smaller than a Unicode-table engine and can
-run identically everywhere. Patterns that depend on Unicode classes behave
-differently from rc.4 engines that used a Unicode-aware engine.
+*Note (informative).* The profile was drawn from the Rust `regex-lite`
+crate, which needs no Unicode tables: an engine built on it is several
+hundred kilobytes smaller as WebAssembly and runs identically everywhere. An
+implementation that uses `regex-lite` still applies the syntax restrictions
+and limits above itself, because the crate accepts more. Patterns that
+depend on Unicode classes behave differently from rc.4 engines that used a
+Unicode-aware engine.
 
 ## File And Link Helpers
 

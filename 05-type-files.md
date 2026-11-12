@@ -81,7 +81,7 @@ and collection rules.
 Write operations use the same model around lifecycle processing: determine
 membership from the requested draft, run the applicable lifecycle assignments,
 then confirm membership once before final validation. The complete write order
-is defined in Chapters 09 and 12.
+is defined in Chapter 12.
 
 ## Required Frontmatter
 
@@ -196,7 +196,8 @@ implementing type matches `type: view` and maps every contract field to the
 same-named frontmatter field.
 
 A collection that stores portable view records SHOULD install that contract and
-a type implementing it, normally through the `mdbase.view` type pack. A
+a type implementing it, normally through the `mdbase.view`
+[type pack](./type-packs/0.1.md). A
 collection MAY instead implement the contract with its own type name, match
 rule, and field mapping.
 
@@ -250,6 +251,7 @@ participates independently in each declaring type's uniqueness set.
 
 Write operations determine membership from the requested draft and target path
 before lifecycle runs. Explicit declarations use the same precedence as reads.
+Chapter 12 defines which path a create uses when the request gives none.
 
 After lifecycle has run, the implementation MUST evaluate membership once more.
 If the final membership differs from the pre-lifecycle membership, the operation

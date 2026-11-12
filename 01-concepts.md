@@ -25,8 +25,8 @@ may additionally include `collection.read_defaults`.
 A record is identified by its path. A record carries no required mdbase
 metadata: no ID, revision, or merge state is ever required in the file.
 Implementations MAY keep internal record identities outside the collection's
-records and follow a record across moves with the move detection of Chapter
-12A.
+records (Chapter 03) and follow a record across moves with the move
+detection of the [concurrent edits profile](./concurrent-edits/0.1.md).
 
 ## Type
 
@@ -110,7 +110,8 @@ from type policy during the active mutation.
 A merge combines two concurrent edits of one record against their common base
 version. Each top-level frontmatter field has a merge strategy, declared in
 `collection.merge` or derived from the type, and the body merges line by line.
-Chapter 12A defines the merge function. When and where merges happen is an
+The [concurrent edits profile](./concurrent-edits/0.1.md)
+defines the merge function. When and where merges happen is an
 implementation concern.
 
 ## Expression

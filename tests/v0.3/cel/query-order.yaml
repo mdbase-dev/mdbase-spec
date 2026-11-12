@@ -1,0 +1,275 @@
+name: "v0.3 query ordering conformance"
+spec_version: "0.3.0"
+fixture_set: cel
+category: query
+spec_ref: "v0.3/11"
+
+groups:
+  - name: "value order across kinds"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        items/bool-false.md: |
+          ---
+          v: false
+          ---
+        items/bool-true.md: |
+          ---
+          v: true
+          ---
+        items/num-neg.md: |
+          ---
+          v: -1
+          ---
+        items/num-2.md: |
+          ---
+          v: 2
+          ---
+        items/num-2-0.md: |
+          ---
+          v: 2.0
+          ---
+        items/num-2-5.md: |
+          ---
+          v: 2.5
+          ---
+        items/str-10.md: |
+          ---
+          v: "10"
+          ---
+        items/str-B.md: |
+          ---
+          v: B
+          ---
+        items/str-a.md: |
+          ---
+          v: a
+          ---
+        items/list-1.md: |
+          ---
+          v: [z]
+          ---
+        items/list-2.md: |
+          ---
+          v: [a, b]
+          ---
+        items/map-1.md: |
+          ---
+          v: { k: 1 }
+          ---
+        items/null.md: |
+          ---
+          v: null
+          ---
+        items/missing.md: |
+          ---
+          other: 1
+          ---
+    tests:
+      - name: "ascending order sorts by kind, then within the kind, with null and missing last"
+        id: query.order_kinds_ascending
+        since: 0.3.0-rc.6
+        covers: [cel_query.value_order, cel_query.path_tiebreak]
+        operation: query
+        input:
+          order_by:
+            - field: v
+              direction: asc
+        expect:
+          valid: true
+          results:
+            - path: "items/bool-false.md"
+            - path: "items/bool-true.md"
+            - path: "items/num-neg.md"
+            - path: "items/num-2-0.md"
+            - path: "items/num-2.md"
+            - path: "items/num-2-5.md"
+            - path: "items/str-10.md"
+            - path: "items/str-B.md"
+            - path: "items/str-a.md"
+            - path: "items/list-1.md"
+            - path: "items/list-2.md"
+            - path: "items/map-1.md"
+            - path: "items/missing.md"
+            - path: "items/null.md"
+
+      - name: "descending order reverses the value order and keeps ties in ascending path order"
+        id: query.order_kinds_descending
+        since: 0.3.0-rc.6
+        covers: [cel_query.value_order, cel_query.path_tiebreak]
+        operation: query
+        input:
+          order_by:
+            - field: v
+              direction: desc
+        expect:
+          valid: true
+          results:
+            - path: "items/missing.md"
+            - path: "items/null.md"
+            - path: "items/map-1.md"
+            - path: "items/list-2.md"
+            - path: "items/list-1.md"
+            - path: "items/str-a.md"
+            - path: "items/str-B.md"
+            - path: "items/str-10.md"
+            - path: "items/num-2-5.md"
+            - path: "items/num-2-0.md"
+            - path: "items/num-2.md"
+            - path: "items/num-neg.md"
+            - path: "items/bool-true.md"
+            - path: "items/bool-false.md"
+
+  - name: "schema-typed dates and date-times"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        event.md: |
+          ---
+          kind: mdbase.type
+          name: event
+          version: 1
+          match:
+            path_glob: "events/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                day: { type: string, format: date }
+                at: { type: string, format: date-time }
+          ---
+      files:
+        events/a.md: |
+          ---
+          day: "2026-01-10"
+          at: "2026-01-01T10:00:00+10:00"
+          ---
+        events/b.md: |
+          ---
+          day: "2025-12-31"
+          at: "2026-01-01T01:00:00Z"
+          ---
+        events/c.md: |
+          ---
+          day: "0 someday"
+          at: "2026-01-01T00:30:00Z"
+          ---
+        loose/a.md: |
+          ---
+          at: "2026-01-01T10:00:00+10:00"
+          ---
+        loose/b.md: |
+          ---
+          at: "2026-01-01T01:00:00Z"
+          ---
+    tests:
+      - name: "date-times of a format: date-time field sort by instant, not by text"
+        id: query.order_date_time_instants
+        since: 0.3.0-rc.6
+        covers: [cel_query.value_order]
+        operation: query
+        input:
+          types: [event]
+          order_by:
+            - field: at
+        expect:
+          valid: true
+          results:
+            - path: "events/a.md"
+            - path: "events/c.md"
+            - path: "events/b.md"
+
+      - name: "an invalid value in a format: date field sorts as a string, after every date"
+        id: query.order_invalid_date_is_string
+        since: 0.3.0-rc.6
+        covers: [cel_query.value_order]
+        operation: query
+        input:
+          types: [event]
+          order_by:
+            - field: day
+        expect:
+          valid: true
+          results:
+            - path: "events/b.md"
+            - path: "events/a.md"
+            - path: "events/c.md"
+
+      - name: "a string that looks like a date-time is not guessed to be one without a schema"
+        id: query.order_untyped_strings
+        since: 0.3.0-rc.6
+        covers: [cel_query.value_order]
+        operation: query
+        input:
+          where: 'file.inFolder("loose")'
+          order_by:
+            - field: at
+        expect:
+          valid: true
+          results:
+            - path: "loose/b.md"
+            - path: "loose/a.md"
+
+  - name: "path tie-break"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      files:
+        tasks/b.md: |
+          ---
+          status: open
+          rank: 1
+          ---
+        tasks/a.md: |
+          ---
+          status: open
+          rank: 2
+          ---
+        tasks/C.md: |
+          ---
+          status: open
+          rank: 2
+          ---
+        tasks/d.md: |
+          ---
+          status: done
+          rank: 2
+          ---
+    tests:
+      - name: "equal terms fall back to ascending file.path in code-point order"
+        id: query.order_path_tiebreak_ascending
+        since: 0.3.0-rc.6
+        covers: [cel_query.path_tiebreak]
+        operation: query
+        input:
+          where: 'status == "open"'
+          order_by:
+            - field: status
+        expect:
+          valid: true
+          results:
+            - path: "tasks/C.md"
+            - path: "tasks/a.md"
+            - path: "tasks/b.md"
+
+      - name: "the tie-break stays ascending when every term is descending"
+        id: query.order_path_tiebreak_descending
+        since: 0.3.0-rc.6
+        covers: [cel_query.path_tiebreak]
+        operation: query
+        input:
+          order_by:
+            - field: rank
+              direction: desc
+            - field: status
+              direction: desc
+        expect:
+          valid: true
+          results:
+            - path: "tasks/C.md"
+            - path: "tasks/a.md"
+            - path: "tasks/d.md"
+            - path: "tasks/b.md"

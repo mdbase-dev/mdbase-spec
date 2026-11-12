@@ -1,4 +1,4 @@
-# Three-way record merge fixtures (Chapter 12A).
+# Three-way record merge fixtures (concurrent edits profile 0.1).
 #
 # Each merge_records test supplies the base, first, and second versions of one
 # record. "first" is the earlier-ordered version; at a conflict the merged
@@ -14,7 +14,7 @@ name: "three-way record merge"
 spec_version: "0.3.0"
 fixture_set: merge
 category: merge
-spec_ref: "v0.3/07, v0.3/12A"
+spec_ref: "v0.3/07, concurrent-edits/0.1"
 groups:
   - name: "prototype merge fixtures (TaskNotes-like task type)"
     setup:
@@ -69,7 +69,7 @@ groups:
       - name: "Both append different lines at the end: union (theirs first), no conflict. (prototype fixture body-append-append)"
         id: merge.body_append_append
         since: 0.3.0-rc.5
-        covers: [merge.append_append_union]
+        covers: [merge/0.1.append_append_union]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -122,7 +122,7 @@ groups:
       - name: "Different body lines edited: both kept. (prototype fixture body-disjoint-hunks)"
         id: merge.body_disjoint_hunks
         since: 0.3.0-rc.5
-        covers: [merge.body_three_way]
+        covers: [merge/0.1.body_three_way]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -191,7 +191,7 @@ groups:
       - name: "Same line edited differently: conflict; theirs stays. (prototype fixture body-overlap)"
         id: merge.body_overlap
         since: 0.3.0-rc.5
-        covers: [merge.body_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.body_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -249,7 +249,7 @@ groups:
       - name: "completedDate declared merge: max. (prototype fixture declared-max)"
         id: merge.declared_max
         since: 0.3.0-rc.5
-        covers: [merge.declared_strategies, merge.max_min_semantics]
+        covers: [merge/0.1.declared_strategies, merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -310,7 +310,7 @@ groups:
       - name: "Different keys changed on each side: both kept. (prototype fixture disjoint-fields)"
         id: merge.disjoint_fields
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way]
+        covers: [merge/0.1.field_three_way]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -367,7 +367,7 @@ groups:
       - name: "A field change and a body change merge. (prototype fixture field-vs-body)"
         id: merge.field_vs_body
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.body_three_way]
+        covers: [merge/0.1.field_three_way, merge/0.1.body_three_way]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -424,7 +424,7 @@ groups:
       - name: "Untouched entries keep comments/quoting; the changed key is copied verbatim from the side that changed it. (prototype fixture format-preserved)"
         id: merge.format_preserved
         since: 0.3.0-rc.5
-        covers: [merge.merge_format_fidelity]
+        covers: [merge/0.1.merge_format_fidelity]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -481,7 +481,7 @@ groups:
       - name: "dateModified changed on both sides: the later timestamp wins, no conflict. (prototype fixture lifecycle-now-max)"
         id: merge.lifecycle_now_max
         since: 0.3.0-rc.5
-        covers: [merge.default_strategies, merge.max_min_semantics]
+        covers: [merge/0.1.default_strategies, merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -538,7 +538,7 @@ groups:
       - name: "Ours sets priority 9 (violates maximum 5) via an external edit: accepted, validity reported, not a conflict. (prototype fixture merge-invalid-is-reported)"
         id: merge.merge_invalid_is_reported
         since: 0.3.0-rc.5
-        covers: [merge.invalid_merge_reported]
+        covers: [merge/0.1.invalid_merge_reported]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -595,7 +595,7 @@ groups:
       - name: "Default merge: conflict. The earlier-sequenced value (theirs) stays. (prototype fixture same-field-different-values)"
         id: merge.same_field_different_values
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.field_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -654,7 +654,7 @@ groups:
       - name: "Both sides set the same value: no conflict. (prototype fixture same-field-same-value)"
         id: merge.same_field_same_value
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way]
+        covers: [merge/0.1.field_three_way]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -711,7 +711,7 @@ groups:
       - name: "Both add different tags: union. (prototype fixture tags-union-add-add)"
         id: merge.tags_union_add_add
         since: 0.3.0-rc.5
-        covers: [merge.default_strategies, merge.union_semantics]
+        covers: [merge/0.1.default_strategies, merge/0.1.union_semantics]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -768,7 +768,7 @@ groups:
       - name: "One side removes b, the other adds c: remove and add both apply. (prototype fixture tags-union-remove-add)"
         id: merge.tags_union_remove_add
         since: 0.3.0-rc.5
-        covers: [merge.union_semantics]
+        covers: [merge/0.1.union_semantics]
         operation: merge_records
         input:
           path: tasks/T.md
@@ -858,7 +858,7 @@ groups:
       - name: a field declared min keeps the lesser of two changed values
         id: merge.declared_min
         since: 0.3.0-rc.5
-        covers: [merge.declared_strategies, merge.max_min_semantics]
+        covers: [merge/0.1.declared_strategies, merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -895,7 +895,7 @@ groups:
       - name: a declaration replaces the max default of a lifecycle now field
         id: merge.declaration_overrides_default
         since: 0.3.0-rc.5
-        covers: [merge.declared_strategies, merge.conflict_reporting]
+        covers: [merge/0.1.declared_strategies, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -934,7 +934,7 @@ groups:
       - name: "max compares date-times with offsets as instants, not as text"
         id: merge.max_compares_instants
         since: 0.3.0-rc.5
-        covers: [merge.max_min_semantics]
+        covers: [merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -971,7 +971,7 @@ groups:
       - name: max of a number and a string is a conflict
         id: merge.max_incomparable_conflicts
         since: 0.3.0-rc.5
-        covers: [merge.max_min_semantics, merge.conflict_reporting]
+        covers: [merge/0.1.max_min_semantics, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1006,7 +1006,7 @@ groups:
       - name: under max a value survives a concurrent removal
         id: merge.max_value_beats_removal
         since: 0.3.0-rc.5
-        covers: [merge.max_min_semantics]
+        covers: [merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -1038,7 +1038,7 @@ groups:
       - name: an array with uniqueItems merges as a set by default and keeps block style
         id: merge.unique_items_default_union
         since: 0.3.0-rc.5
-        covers: [merge.default_strategies, merge.union_semantics, merge.merge_format_fidelity]
+        covers: [merge/0.1.default_strategies, merge/0.1.union_semantics, merge/0.1.merge_format_fidelity]
         operation: merge_records
         input:
           path: items/a.md
@@ -1081,7 +1081,7 @@ groups:
       - name: an array without uniqueItems has the conflict default
         id: merge.plain_array_conflicts
         since: 0.3.0-rc.5
-        covers: [merge.default_strategies, merge.conflict_reporting]
+        covers: [merge/0.1.default_strategies, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1120,7 +1120,7 @@ groups:
       - name: union treats a removed key as an empty list and re-emits the result
         id: merge.union_with_removed_key
         since: 0.3.0-rc.5
-        covers: [merge.union_semantics]
+        covers: [merge/0.1.union_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -1156,7 +1156,7 @@ groups:
       - name: an empty union result with a removed key leaves the key missing
         id: merge.union_empty_removes_key
         since: 0.3.0-rc.5
-        covers: [merge.union_semantics]
+        covers: [merge/0.1.union_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -1191,7 +1191,7 @@ groups:
       - name: a tags string reads as a one-item list
         id: merge.tags_string_is_one_item
         since: 0.3.0-rc.5
-        covers: [merge.union_semantics]
+        covers: [merge/0.1.union_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -1228,7 +1228,7 @@ groups:
       - name: a key removed on one side and unchanged on the other is removed
         id: merge.one_side_removes
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way]
+        covers: [merge/0.1.field_three_way]
         operation: merge_records
         input:
           path: items/a.md
@@ -1263,7 +1263,7 @@ groups:
       - name: a key added on both sides with different values is a conflict
         id: merge.added_both_sides_differently
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.field_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1301,7 +1301,7 @@ groups:
       - name: setting null and removing a key are different changes
         id: merge.null_is_not_missing
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.field_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1339,7 +1339,7 @@ groups:
       - name: a key added by the second side goes after the last entry and before trailing comments
         id: merge.new_key_after_last_entry
         since: 0.3.0-rc.5
-        covers: [merge.merge_format_fidelity]
+        covers: [merge/0.1.merge_format_fidelity]
         operation: merge_records
         input:
           path: items/a.md
@@ -1378,7 +1378,7 @@ groups:
       - name: append-append inserts a line break after an append that lacks one
         id: merge.append_without_final_newline
         since: 0.3.0-rc.5
-        covers: [merge.append_append_union]
+        covers: [merge/0.1.append_append_union]
         operation: merge_records
         input:
           path: items/a.md
@@ -1415,7 +1415,7 @@ groups:
       - name: two insertions at the same place inside the body are a conflict
         id: merge.interior_insertions_conflict
         since: 0.3.0-rc.5
-        covers: [merge.body_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.body_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1456,7 +1456,7 @@ groups:
       - name: "when the first version is unchanged the merged version is the second, byte for byte"
         id: merge.unchanged_first_takes_second_bytes
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.merge_format_fidelity]
+        covers: [merge/0.1.field_three_way, merge/0.1.merge_format_fidelity]
         operation: merge_records
         input:
           path: items/a.md
@@ -1491,7 +1491,7 @@ groups:
       - name: two identical edits merge to that edit
         id: merge.identical_edits
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.body_three_way]
+        covers: [merge/0.1.field_three_way, merge/0.1.body_three_way]
         operation: merge_records
         input:
           path: items/a.md
@@ -1524,7 +1524,7 @@ groups:
       - name: a move on one side wins over an unchanged path
         id: merge.path_one_side_moves
         since: 0.3.0-rc.5
-        covers: [merge.path_merge]
+        covers: [merge/0.1.path_merge]
         operation: merge_records
         input:
           paths:
@@ -1561,7 +1561,7 @@ groups:
       - name: two different moves are a path conflict
         id: merge.path_two_moves_conflict
         since: 0.3.0-rc.5
-        covers: [merge.path_merge, merge.conflict_reporting]
+        covers: [merge/0.1.path_merge, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           paths:
@@ -1599,7 +1599,7 @@ groups:
       - name: "a column-0 comment inside a block sequence belongs to the entry"
         id: merge.column0_comment_inside_sequence
         since: 0.3.0-rc.5
-        covers: [merge.merge_format_fidelity]
+        covers: [merge/0.1.merge_format_fidelity]
         operation: merge_records
         input:
           path: items/a.md
@@ -1650,7 +1650,7 @@ groups:
       - name: "append-append onto a base without a final line break adds no empty line"
         id: merge.append_unterminated_base
         since: 0.3.0-rc.5
-        covers: [merge.append_append_union]
+        covers: [merge/0.1.append_append_union]
         operation: merge_records
         input:
           path: items/a.md
@@ -1687,7 +1687,7 @@ groups:
       - name: "append-append in a CRLF body inserts a CRLF separator"
         id: merge.append_separator_crlf
         since: 0.3.0-rc.5
-        covers: [merge.append_append_union]
+        covers: [merge/0.1.append_append_union]
         operation: merge_records
         input:
           path: items/a.md
@@ -1700,7 +1700,7 @@ groups:
       - name: "the body alignment is the pinned Myers alignment"
         id: merge.body_alignment_pinned
         since: 0.3.0-rc.5
-        covers: [merge.body_three_way]
+        covers: [merge/0.1.body_three_way]
         operation: merge_records
         input:
           path: items/a.md
@@ -1738,7 +1738,7 @@ groups:
       - name: "plain scalars use the YAML 1.2 core schema: 0777 is decimal"
         id: merge.yaml_core_schema_decimal
         since: 0.3.0-rc.5
-        covers: [merge.max_min_semantics]
+        covers: [merge/0.1.max_min_semantics]
         operation: merge_records
         input:
           path: items/a.md
@@ -1771,7 +1771,7 @@ groups:
       - name: "plain scalars use the YAML 1.2 core schema: yes is a string"
         id: merge.yaml_core_schema_yes
         since: 0.3.0-rc.5
-        covers: [merge.field_three_way, merge.conflict_reporting]
+        covers: [merge/0.1.field_three_way, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1809,7 +1809,7 @@ groups:
       - name: frontmatter that is not a mapping merges as one unit
         id: merge.non_mapping_frontmatter
         since: 0.3.0-rc.5
-        covers: [merge.conflict_reporting]
+        covers: [merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: items/a.md
@@ -1839,7 +1839,7 @@ groups:
       - name: declared and default strategies for one record
         id: merge.strategies_item
         since: 0.3.0-rc.5
-        covers: [merge.default_strategies, merge.declared_strategies, collection_semantics.merge_declarations]
+        covers: [merge/0.1.default_strategies, merge/0.1.declared_strategies, collection_semantics.merge_declarations]
         operation: merge_strategies
         input:
           path: items/a.md
@@ -1928,7 +1928,7 @@ groups:
       - name: "a type_conflict between declarations merges the field as a conflict"
         id: merge.declaration_type_conflict_in_merge
         since: 0.3.0-rc.5
-        covers: [collection_semantics.merge_declarations, merge.conflict_reporting]
+        covers: [collection_semantics.merge_declarations, merge/0.1.conflict_reporting]
         operation: merge_records
         input:
           path: shared/x.md

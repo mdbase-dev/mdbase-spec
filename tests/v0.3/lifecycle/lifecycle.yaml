@@ -268,3 +268,74 @@ groups:
           valid: true
           frontmatter:
             stale: true
+
+  - name: "slugify"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        page.md: |
+          ---
+          kind: mdbase.type
+          name: page
+          version: 1
+          match:
+            path_glob: "pages/**/*.md"
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                title: { type: string }
+                slug: { type: string }
+          lifecycle:
+            on_create:
+              set:
+                slug: { slugify: title }
+          ---
+      files: {}
+    tests:
+      - name: "accents are removed by canonical decomposition and runs become one dash"
+        id: lifecycle.slugify_accents
+        since: 0.3.0-rc.6
+        covers: [lifecycle.slugify]
+        operation: create
+        input:
+          type: page
+          path: "pages/a.md"
+          frontmatter:
+            title: "  Café — Crème Brûlée!! "
+        expect:
+          valid: true
+          frontmatter_contains:
+            slug: cafe-creme-brulee
+
+      - name: "characters that do not decompose to ASCII are separators, not transliterated"
+        id: lifecycle.slugify_no_transliteration
+        since: 0.3.0-rc.6
+        covers: [lifecycle.slugify]
+        operation: create
+        input:
+          type: page
+          path: "pages/b.md"
+          frontmatter:
+            title: "Straße Ærø 2"
+        expect:
+          valid: true
+          frontmatter_contains:
+            slug: stra-e-r-2
+
+      - name: "a value without ASCII letters or digits gives the empty string"
+        id: lifecycle.slugify_empty
+        since: 0.3.0-rc.6
+        covers: [lifecycle.slugify]
+        operation: create
+        input:
+          type: page
+          path: "pages/c.md"
+          frontmatter:
+            title: "日本語"
+        expect:
+          valid: true
+          frontmatter_contains:
+            slug: ""

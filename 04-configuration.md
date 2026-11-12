@@ -32,7 +32,10 @@ settings:
 is the compatibility boundary. A v0.3 tool MUST reject v0.2 and v0.4
 collections unless an explicit compatibility adapter is enabled.
 
-Pre-1.0 draft versions MAY be accepted by explicit compatibility setting.
+The value is exactly `"0.3.0"`, throughout the release-candidate series and
+after it. A release candidate is a version of this specification, which a
+tool names in its conformance claim (Chapter 14); it is never a version of a
+collection, and a value such as `0.3.0-rc.5` is invalid.
 
 ## Settings
 
@@ -100,9 +103,14 @@ exception is a uniqueness rule that explicitly opts into `enforce: write`
 single-record checks whose severity is always `warning`: they are reported at
 levels `warn` and `error` and never reject a write.
 
+`path_value_normalized` (Chapter 07) is not a validation issue. It is a
+warning in the result of the write that normalized the value, at every
+validation level, and it is not reported when the record is read later.
+
 Writes that do not go through an engine's write operations are never rejected.
 That includes edits made by other tools, files that appear through a file
-system or synchronization tool, and the results of the merge in Chapter 12A.
+system or synchronization tool, and the results of a merge
+([concurrent edits profile](./concurrent-edits/0.1.md)).
 Their issues are reported when the record is read or validated.
 
 ## Validation Levels

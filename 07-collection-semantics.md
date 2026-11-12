@@ -311,7 +311,7 @@ SHOULD generate them with lifecycle `ulid` or `uuid`.
 An `enforce: write` rule rejects only writes that introduce a duplicate. A
 write that leaves a record's covered values unchanged succeeds even when the
 record already violates the rule, for example after an external edit. Edits
-made by other tools and the results of a merge (Chapter 12A) are never
+made by other tools and the results of a merge are never
 rejected; their violations are reported.
 
 **Provisional (rc.5).** An `enforce: write` rule applies at every
@@ -487,8 +487,14 @@ path-stored field written `{field}` is placed in a path, it is normalized:
 4. leading and trailing characters that are `.` or a space are removed.
 
 The normalized value replaces the value that was written: it is the record's
-value and the value the operation result reports. Normalizing a normalized
-value changes nothing. A value that is not a string, or that is empty after
+value and the value the operation result reports. When normalization changes
+a value that the request or a lifecycle action set, the operation result
+carries a `warning` diagnostic with code `path_value_normalized`, the field,
+`details.written` holding the value as it was set, and `details.stored`
+holding the normalized value, so a caller that wrote `Plan: Q3/Q4` learns
+that the record's title is `Plan Q3Q4` without comparing the two itself. The
+diagnostic belongs to the operation, not to the record: reading the record
+later does not report it. Normalizing a normalized value changes nothing. A value that is not a string, or that is empty after
 normalization, fails with `path_value_invalid` naming the field, and so does a
 value that gives the derived path a segment the portable path rules of
 Chapter 02 forbid, such as the Windows device name `CON` or a segment longer
@@ -520,7 +526,7 @@ rules. In summary:
 
 The collision rule of Chapter 02 still applies to paths no single write
 chose: records created concurrently, records copied onto another file system,
-and merged paths (Chapter 12A). Its suffix then becomes part of the decoded
+and merged paths. Its suffix then becomes part of the decoded
 value, such as `Call Bob (2)`.
 
 **Provisional (rc.6).** Only string fields can be path-stored, and FORMAT
@@ -531,7 +537,7 @@ before runs of spaces are collapsed and before the ends are trimmed.
 ## Merge Strategies
 
 `collection.merge` declares how each top-level frontmatter field combines when
-two concurrent edits of a record are merged (Chapter 12A):
+two concurrent edits of a record are merged:
 
 ```yaml
 collection:
@@ -552,7 +558,8 @@ strategy:
 | `min` | the lesser of the two values |
 | `union` | an observed-remove set union of the two lists |
 
-Chapter 12A defines each strategy exactly. A strategy matters only when both
+The [concurrent edits profile](./concurrent-edits/0.1.md)
+defines each strategy exactly. A strategy matters only when both
 sides changed the same field differently. A field changed on one side always
 takes that side's value, and a field changed identically on both sides takes
 the shared value.

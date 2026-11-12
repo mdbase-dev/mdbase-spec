@@ -12,7 +12,7 @@ groups:
       - name: paths that differ in case or Unicode normalization share a path key
         id: paths.case_and_nfc
         since: 0.3.0-rc.5
-        covers: [core_read.path_equivalence]
+        covers: [collection_semantics.path_equivalence]
         operation: path_equivalence
         input:
           paths: ["Notes/Café.md", "notes/café.md", "NOTES/CAFÉ.md", notes/other.md]
@@ -22,7 +22,7 @@ groups:
       - name: "full case folding makes Straße and STRASSE equivalent"
         id: paths.full_case_folding
         since: 0.3.0-rc.5
-        covers: [core_read.path_equivalence]
+        covers: [collection_semantics.path_equivalence]
         operation: path_equivalence
         input:
           paths: ["Straße.md", STRASSE.md, strasse-2.md]
@@ -32,7 +32,7 @@ groups:
       - name: different names are not equivalent
         id: paths.distinct_paths
         since: 0.3.0-rc.5
-        covers: [core_read.path_equivalence]
+        covers: [collection_semantics.path_equivalence]
         operation: path_equivalence
         input:
           paths: [tasks/a.md, tasks/b.md, tasks/a.base]
