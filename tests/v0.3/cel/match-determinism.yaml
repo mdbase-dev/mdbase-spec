@@ -1,11 +1,12 @@
 # Deterministic matching (Chapters 07 and 10): a match.expr that depends on the
-# clock, file timestamps, or other records is invalid with a nondeterministic_match
-# error. Queries may use those bindings freely.
+# clock, file timestamps, other records, or a timezone without settings.timezone
+# is invalid with a nondeterministic_match error. Queries may use those bindings
+# freely. Type matching never uses an invocation timezone or local-runtime default.
 name: "deterministic match expressions"
 spec_version: "0.3.0"
 fixture_set: cel
 category: cel
-spec_ref: "v0.3/07, v0.3/10"
+spec_ref: "v0.3/07, v0.3/10, v0.3/11"
 
 groups:
   - name: "nondeterministic match expressions are reported"
@@ -122,3 +123,157 @@ groups:
           valid: true
           results:
             - path: "tasks/a.md"
+
+  - name: "matching uses only the configured collection timezone"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings:
+          timezone: America/Los_Angeles
+      types:
+        la_day.md: |
+          ---
+          kind: mdbase.type
+          name: la_day
+          version: 1
+          match:
+            expr:
+              $expr: 'date(timestamp("2026-11-15T00:30:00Z")) == "2026-11-14" && startOfDay("2026-11-14") == timestamp("2026-11-14T08:00:00Z")'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        tasks/a.md: |
+          ---
+          title: A
+          ---
+    tests:
+      - name: "a configured timezone makes date conversions deterministic"
+        id: cel_match.configured_timezone_valid
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: load_types
+        input: {}
+        expect:
+          valid: true
+          types: [la_day]
+          diagnostics: []
+
+      - name: "date conversions use the configured timezone for membership"
+        id: cel_match.configured_timezone_membership
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: get_types
+        input:
+          path: "tasks/a.md"
+        expect:
+          valid: true
+          types: [la_day]
+
+      - name: "a UTC invocation does not change type membership"
+        id: cel_match.invocation_timezone_utc_ignored
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: query
+        input:
+          types: [la_day]
+          timezone: UTC
+        expect:
+          valid: true
+          results:
+            - path: "tasks/a.md"
+
+      - name: "a Los Angeles invocation has the same deterministic membership"
+        id: cel_match.invocation_timezone_los_angeles_ignored
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: query
+        input:
+          types: [la_day]
+          timezone: America/Los_Angeles
+        expect:
+          valid: true
+          results:
+            - path: "tasks/a.md"
+
+  - name: "timezone-dependent matching requires a configured timezone"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+      types:
+        instant_date.md: |
+          ---
+          kind: mdbase.type
+          name: instant_date
+          version: 1
+          match:
+            expr:
+              $expr: 'date(timestamp("2026-11-15T00:30:00Z")) == "2026-11-15"'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+        day_start.md: |
+          ---
+          kind: mdbase.type
+          name: day_start
+          version: 1
+          match:
+            expr:
+              $expr: 'startOfDay("2026-11-15") == timestamp("2026-11-15T00:00:00Z")'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+        date_literal.md: |
+          ---
+          kind: mdbase.type
+          name: date_literal
+          version: 1
+          match:
+            expr:
+              $expr: 'date("2026-11-15") == "2026-11-15"'
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+          ---
+      files:
+        tasks/a.md: |
+          ---
+          title: A
+          ---
+    tests:
+      - name: "a missing collection timezone makes date conversions invalid"
+        id: cel_match.missing_timezone_error
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: load_types
+        input: {}
+        expect:
+          valid: false
+          types: [date_literal]
+          diagnostics_contain:
+            - code: nondeterministic_match
+              severity: error
+              type: instant_date
+              details: { binding: date }
+            - code: nondeterministic_match
+              severity: error
+              type: day_start
+              details: { binding: startOfDay }
+
+      - name: "missing-timezone types are excluded but date strings remain deterministic"
+        id: cel_match.missing_timezone_excluded
+        since: 0.3.0
+        covers: [cel_match.deterministic_match]
+        operation: get_types
+        input:
+          path: "tasks/a.md"
+        expect:
+          valid: true
+          types: [date_literal]

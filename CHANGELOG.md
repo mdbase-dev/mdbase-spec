@@ -20,6 +20,12 @@ New normative work belongs in backward-compatible 0.3.x errata or 0.4.
   Chapters 07, 10, 13, and 14 and both affected conformance cases now require
   this. Queries may still use time-dependent bindings. Existing `since:`
   markers and case IDs are retained; changed cases use `changed: 0.3.0`.
+- Type matching uses only the collection's configured `settings.timezone`,
+  never an invocation timezone or a local-runtime default. Without a configured
+  timezone, `today()`, `date(timestamp)`, and `startOfDay(string)` in `match.expr`
+  produce a `nondeterministic_match` error that invalidates the type and excludes
+  it from matching. A configured timezone does not permit clock-dependent
+  `today()`. Chapters 10 and 11 and the matching fixtures make this explicit.
 - Prepare `@callumalpass/mdbase-interop`, `@callumalpass/mdbase-testbed`, and
   the `mdbase-interop` crate as `0.1.0`. Prepare
   `@callumalpass/mdbase-runtime` as `0.2.0`: the reference executor and
@@ -286,7 +292,7 @@ Bases, seed type upgrades, and saved-view identification.
 
 #### Clarified
 
-- Errata from the first implementation (provisional; details in the release
+- Errata from the first implementation (details in the release
   notes):
   - YAML 1.2 core scalar resolution;
   - which lines belong to a frontmatter entry;

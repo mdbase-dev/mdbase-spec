@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import packageJson from "../package.json" with { type: "json" };
 import {
   canonicalJson,
   describeAdapter,
@@ -46,12 +47,17 @@ test("keeps scenarios product-neutral and expected transcripts sequential", () =
 test("describes and runs the black-box reference adapter", async () => {
   const description = await describeAdapter("reference");
   assert.equal(description.kind, "mdbase.testbed.adapter");
+  assert.equal(description.implementation.version, packageJson.version);
   assert.equal(description.scenarios.length, 9);
 
   const run = await runTestbed({ adapter: "reference" });
   assert.equal(run.results.length, 9);
   assert.equal(run.results.every(({ pass }) => pass), true);
   assert.equal(run.evidence.result, "pass");
+  assert.equal(run.evidence.implementation.version, packageJson.version);
+  for (const result of run.results) {
+    assert.equal(result.transcript.implementation.version, packageJson.version);
+  }
 });
 
 test("can select one scenario and rejects an unsupported requested ring", async () => {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import packageJson from "../package.json" with { type: "json" };
 import {
   InMemoryInteropBridge,
   InteropError,
@@ -9,7 +10,7 @@ import {
 const implementation = {
   id: "mdbase-interop.typescript.reference",
   name: "mdbase TypeScript in-memory interoperability bridge",
-  version: "0.1.0-rc.2",
+  version: packageJson.version,
   language: "TypeScript",
   target: "Node.js"
 };

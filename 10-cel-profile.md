@@ -146,6 +146,16 @@ Matching MUST be deterministic (Chapter 07). Using `now()`, `today()`,
 `nondeterministic_match` error when the type loads. The type is invalid and
 MUST NOT participate in matching (Chapter 07).
 
+For type matching, the effective timezone MUST be the collection's configured
+`settings.timezone` (Chapter 04). An invocation timezone or a local-runtime
+default MUST NOT be used. The timezone-dependent functions are `today()`,
+`date(timestamp)`, and `startOfDay(string)`. If `settings.timezone` is absent,
+a `match.expr` that uses any of these functions MUST report a
+`nondeterministic_match` error when the type loads, with the type name and
+`details.binding` naming the function. The type is invalid and MUST NOT
+participate in matching. A configured timezone does not permit `today()` in
+matching: it still depends on the clock.
+
 ### Lifecycle Context
 
 Lifecycle expressions evaluate against the current write draft. Top-level
@@ -277,7 +287,9 @@ evaluation error. Callers convert one side explicitly, for example
 `startOfDay(due) < now()` or `due < date(now())`. Fixed spans use
 `timestamp ± duration`; calendar spans use the date methods.
 
-The effective timezone is the operation or query timezone defined in
+In type matching, the effective timezone is only the collection's configured
+`settings.timezone`, subject to the Matching Context rules above. Outside type
+matching, the effective timezone is the operation or query timezone defined in
 Chapter 11 and MUST be declared by every operation or runtime context that
 evaluates `today()`, `date(timestamp)`, or `startOfDay()`.
 
@@ -301,7 +313,7 @@ profile adds two string methods:
 
 Both use the Unicode default full case mappings without locale tailoring,
 including the context-dependent final sigma rule, from the same Unicode
-version as path keys (Chapter 02, provisionally 17.0.0), so
+version as path keys (Chapter 02, 17.0.0), so
 `"Éclair".lower()` is `"éclair"` and `"Straße".upper()` is `"STRASSE"`. A
 case-insensitive search lowercases the text it searches:
 
