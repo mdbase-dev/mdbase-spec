@@ -45,7 +45,7 @@ worked under rc.4 stops loading.
 
 | Rule | How an engine reports a collection that relies on the rc.4 behavior |
 | --- | --- |
-| `match.expr` should not call `now()` or `today()`, read `file.mtime` or `file.ctime`, or follow links (Chapter 07) | the type still loads and its expression is evaluated as before; the engine reports a `warning` with code `nondeterministic_match`, the type name, and `details.binding`. In 0.3.0 stable this becomes an error that invalidates the type, so authors must move such logic before then |
+| `match.expr` must not call `now()` or `today()`, read `file.mtime` or `file.ctime`, or follow links (Chapter 07) | the type is invalid and does not participate in matching; the engine reports an `error` with code `nondeterministic_match`, the type name, and `details.binding`. Release candidates warned instead; move such logic into queries or collection projections |
 | a `collection.path.pattern` value may not contain `/` or `\`, begin with `.`, or be empty (Chapter 07) | existing records are unaffected, whatever their paths; only a create that would derive such a path fails, with `path_value_invalid` naming the field. rc.4 already called such values invalid, but engines created folders from them |
 | paths equal under case folding and NFC name one record path (Chapter 02) | existing files that collide stay records and each reports a `warning` with code `path_collision` and `details.paths`; an explicit create or rename onto an equivalent path fails with `path_conflict` |
 | an ambiguous configured ID does not fall back to filename resolution (Chapter 08) | the link resolves to null and the referring record reports an `ambiguous_link` warning with `details.candidates`. rc.4 already required this; engines that fell back are non-conforming |
@@ -92,7 +92,8 @@ diverges.
 
 ## Changes Since rc.5
 
-0.3.0-rc.6 (draft) adds path-stored fields (Chapter 07): fields whose values
+The rc.6 draft, included in 0.3.0, adds path-stored fields (Chapter 07):
+fields whose values
 live in the record's path, such as a task title kept as the filename or a
 daily note's date. Collections keep `spec_version: "0.3.0"`. A collection that
 does not declare `collection.path.fields` behaves as under rc.5, apart from

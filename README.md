@@ -10,7 +10,12 @@ update files safely.
 The durable data stays in ordinary Markdown files. Collections remain readable
 in a text editor, reviewable in Git, and usable across conforming tools.
 
-The current specification is **v0.3.0** (release candidate 6, in draft).
+The current specification is **v0.3.0**, the first stable release.
+
+The collection specification is frozen at the rc.6 draft, with the stable-release
+decisions recorded in the [changelog](./CHANGELOG.md). New normative work belongs
+in backward-compatible 0.3.x errata or 0.4. Implementation conformance and package
+releases remain separate; see the [release record](./release/v0.3.0.md).
 
 [Read the overview](./00-overview.md) ·
 [Visit mdbase.dev](https://mdbase.dev) ·
@@ -179,9 +184,11 @@ packages:
 
 ```bash
 python3 scripts/check_v03_tests.py
+python3 scripts/check_test_levels.py
 python3 scripts/prototype_tasknotes_v03_migration.py --check-fixture
+npm test --prefix packages/interop
 npm test --prefix packages/runtime-contracts
-cargo test --manifest-path packages/runtime-contracts-rs/Cargo.toml
+cargo test --locked --manifest-path packages/interop-rs/Cargo.toml
 npm test --prefix packages/cel-host
 npm test --prefix packages/runtime-executor
 npm test --prefix packages/testbed

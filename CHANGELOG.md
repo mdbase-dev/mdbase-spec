@@ -2,7 +2,46 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
-## 0.3.0-rc.6 (draft, untagged)
+## 0.3.0 (2026-11-15)
+
+The first stable specification freezes the rc.6 draft at
+`47d257d6a56e34c7279e5ebb959af0b0f49744b2`, with the stable decisions below.
+The untagged rc.5 and rc.6 changes are retained in this section. No rc.5 or
+rc.6 tag is needed. Collections continue to declare `spec_version: "0.3.0"`.
+New normative work belongs in backward-compatible 0.3.x errata or 0.4.
+
+### Stable decisions
+
+- Confirm all thirteen provisional choices in chapters 02, 03, 04, 06, 07,
+  10, and 12 by removing their markers without changing their rules. The
+  [release record](./release/v0.3.0.md) lists each choice.
+- Apply the promised escalation of nondeterministic `match.expr` from
+  warning to error. Such types are invalid and do not participate in matching.
+  Chapters 07, 10, 13, and 14 and both affected conformance cases now require
+  this. Queries may still use time-dependent bindings. Existing `since:`
+  markers and case IDs are retained; changed cases use `changed: 0.3.0`.
+- Prepare `@callumalpass/mdbase-interop`, `@callumalpass/mdbase-testbed`, and
+  the `mdbase-interop` crate as `0.1.0`. Prepare
+  `@callumalpass/mdbase-runtime` as `0.2.0`: the reference executor and
+  TaskNotes Workflows consume it. Contrary to the prior publication
+  assumption, npm already has `0.2.0-rc.1` under `next`, while `latest` is
+  `0.1.0-rc.1`. No package is published by this change.
+- Defer the former requirement that all ecosystem implementations hold
+  verified claims before the specification becomes stable. The authoritative
+  Connect runtime still has conformance gaps; freezing the specification is
+  not a claim of implementation compliance. Do not weaken tests or promote
+  its supported version without qualification. The exact revisions, every
+  failing or unsupported case, and adapter limits are recorded in
+  [the conformance report](./release/conformance-0.3.0.md).
+- Defer ecosystem-wide registry-install, second-implementation,
+  Linux/macOS/Windows, downstream migration/rollback, live Obsidian,
+  provider/host, dependency-audit, and performance qualification to the
+  respective implementation releases. The old ecosystem contract contains
+  historical evidence for retired implementations and is not current proof
+  for the Connect runtime. The 2026-11-15 decision separates specification
+  stability from those product release gates and companion-profile versions.
+
+### Included rc.6 draft changes
 
 The sixth release candidate lets a type store field values in the record's
 path, so that a task title kept as the filename or a daily note's date is
@@ -153,7 +192,7 @@ Eight places where two conforming tools could disagree. See
 - The fixture set `watch` is renamed `move_detection`. Fixture files keep
   their paths.
 
-## 0.3.0-rc.5 (draft, untagged)
+### Included rc.5 draft changes
 
 The fifth release candidate specifies the data semantics that let several
 tools, devices, and people edit one collection at once: validity is reported
@@ -220,7 +259,8 @@ Bases, seed type upgrades, and saved-view identification.
   without coercion. The default scope is `type`.
 - A `match.expr` that uses `now()`, `today()`, `file.mtime`, `file.ctime`, or
   helpers that read other records loads with a `nondeterministic_match`
-  warning. It becomes an error that invalidates the type in 0.3.0 stable.
+  warning in that draft. In this stable release it is an error that invalidates
+  the type, as specified in the stable decisions above.
 - CEL is the one expression language. Obsidian Bases filters and formulas are
   an adapter dialect that never affects membership, validation, lifecycle,
   merge, or portable queries.

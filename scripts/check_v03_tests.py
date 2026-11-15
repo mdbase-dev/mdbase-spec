@@ -67,7 +67,7 @@ EXECUTABLE_OPERATIONS = {
     "data_contract_registry_validate",
 } | concurrent_edits_model.FIXTURE_OPERATIONS
 
-RELEASE_MARKER = re.compile(r"^0\.3\.0-rc\.[0-9]+$")
+RELEASE_MARKER = re.compile(r"^0\.3\.0(?:-rc\.[0-9]+)?$")
 
 CONFORMANCE_PROFILES = {
     "core_read",
@@ -303,7 +303,7 @@ def validate_suite_shape(
             for marker in ("since", "changed"):
                 if marker in test and not RELEASE_MARKER.match(str(test[marker])):
                     errors.append(
-                        f"{path}: test {test.get('id', test_index)!r} {marker} must name a 0.3.0 release candidate"
+                        f"{path}: test {test.get('id', test_index)!r} {marker} must name 0.3.0 or a 0.3.0 release candidate"
                     )
             covers = test.get("covers")
             if covers is None:

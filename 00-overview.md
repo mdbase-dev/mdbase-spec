@@ -344,25 +344,20 @@ directly comparable without making one product's internal API normative.
 ## Versioning
 
 This specification uses semantic versioning. The current version is **0.3.0**,
-in its sixth release candidate (`0.3.0-rc.6`), which is in draft.
+the first stable release, dated 2026-11-15.
 Collections declare their specification version with `spec_version` in
 `mdbase.yaml`, which is `0.3.0` for every release candidate. Tools declare
 the profiles and versions they implement.
 
-rc.6 is the last release candidate that adds or changes behavior. A later
-release candidate only confirms or removes a provisional choice, corrects an
-error, or adds tests. 0.3.0 is declared stable when both of these hold:
+The stable release freezes the rc.6 draft, confirms its provisional choices,
+and applies the promised rejection of nondeterministic type matching. New
+normative work belongs in backward-compatible 0.3.x errata or 0.4. The
+[release record](./release/v0.3.0.md) distinguishes this specification freeze
+from implementation qualification: releasing the specification does not assert
+that an implementation passes every profile. Implementations declare only
+verified conformance claims (Chapter 14).
 
-1. No paragraph marked **Provisional** remains in chapters 00 to 14. Each is
-   confirmed, by removing its marker, or removed together with the behavior
-   it describes.
-2. The implementations named in the
-   [release contract](./release/v0.3.0.md) hold verified conformance claims
-   (Chapter 14) against that release candidate for the profiles of this
-   specification that the contract lists for them.
-
-Companion profiles are not part of that gate. They keep their own versions
-and can change after 0.3.0 is stable.
+Companion profiles keep their own versions and can change independently.
 
 Companion profiles, artifacts, and schemas carry their own versions:
 
@@ -388,14 +383,11 @@ through version requirements.
 The keywords `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are to be
 interpreted as described in RFC 2119.
 
-Draft notes use ordinary prose and are non-normative. A paragraph that begins
-with **Provisional (rc.5).** or **Provisional (rc.6).** records a choice made
-where the design input left a detail open. It is normative in the release
-candidate, and it is confirmed or removed before 0.3.0 is declared stable
-(see Versioning). The [release contract](./release/v0.3.0.md) lists every
-such paragraph. A companion profile marks such a choice with its own version,
-as in **Provisional (0.1).**, and may change it in a later version of the
-profile.
+Draft notes use ordinary prose and are non-normative. The provisional choices
+in the collection specification's release candidates are confirmed in 0.3.0;
+the [release record](./release/v0.3.0.md) lists them. A companion profile may
+mark a normative choice with its own version, as in **Provisional (0.1).**,
+and change it in a later version of that profile.
 
 A paragraph that begins with *Note (informative).* is not normative. Where
 the specification names a library or an implementation, it does so only in

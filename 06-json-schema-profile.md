@@ -69,7 +69,7 @@ unanchored. A pattern outside the profile, such as one using `\p{L}`, a
 backreference, or look-around, makes the type file invalid with an `invalid_pattern`
 diagnostic.
 
-**Provisional (rc.5).** JSON Schema 2020-12 recommends ECMA-262 regular
+JSON Schema 2020-12 recommends ECMA-262 regular
 expressions. The profile departs from it so that one engine serves schema
 validation, matching, and CEL. The two agree on `\d`, `\w`, and `\b` for
 patterns without the ECMA-262 `u` flag; they differ on `\s`, which ECMA-262

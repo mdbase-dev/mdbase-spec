@@ -269,8 +269,8 @@ CEL Match implementations MUST:
 - combine it with other members of `match` using AND
 - match only a boolean true result
 - report per-record evaluation errors and treat that candidate as a non-match
-- report `nondeterministic_match` for a `match.expr` that uses a
-  time-dependent or cross-record binding
+- reject a type with an error `nondeterministic_match` for a `match.expr`
+  that uses a time-dependent or cross-record binding
 
 ## Query Requirements
 

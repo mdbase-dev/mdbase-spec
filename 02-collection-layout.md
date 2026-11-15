@@ -194,7 +194,7 @@ A tool that reads a collection skips files at such paths as it skips
 excluded paths. A write that would create one fails with `invalid_request`
 (`details.reason` names the rule) before any write.
 
-**Provisional (rc.5).** The rule set comes from the
+The rule set comes from the
 review of the first implementation. Earlier drafts let implementations
 reject such paths optionally; replicating a collection across file systems
 needs every tool to agree on them.
@@ -231,7 +231,7 @@ collides, whatever file system it runs on:
   code-point order. Core Read alone reads each file as written and computes
   no path keys.
 
-  **Provisional (rc.5).** A tool that keeps records in a log or replicates
+  A tool that keeps records in a log or replicates
   them across file systems cannot hold two records with one path key. It
   MAY resolve a discovered group instead, by the collision rule below: with
   no other order, the path that is smaller in code-point order keeps it, and
@@ -240,11 +240,11 @@ collides, whatever file system it runs on:
 
 Path globs (above) remain case-sensitive and match paths as written.
 
-**Provisional (rc.5).** Case folding uses the full mappings, so `ß` and
+Case folding uses the full mappings, so `ß` and
 `ss` collide. This flags more collisions than some file systems would, never
 fewer.
 
-**Provisional (rc.5).** NFC and case folding use the data of **Unicode
+NFC and case folding use the data of **Unicode
 17.0.0** (`UnicodeData.txt`, `CompositionExclusions.txt`, `CaseFolding.txt`).
 Unicode's stability policies keep both stable for assigned characters, but a
 character assigned in a later version can fold or compose differently once a

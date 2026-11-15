@@ -140,11 +140,11 @@ file.inFolder("tasks") && has(raw.tags) && tags.exists(t, t == "task")
 Read defaults and projections enter after matching and are absent from this
 context.
 
-Matching should be deterministic (Chapter 07). Using `now()`, `today()`,
+Matching MUST be deterministic (Chapter 07). Using `now()`, `today()`,
 `file.mtime`, `file.ctime`, or a helper that reads another record, such as
 `asFile()`, `file.backlinks`, or `file.hasLink()`, in this context reports a
-`nondeterministic_match` warning when the type loads. In 0.3.0 stable it is
-an error that invalidates the type.
+`nondeterministic_match` error when the type loads. The type is invalid and
+MUST NOT participate in matching (Chapter 07).
 
 ### Lifecycle Context
 
@@ -176,7 +176,7 @@ The durable runtime profile defines when each workflow expression is evaluated.
 
 ## Record Values
 
-**Provisional (rc.5).** CEL maps are unordered, but comprehensions over a
+CEL maps are unordered, but comprehensions over a
 map (`all`, `exists`, `exists_one`, `map`, `filter`) visit its keys, and
 `map` and `filter` return lists in that order. Maps iterate in insertion
 order: frontmatter maps in the order of their keys in the source, map
