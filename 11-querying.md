@@ -49,14 +49,26 @@ The effective query timezone is resolved in this order:
 2. the collection's configured timezone
 3. the implementation's documented local-runtime default
 
+Type matching is independent of this query-timezone resolution. Its effective
+timezone MUST be the collection's configured `settings.timezone` (Chapter 04);
+an invocation timezone or a local-runtime default MUST NOT be used. The
+timezone-dependent functions are `today()`, `date(timestamp)`, and
+`startOfDay(string)`. If `settings.timezone` is absent, a `match.expr` that uses
+any of these functions MUST report a `nondeterministic_match` error when the
+type loads, with the type name and `details.binding` naming the function. The
+type is invalid and MUST NOT participate in matching. A configured timezone
+does not permit `today()` in matching: it still depends on the clock
+(Chapter 10).
+
 An invalid invocation timezone produces `invalid_timezone` and aborts before
 candidate evaluation. An implementation MUST NOT silently substitute another
 timezone for a supplied value.
 
-The execution authority captures the current instant once per query. `now()`,
-`today()`, conversion of datetimes to calendar dates, and calendar arithmetic
-MUST all use that captured instant and the same effective timezone throughout
-the execution. Callers do not supply the current instant through this field.
+The execution authority captures the current instant once per query. In query
+expressions, `now()`, `today()`, conversion of datetimes to calendar dates, and
+calendar arithmetic MUST all use that captured instant and the same effective
+timezone throughout the execution. Callers do not supply the current instant
+through this field.
 
 Interactive callers SHOULD send their current IANA timezone on every temporal
 query. Headless callers MAY omit it to use the durable collection default.

@@ -156,11 +156,14 @@ lifecycle behavior, CEL evaluation, runtime dispatch, and workflow execution
 use adapters or local prototype implementations. Stable-release adapter gates
 are tracked in [release/v0.3.0.md](../../release/v0.3.0.md).
 
-## Release-candidate markers
+## Release markers
 
 Tests added after 0.3.0-rc.4 carry `since: 0.3.0-rc.5`, and tests added
 after 0.3.0-rc.5 carry `since: 0.3.0-rc.6`. Existing tests whose expected
-outcome changed carry `changed:` with the release candidate that changed it.
+outcome changed carry `changed:` with the release that changed it. The original
+`since:` markers remain historical provenance; 0.3.0 changes use `changed: 0.3.0`.
+The legacy ID `cel_match.nondeterministic_match_warning` is retained, but now
+asserts error severity and exclusion of invalid types, not a warning.
 An engine that conforms to rc.4 passes every test without either marker; the
 release notes in `docs/releases/0.3.0-rc.5.md` list the changed tests.
 Requirements added in a release candidate are marked with a

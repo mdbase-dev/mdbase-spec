@@ -1,6 +1,6 @@
 # mdbase v0.3 Schemas
 
-Draft canonical JSON Schemas for the side-by-side v0.3 rewrite.
+Canonical JSON Schemas for mdbase v0.3.
 
 These schemas validate frontmatter payloads and runtime envelopes. They are not
 yet published package artifacts.

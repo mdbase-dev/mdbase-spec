@@ -140,11 +140,10 @@ always errors.
 An explicit `validate` operation always performs record validation. At level
 `off` it reports issues as `warning`.
 
-**Provisional (rc.5).** Data contract view failures are classed as
+Data contract view failures are classed as
 single-record, although a contract view built from collection projections can
-depend on other records or on the current time. Such projections are rare in
-contract mappings; a later release candidate may move the affected failures to the
-cross-record tier.
+depend on other records or on the current time. This classification is
+confirmed for 0.3.0.
 
 ## Runtime Host Config
 

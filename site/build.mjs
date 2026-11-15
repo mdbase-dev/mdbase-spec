@@ -248,7 +248,7 @@ function build() {
     entries: SPEC_FILES,
     output: 'spec.html',
     title: 'Specification',
-    version: 'v0.3.0-rc.5',
+    version: 'v0.3.0',
     switchLink: '<a href="spec-v0.2.html">v0.2 archive</a>',
   });
   buildSpec({

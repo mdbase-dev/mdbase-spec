@@ -225,7 +225,7 @@ item appears in both `add` and `remove` for one field, or when an `add` or
 `remove` value is not a list. List operations work on any list field; they do
 not require `uniqueItems`. A list emptied by `remove` stays as an empty list.
 
-**Provisional (rc.5).** `add` and `remove` address top-level fields
+`add` and `remove` address top-level fields
 only, like `patch`, because the merge unit is the top-level field.
 
 ### Path-stored fields
@@ -323,7 +323,7 @@ line-based body merge of the concurrent edits profile: two edits to different wo
 conflict. A later release may detect conflicts at a finer granularity; that
 is a compatible refinement, because it only turns some conflicts into merges.
 
-**Provisional (rc.5).** Offsets are Unicode scalar values, the unit that
+Offsets are Unicode scalar values, the unit that
 regular expressions and `.` match over. Byte offsets could fall inside a
 character, and UTF-16 code units, which JavaScript editors use, are
 specific to one platform; adapters convert at their boundary. Retaining old

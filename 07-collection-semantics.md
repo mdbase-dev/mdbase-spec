@@ -151,22 +151,17 @@ the type to match.
 
 Type membership drives validation, lifecycle, path policy, and merge, so every
 tool and every replay MUST compute the same membership for the same record.
-`match.expr` SHOULD therefore be deterministic: it SHOULD NOT call `now()` or
+`match.expr` MUST therefore be deterministic: it MUST NOT call `now()` or
 `today()`, read `file.mtime` or `file.ctime`, or use a helper that reads
 other records, such as `asFile()`, `file.backlinks`, or `file.hasLink()`.
 Queries, projections, and lifecycle guards MAY use these functions.
 
-A tool that loads a type whose `match.expr` uses one of them MUST report a
-`warning` diagnostic with code `nondeterministic_match`, the type name, and
-`details.binding` naming the function or field. The type still loads and the
-expression is evaluated as before, with `now()` and `today()` reading the
-operation's captured instant. Membership of such a type can differ between
-tools and over time, so tools that merge or replay edits cannot rely on it.
-
-In 0.3.0 stable such a `match.expr` is an error: the type is invalid and
-reports `nondeterministic_match` with severity `error`. The warning in the
-release candidates gives authors a window to move time-dependent or
-cross-record logic into queries or collection projections.
+A tool that loads a type whose `match.expr` uses one of them MUST report an
+`error` diagnostic with code `nondeterministic_match`, the type name, and
+`details.binding` naming the function or field. The type is invalid and MUST
+NOT participate in matching. Authors must move time-dependent or cross-record
+logic into queries or collection projections. Release candidates reported a
+warning to give authors a migration window; 0.3.0 enforces this requirement.
 
 Implementations compile `match.expr` when loading the type. Parse and type
 errors invalidate the type definition. A per-record evaluation error reports a
@@ -314,7 +309,7 @@ record already violates the rule, for example after an external edit. Edits
 made by other tools and the results of a merge are never
 rejected; their violations are reported.
 
-**Provisional (rc.5).** An `enforce: write` rule applies at every
+An `enforce: write` rule applies at every
 validation level, including `off`, because the author opted into it
 explicitly.
 
@@ -351,7 +346,7 @@ as placeholder delimiters.
 string is used as written, and a number or boolean uses its JSON
 representation. A missing or null value produces `path_value_missing`.
 
-**Provisional (rc.5).** The JSON representation of a number is the one RFC
+The JSON representation of a number is the one RFC
 8785 (JSON Canonicalization Scheme) specifies, which is ECMAScript's
 `Number.prototype.toString`: an integer-valued number has no fraction
 (`42.0` gives `42`), and exponents are written `1e+21` and `1e-7`. CEL's
@@ -529,7 +524,7 @@ chose: records created concurrently, records copied onto another file system,
 and merged paths. Its suffix then becomes part of the decoded
 value, such as `Call Bob (2)`.
 
-**Provisional (rc.6).** Only string fields can be path-stored, and FORMAT
+Only string fields can be path-stored, and FORMAT
 has only the `YYYY`, `MM`, and `DD` tokens. Normalization follows the
 filename rules TaskNotes applies to titles, made idempotent: removals happen
 before runs of spaces are collapsed and before the ends are trimmed.

@@ -273,6 +273,6 @@ A writer that has no existing style to keep SHOULD quote a string that a YAML
 1.1 parser would read as another type (for example `"yes"` or
 `"2026-10-01"`), so tools that still use YAML 1.1 read the same value.
 
-**Provisional (rc.5).** This table resolves an ambiguity of earlier release
+This table resolves an ambiguity of earlier release
 candidates, which asked for "a safe YAML parser" without naming a schema. It
 matches Obsidian and the current engines.
