@@ -18,7 +18,8 @@ The specification itself is unchanged.
   structures stay closed. Every record valid under 1.0.0 is valid under 1.1.0.
   Each type keeps its `match` rule for hand-written `type:` records.
 - `standard-packs/mdbase-runtime/0.2.1` carries them, with the event and
-  action artifacts unchanged. Pack 0.2.0 stays published as it was, and the
+  action artifacts unchanged. It still installs the 1.0.0 record contracts,
+  byte-for-byte, so a collection type that implements 1.0.0 stays valid. Pack 0.2.0 stays published as it was, and the
   generator now writes only the current pack.
 - `@callumalpass/mdbase-runtime` 0.2.1 validates against the 1.1.0 schemas.
   `validateRuntimeRecord(value, recordType?)` takes the record type for

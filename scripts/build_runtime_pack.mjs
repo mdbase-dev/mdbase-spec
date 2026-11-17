@@ -664,6 +664,22 @@ for (const definition of portableContracts) {
   );
 }
 
+// Keep installing the record contracts earlier pack versions installed, so a
+// collection type that still implements 1.0.0 stays valid after an upgrade.
+// They are copied byte-for-byte from the published 0.2.0 pack.
+const retainedRoot = resolve(repoRoot, "standard-packs/mdbase-runtime/0.2.0");
+for (const definition of runtimeRecords) {
+  const schemaRelative = `schemas/${definition.id}/1.0.0.schema.json`;
+  const contractRelative = `_contracts/${definition.id}/1.0.0.md`;
+  for (const relativePath of [schemaRelative, contractRelative]) {
+    await output(relativePath, await readFile(resolve(retainedRoot, relativePath), "utf8"));
+  }
+  resources.push(
+    resource("schema", schemaRelative, schemaRelative),
+    resource("contract", contractRelative, contractRelative),
+  );
+}
+
 for (const item of resources) {
   item.digest = `sha256:${createHash("sha256")
     .update(await readFile(resolve(packRoot, item.source)))

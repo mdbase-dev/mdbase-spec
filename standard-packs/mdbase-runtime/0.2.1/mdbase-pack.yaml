@@ -219,3 +219,103 @@ resources:
     source: _contracts/mdbase.runtime.run.cancel/1.0.0.md
     target: _contracts/mdbase.runtime.run.cancel/1.0.0.md
     digest: sha256:949f039334cfc3f096beb870419baa08c3b40679b184e9849f9330a34a6f524d
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.workflow/1.0.0.schema.json
+    target: schemas/mdbase.runtime.workflow/1.0.0.schema.json
+    digest: sha256:e8f413663a2911be5a51b1f7aefae80e9e42ea5c729f04d6ccfd0bc4eb1965ea
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.workflow/1.0.0.md
+    target: _contracts/mdbase.runtime.workflow/1.0.0.md
+    digest: sha256:7cf8ed016bf6232d9c1abc8d8bb9bb25fd2af1ffa6c6094317aa65baf3c31049
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.policy/1.0.0.schema.json
+    target: schemas/mdbase.runtime.policy/1.0.0.schema.json
+    digest: sha256:4d1d2cb59df9991dcc47e269b21dab9e71c1628b99f71e5d9ff5948ba6f7bc45
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.policy/1.0.0.md
+    target: _contracts/mdbase.runtime.policy/1.0.0.md
+    digest: sha256:319a9bd4ca62a246871ee52e0ef0250a82c240cb14a95f88e4a505ad04450300
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.provider-registration/1.0.0.schema.json
+    target: schemas/mdbase.runtime.provider-registration/1.0.0.schema.json
+    digest: sha256:4cfd9649863835163baee7542b601991c18b21b75c63b48324383da674a1f797
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.provider-registration/1.0.0.md
+    target: _contracts/mdbase.runtime.provider-registration/1.0.0.md
+    digest: sha256:97d157efaeb311745fc84e2cbe01e8147aaf44109384090c154527b68838d766
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.capability-grant/1.0.0.schema.json
+    target: schemas/mdbase.runtime.capability-grant/1.0.0.schema.json
+    digest: sha256:14fcd3ad1fbe3d3c360024e869d8a52ec047aa8b2dd37755c63e2412535f50ca
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.capability-grant/1.0.0.md
+    target: _contracts/mdbase.runtime.capability-grant/1.0.0.md
+    digest: sha256:1cd3a2ff5fdc9294f766e538c371ed278ad4c54452480ba6fcc2870be08b47a1
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.run/1.0.0.schema.json
+    target: schemas/mdbase.runtime.run/1.0.0.schema.json
+    digest: sha256:0add08b601ebd15b80dc14812fc7fbf9c1b5bd8415daed7b7d566e33741d91c3
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.run/1.0.0.md
+    target: _contracts/mdbase.runtime.run/1.0.0.md
+    digest: sha256:7e46270c951e6634fe25519dff10523652365f8adf30b034f01e29e1ca48cadb
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.action-attempt/1.0.0.schema.json
+    target: schemas/mdbase.runtime.action-attempt/1.0.0.schema.json
+    digest: sha256:71c8cb274daa63ed8b428f474ec07d0053e65e06f42354cb7f36072cb136506c
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.action-attempt/1.0.0.md
+    target: _contracts/mdbase.runtime.action-attempt/1.0.0.md
+    digest: sha256:04c1bf55580d0d280d2be645c56177da25c2d0129f8fa71def7d5f96cf0ea629
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.checkpoint/1.0.0.schema.json
+    target: schemas/mdbase.runtime.checkpoint/1.0.0.schema.json
+    digest: sha256:0c4a550356b974814690bb2e5db1902c6c3cff13be1ea69a139e2e43781ecf2c
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.checkpoint/1.0.0.md
+    target: _contracts/mdbase.runtime.checkpoint/1.0.0.md
+    digest: sha256:6413676d7482a71b31cbe4abf8c5a543a54a530ef62f669f8ef8e21bcc6bc237
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.timer/1.0.0.schema.json
+    target: schemas/mdbase.runtime.timer/1.0.0.schema.json
+    digest: sha256:fd6fa1b8fa7a3e782160d1b0e1399f15392230d1560393e840e7869c7d407aac
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.timer/1.0.0.md
+    target: _contracts/mdbase.runtime.timer/1.0.0.md
+    digest: sha256:0500a421e81eef09c37bc4ef559e3805843e87a6e1b2cf2a393da4d76d4384fc
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.diagnostic/1.0.0.schema.json
+    target: schemas/mdbase.runtime.diagnostic/1.0.0.schema.json
+    digest: sha256:b4d78f97b4feadc6c1e79b214fac20f0c305609e20f152f878d23d5d4e370935
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.diagnostic/1.0.0.md
+    target: _contracts/mdbase.runtime.diagnostic/1.0.0.md
+    digest: sha256:2e7379de9ceefa6435e9c66a71f4292e4805e8038ed6496c83dad946900267f6
+  - kind: schema
+    mode: managed
+    source: schemas/mdbase.runtime.dead-letter/1.0.0.schema.json
+    target: schemas/mdbase.runtime.dead-letter/1.0.0.schema.json
+    digest: sha256:1f866b1dfca061571a8dc3a87748fd9deb6268a6674fe5eaf764e8701d32fee9
+  - kind: contract
+    mode: managed
+    source: _contracts/mdbase.runtime.dead-letter/1.0.0.md
+    target: _contracts/mdbase.runtime.dead-letter/1.0.0.md
+    digest: sha256:737d08bad6662e087c3393f6f17d24374f258d60b41112a3f864cb5138af8edd

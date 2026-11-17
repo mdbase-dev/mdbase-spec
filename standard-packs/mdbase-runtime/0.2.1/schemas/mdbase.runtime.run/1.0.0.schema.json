@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "mdbase durable runtime run",
+  "type": "object",
+  "required": [
+    "type",
+    "id",
+    "workflow_id",
+    "workflow_version",
+    "workflow_revision",
+    "event_id",
+    "event_contract",
+    "admitted_plan",
+    "status",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "type": {
+      "const": "runtime_run"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "workflow_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "workflow_revision": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_contract": {
+      "$ref": "#/$defs/exactContractReference"
+    },
+    "event_source": {
+      "$ref": "#/$defs/identity"
+    },
+    "admitted_plan": {
+      "$ref": "#/$defs/admittedPlan"
+    },
+    "policy_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "policy_revision": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "trigger_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "event_cursor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "executor": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "concurrency_group": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "queued",
+        "running",
+        "waiting",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "indeterminate"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lease": {
+      "$ref": "#/$defs/lease"
+    }
+  },
+  "patternProperties": {
+    "^x-[A-Za-z0-9._:-]+$": true
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "dateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "contractRequirement": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "exactContractReference": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "application",
+        "implementation",
+        "version"
+      ],
+      "properties": {
+        "application": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "providerSelector": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "application": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "implementation": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "instance_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "expression": {
+      "type": "object",
+      "required": [
+        "$expr"
+      ],
+      "properties": {
+        "$expr": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "admittedPlan": {
+      "type": "object",
+      "required": [
+        "profile_version",
+        "workflow_revision",
+        "event",
+        "steps"
+      ],
+      "properties": {
+        "profile_version": {
+          "const": "0.2"
+        },
+        "workflow_revision": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "event": {
+          "type": "object",
+          "required": [
+            "contract",
+            "source"
+          ],
+          "properties": {
+            "contract": {
+              "$ref": "#/$defs/exactContractReference"
+            },
+            "source": {
+              "$ref": "#/$defs/identity"
+            },
+            "source_declaration_digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "patternProperties": {
+            "^x-[A-Za-z0-9._:-]+$": true
+          },
+          "additionalProperties": false
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "contract",
+              "provider",
+              "provider_declaration_digest",
+              "handler_id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+              },
+              "contract": {
+                "$ref": "#/$defs/exactContractReference"
+              },
+              "provider": {
+                "$ref": "#/$defs/identity"
+              },
+              "provider_declaration_digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              "handler_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+              }
+            },
+            "patternProperties": {
+              "^x-[A-Za-z0-9._:-]+$": true
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    },
+    "lease": {
+      "type": "object",
+      "required": [
+        "owner",
+        "token",
+        "expires_at"
+      ],
+      "properties": {
+        "owner": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "patternProperties": {
+        "^x-[A-Za-z0-9._:-]+$": true
+      },
+      "additionalProperties": false
+    }
+  },
+  "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.run/1.0.0.schema.json"
+}
