@@ -4,7 +4,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packRoot = resolve(repoRoot, "standard-packs/mdbase-runtime/0.2.0");
+// Published pack versions are immutable: 0.2.0 stays in the repository as
+// published, and this script generates only the current version.
+const PACK_VERSION = "0.2.1";
+// Record contracts 1.1.0 leave the type declaration key to the collection.
+const RECORD_CONTRACT_VERSION = "1.1.0";
+const RECORD_TYPE_VERSION = 2;
+const EVENT_CONTRACT_VERSION = "1.0.0";
+const packRoot = resolve(repoRoot, `standard-packs/mdbase-runtime/${PACK_VERSION}`);
 
 const identifier = { type: "string", pattern: "^[A-Za-z][A-Za-z0-9._:-]*$" };
 const semanticVersion = {
@@ -86,6 +93,18 @@ function recordSchema(title, required, properties, defs = {}) {
   };
 }
 
+// A runtime record is an ordinary Markdown record. Its type is declared under
+// whatever explicit type key the collection configures (`type` by default,
+// `mdbase_type` in collections where `type` is data), so the record schema
+// neither requires nor pins a `type` field, and it accepts top-level fields
+// outside the contract. Nested structures stay closed.
+function runtimeRecordSchema(title, required, properties, defs = {}) {
+  const schema = recordSchema(title, required, properties, defs);
+  delete schema.patternProperties;
+  delete schema.additionalProperties;
+  return schema;
+}
+
 const runtimeRecords = [
   {
     slug: "workflow",
@@ -93,11 +112,10 @@ const runtimeRecords = [
     type: "runtime_workflow",
     title: "Durable workflow",
     description: "A portable workflow whose event and action references are resolved and pinned at admission.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime workflow",
-      ["type", "id", "version", "name", "enabled", "triggers", "steps"],
+      ["id", "version", "name", "enabled", "triggers", "steps"],
       {
-        type: { const: "runtime_workflow" },
         id: identifier,
         version: semanticVersion,
         name: { type: "string", minLength: 1 },
@@ -170,11 +188,10 @@ const runtimeRecords = [
     type: "runtime_policy",
     title: "Runtime policy",
     description: "Local authorization, executor, limit, and provider-selection policy.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime policy",
-      ["type", "id", "version", "enabled", "grants"],
+      ["id", "version", "enabled", "grants"],
       {
-        type: { const: "runtime_policy" },
         id: identifier,
         version: semanticVersion,
         name: { type: "string", minLength: 1 },
@@ -210,11 +227,10 @@ const runtimeRecords = [
     type: "runtime_provider_registration",
     title: "Provider registration evidence",
     description: "An optional audit snapshot of a verified interoperability declaration; it never activates code.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase runtime provider registration evidence",
-      ["type", "id", "declaration_kind", "declaration", "verified_at", "active"],
+      ["id", "declaration_kind", "declaration", "verified_at", "active"],
       {
-        type: { const: "runtime_provider_registration" },
         id: identifier,
         declaration_kind: { enum: ["event_source", "action_provider"] },
         declaration: { type: "object" },
@@ -229,11 +245,10 @@ const runtimeRecords = [
     type: "runtime_capability_grant",
     title: "Capability grant evidence",
     description: "A materialized authorization grant scoped independently from contract conformance.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase runtime capability grant",
-      ["type", "id", "capability", "principal", "mode", "granted_at"],
+      ["id", "capability", "principal", "mode", "granted_at"],
       {
-        type: { const: "runtime_capability_grant" },
         id: identifier,
         capability: identifier,
         principal: { $ref: "#/$defs/identity" },
@@ -251,10 +266,9 @@ const runtimeRecords = [
     type: "runtime_run",
     title: "Durable run",
     description: "The durable state and immutable admitted plan for one workflow execution.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime run",
       [
-        "type",
         "id",
         "workflow_id",
         "workflow_version",
@@ -267,7 +281,6 @@ const runtimeRecords = [
         "updated_at",
       ],
       {
-        type: { const: "runtime_run" },
         id: identifier,
         workflow_id: identifier,
         workflow_version: semanticVersion,
@@ -324,10 +337,9 @@ const runtimeRecords = [
     type: "runtime_action_attempt",
     title: "Durable action attempt",
     description: "Durable invocation intent and outcome evidence using the shared interoperability envelope.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime action attempt",
       [
-        "type",
         "id",
         "run_id",
         "step_id",
@@ -342,7 +354,6 @@ const runtimeRecords = [
         "updated_at",
       ],
       {
-        type: { const: "runtime_action_attempt" },
         id: identifier,
         run_id: identifier,
         step_id: identifier,
@@ -370,11 +381,10 @@ const runtimeRecords = [
     type: "runtime_checkpoint",
     title: "Runtime checkpoint",
     description: "A durable, lease-safe workflow continuation.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime checkpoint",
-      ["type", "id", "run_id", "generation", "status", "state", "updated_at"],
+      ["id", "run_id", "generation", "status", "state", "updated_at"],
       {
-        type: { const: "runtime_checkpoint" },
         id: identifier,
         run_id: identifier,
         generation: { type: "integer", minimum: 1 },
@@ -390,11 +400,10 @@ const runtimeRecords = [
     type: "runtime_timer",
     title: "Runtime timer",
     description: "A generation-safe one-shot timer that publishes through the interoperability profile.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime timer",
-      ["type", "id", "generation", "status", "fire_at", "event", "created_at", "updated_at"],
+      ["id", "generation", "status", "fire_at", "event", "created_at", "updated_at"],
       {
-        type: { const: "runtime_timer" },
         id: identifier,
         generation: { type: "integer", minimum: 1 },
         status: { enum: ["scheduled", "firing", "fired", "cancelled"] },
@@ -419,11 +428,10 @@ const runtimeRecords = [
     type: "runtime_diagnostic",
     title: "Runtime diagnostic",
     description: "A machine-readable durable runtime diagnostic.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime diagnostic",
-      ["type", "id", "severity", "code", "message", "created_at"],
+      ["id", "severity", "code", "message", "created_at"],
       {
-        type: { const: "runtime_diagnostic" },
         id: identifier,
         severity: { enum: ["info", "warning", "error"] },
         code: identifier,
@@ -442,11 +450,10 @@ const runtimeRecords = [
     type: "runtime_dead_letter",
     title: "Runtime dead letter",
     description: "Retained event or action evidence that cannot be processed safely.",
-    schema: recordSchema(
+    schema: runtimeRecordSchema(
       "mdbase durable runtime dead letter",
-      ["type", "id", "reason", "status", "evidence", "created_at"],
+      ["id", "reason", "status", "evidence", "created_at"],
       {
-        type: { const: "runtime_dead_letter" },
         id: identifier,
         reason: identifier,
         status: { enum: ["unresolved", "acknowledged", "requeued"] },
@@ -624,10 +631,10 @@ await rm(packRoot, { recursive: true, force: true });
 
 const resources = [];
 for (const definition of runtimeRecords) {
-  const schemaRelative = `schemas/${definition.id}/1.0.0.schema.json`;
-  const contractRelative = `_contracts/${definition.id}/1.0.0.md`;
+  const schemaRelative = `schemas/${definition.id}/${RECORD_CONTRACT_VERSION}.schema.json`;
+  const contractRelative = `_contracts/${definition.id}/${RECORD_CONTRACT_VERSION}.md`;
   const typeRelative = `_types/${definition.slug}.md`;
-  definition.schema.$id = `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/1.0.0.schema.json`;
+  definition.schema.$id = `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/${RECORD_CONTRACT_VERSION}.schema.json`;
   await output(schemaRelative, `${JSON.stringify(definition.schema, null, 2)}\n`);
   await output(contractRelative, recordContractMarkdown(definition, schemaRelative));
   await output(typeRelative, typeMarkdown(definition, schemaRelative));
@@ -639,14 +646,14 @@ for (const definition of runtimeRecords) {
 }
 
 for (const definition of portableContracts) {
-  const schemaRelative = `schemas/${definition.id}/1.0.0.schema.json`;
-  const contractRelative = `_contracts/${definition.id}/1.0.0.md`;
-  definition.schema.$id = `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/1.0.0.schema.json`;
+  const schemaRelative = `schemas/${definition.id}/${EVENT_CONTRACT_VERSION}.schema.json`;
+  const contractRelative = `_contracts/${definition.id}/${EVENT_CONTRACT_VERSION}.md`;
+  definition.schema.$id = `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/${EVENT_CONTRACT_VERSION}.schema.json`;
   await output(schemaRelative, `${JSON.stringify(definition.schema, null, 2)}\n`);
   if (definition.outputSchema) {
     definition.outputSchema.$id =
-      `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/1.0.0.output.schema.json`;
-    const outputRelative = `schemas/${definition.id}/1.0.0.output.schema.json`;
+      `https://mdbase.dev/schemas/runtime/v0.2/${definition.id}/${EVENT_CONTRACT_VERSION}.output.schema.json`;
+    const outputRelative = `schemas/${definition.id}/${EVENT_CONTRACT_VERSION}.output.schema.json`;
     await output(outputRelative, `${JSON.stringify(definition.outputSchema, null, 2)}\n`);
     resources.push(resource("schema", outputRelative, outputRelative));
   }
@@ -679,7 +686,7 @@ function recordContractMarkdown(definition, schemaRelative) {
 kind: mdbase.contract
 contract_type: record
 id: ${definition.id}
-version: 1.0.0
+version: ${RECORD_CONTRACT_VERSION}
 name: ${definition.title}
 description: ${definition.description}
 record_schema:
@@ -690,6 +697,11 @@ record_schema:
 # ${definition.title}
 
 ${definition.description}
+
+The record's type is declared under the collection's configured explicit type
+key, so the schema neither requires nor pins a \`type\` field and accepts
+top-level fields outside this contract. That is the only change from 1.0.0;
+every record valid under 1.0.0 is also valid under 1.1.0.
 
 This artifact is passive. Installing it or a type that implements it grants no
 authority to execute workflows or invoke providers.
@@ -703,7 +715,7 @@ function typeMarkdown(definition, schemaRelative) {
   return `---
 kind: mdbase.type
 name: ${definition.type}
-version: 1
+version: ${RECORD_TYPE_VERSION}
 description: Canonical Markdown implementation of ${definition.id}.
 match:
   where:
@@ -713,7 +725,7 @@ schema:
   ref: ../${schemaRelative}
 implements:
   - contract: ${definition.id}
-    version: 1.0.0
+    version: ${RECORD_CONTRACT_VERSION}
     fields:
 ${fields}
 ---
@@ -722,6 +734,11 @@ ${fields}
 
 This canonical type makes \`${definition.type}\` records discoverable through
 the ordinary mdbase record-contract registry.
+
+Apps create these records by naming the type; the engine writes it under the
+collection's configured explicit type key. The \`match\` rule also
+recognises hand-written \`type: ${definition.type}\` records in collections
+whose type key is something else.
 `;
 }
 
@@ -729,7 +746,7 @@ function portableContractMarkdown(definition, schemaRelative) {
   const output = definition.outputSchema
     ? `output_schema:
   dialect: json-schema-2020-12
-  ref: ../../schemas/${definition.id}/1.0.0.output.schema.json
+  ref: ../../schemas/${definition.id}/${EVENT_CONTRACT_VERSION}.output.schema.json
 `
     : "";
   const behavior = definition.behavior
@@ -742,7 +759,7 @@ function portableContractMarkdown(definition, schemaRelative) {
 kind: mdbase.contract
 contract_type: ${definition.contractType}
 id: ${definition.id}
-version: 1.0.0
+version: ${EVENT_CONTRACT_VERSION}
 name: ${definition.name}
 description: ${definition.description}
 ${definition.schemaField}:
@@ -761,7 +778,7 @@ function packManifest(items) {
   const lines = [
     "kind: mdbase.type-pack",
     "id: mdbase.runtime.standard",
-    "version: 0.2.0",
+    `version: ${PACK_VERSION}`,
     "name: mdbase durable runtime standard library",
     "description: Runtime record implementations and inspectable built-in event/action contracts.",
     "resources:",

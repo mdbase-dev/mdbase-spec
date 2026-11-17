@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const packRoot = resolve(packageRoot, "../../standard-packs/mdbase-runtime/0.2.0");
+const packRoot = resolve(packageRoot, "../../standard-packs/mdbase-runtime/0.2.1");
 const outputPath = resolve(packageRoot, "src/generated-schemas.ts");
 const runtimeRecords = {
   runtime_workflow: "mdbase.runtime.workflow",
@@ -21,7 +21,7 @@ const runtimeRecords = {
 const schemas = {};
 for (const [type, contract] of Object.entries(runtimeRecords)) {
   schemas[type] = JSON.parse(
-    await readFile(resolve(packRoot, `schemas/${contract}/1.0.0.schema.json`), "utf8")
+    await readFile(resolve(packRoot, `schemas/${contract}/1.1.0.schema.json`), "utf8")
   );
 }
 

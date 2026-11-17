@@ -11,7 +11,7 @@ This collection demonstrates runtime companion profile 0.2:
   workflow runs.
 
 Install
-[`mdbase.runtime.standard`](../../../standard-packs/mdbase-runtime/0.2.0/)
+[`mdbase.runtime.standard`](../../../standard-packs/mdbase-runtime/0.2.1/)
 before opening the workflow and policy as typed records. The pack supplies the
 canonical `runtime_workflow` and `runtime_policy` type implementations. Pack
 installation does not activate the workflow.
