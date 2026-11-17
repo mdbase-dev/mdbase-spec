@@ -40,11 +40,28 @@ export function getRuntimeRecordSchemas(): Readonly<Record<string, Record<string
   return structuredClone(GENERATED_RUNTIME_RECORD_SCHEMAS);
 }
 
-export function validateRuntimeRecord(value: unknown): RuntimeRecordValidationResult {
-  if (!isObject(value) || typeof value.type !== "string") {
-    return invalid("runtime_record_type_missing", "Runtime records require a string type.");
+/**
+ * Validates a standard runtime record against its contract schema.
+ *
+ * Collections declare a record's type under their configured explicit type
+ * key (`type` by default, `mdbase_type` where `type` is data), so pass the
+ * record type when the caller knows it. Without it, the record's own `type`
+ * field selects the schema.
+ */
+export function validateRuntimeRecord(
+  value: unknown,
+  recordType?: RuntimeRecordType
+): RuntimeRecordValidationResult {
+  if (!isObject(value)) {
+    return invalid("runtime_record_type_missing", "Runtime records must be objects.");
   }
-  const recordType = value.type;
+  recordType ??= typeof value.type === "string" ? value.type as RuntimeRecordType : undefined;
+  if (recordType === undefined) {
+    return invalid(
+      "runtime_record_type_missing",
+      "Pass the runtime record type, or give the record a string type field."
+    );
+  }
   const validator = validators.get(recordType);
   if (!validator) {
     return invalid(

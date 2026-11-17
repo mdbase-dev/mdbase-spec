@@ -76,6 +76,19 @@ test("standard workflow records validate as ordinary records", () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("runtime records leave the type key to the collection", () => {
+  const { type, ...fields } = workflow;
+  assert.equal(type, "runtime_workflow");
+  const declared = validateRuntimeRecord({ mdbase_type: "runtime_workflow", ...fields }, "runtime_workflow");
+  assert.equal(declared.valid, true, JSON.stringify(declared.diagnostics));
+  assert.equal(declared.schema, "mdbase.runtime.workflow");
+  assert.equal(validateRuntimeRecord({ type: "runtime_workflow", mdbase_type: "runtime_workflow", ...fields }).valid, true);
+  assert.equal(validateRuntimeRecord(fields).diagnostics[0].code, "runtime_record_type_missing");
+  const nested = validateRuntimeRecord({ ...fields, run: { on_error: "stop", unknown: true } }, "runtime_workflow");
+  assert.equal(nested.valid, false);
+  assert.equal(nested.diagnostics[0].code, "schema_additionalProperties");
+});
+
 test("old parallel runtime contracts are rejected clearly", () => {
   const result = validateRuntimeRecord({
     type: "action",

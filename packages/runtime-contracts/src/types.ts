@@ -53,7 +53,8 @@ export interface RuntimeWorkflowStep {
 }
 
 export interface RuntimeWorkflow {
-  type: "runtime_workflow";
+  /** Present when the collection declares types with `type`; see validateRuntimeRecord. */
+  type?: "runtime_workflow";
   id: string;
   version: string;
   name: string;
@@ -108,7 +109,8 @@ export interface RuntimeCapabilityGrant {
 }
 
 export interface RuntimePolicy {
-  type: "runtime_policy";
+  /** Present when the collection declares types with `type`; see validateRuntimeRecord. */
+  type?: "runtime_policy";
   id: string;
   version: string;
   name?: string;

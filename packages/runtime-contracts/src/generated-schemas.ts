@@ -6,7 +6,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
     "title": "mdbase durable runtime workflow",
     "type": "object",
     "required": [
-      "type",
       "id",
       "version",
       "name",
@@ -15,9 +14,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "steps"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_workflow"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -61,10 +57,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "$ref": "#/$defs/runPolicy"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -391,23 +383,19 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.workflow/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.workflow/1.1.0.schema.json"
   },
   "runtime_policy": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime policy",
     "type": "object",
     "required": [
-      "type",
       "id",
       "version",
       "enabled",
       "grants"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_policy"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -515,10 +503,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         }
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -654,14 +638,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.policy/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.policy/1.1.0.schema.json"
   },
   "runtime_provider_registration": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase runtime provider registration evidence",
     "type": "object",
     "required": [
-      "type",
       "id",
       "declaration_kind",
       "declaration",
@@ -669,9 +652,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "active"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_provider_registration"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -693,10 +673,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "type": "boolean"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -832,14 +808,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.provider-registration/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.provider-registration/1.1.0.schema.json"
   },
   "runtime_capability_grant": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase runtime capability grant",
     "type": "object",
     "required": [
-      "type",
       "id",
       "capability",
       "principal",
@@ -847,9 +822,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "granted_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_capability_grant"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -890,10 +862,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -1029,14 +997,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.capability-grant/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.capability-grant/1.1.0.schema.json"
   },
   "runtime_run": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime run",
     "type": "object",
     "required": [
-      "type",
       "id",
       "workflow_id",
       "workflow_version",
@@ -1049,9 +1016,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "updated_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_run"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -1138,10 +1102,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "$ref": "#/$defs/lease"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -1385,14 +1345,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.run/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.run/1.1.0.schema.json"
   },
   "runtime_action_attempt": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime action attempt",
     "type": "object",
     "required": [
-      "type",
       "id",
       "run_id",
       "step_id",
@@ -1407,9 +1366,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "updated_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_action_attempt"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -1484,10 +1440,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -1623,14 +1575,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.action-attempt/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.action-attempt/1.1.0.schema.json"
   },
   "runtime_checkpoint": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime checkpoint",
     "type": "object",
     "required": [
-      "type",
       "id",
       "run_id",
       "generation",
@@ -1639,9 +1590,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "updated_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_checkpoint"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -1672,10 +1620,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -1811,14 +1755,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.checkpoint/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.checkpoint/1.1.0.schema.json"
   },
   "runtime_timer": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime timer",
     "type": "object",
     "required": [
-      "type",
       "id",
       "generation",
       "status",
@@ -1828,9 +1771,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "updated_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_timer"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -1893,10 +1833,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -2032,14 +1968,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.timer/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.timer/1.1.0.schema.json"
   },
   "runtime_diagnostic": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime diagnostic",
     "type": "object",
     "required": [
-      "type",
       "id",
       "severity",
       "code",
@@ -2047,9 +1982,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "created_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_diagnostic"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -2086,10 +2018,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -2225,14 +2153,13 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.diagnostic/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.diagnostic/1.1.0.schema.json"
   },
   "runtime_dead_letter": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "mdbase durable runtime dead letter",
     "type": "object",
     "required": [
-      "type",
       "id",
       "reason",
       "status",
@@ -2240,9 +2167,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
       "created_at"
     ],
     "properties": {
-      "type": {
-        "const": "runtime_dead_letter"
-      },
       "id": {
         "type": "string",
         "pattern": "^[A-Za-z][A-Za-z0-9._:-]*$"
@@ -2277,10 +2201,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "format": "date-time"
       }
     },
-    "patternProperties": {
-      "^x-[A-Za-z0-9._:-]+$": true
-    },
-    "additionalProperties": false,
     "$defs": {
       "identifier": {
         "type": "string",
@@ -2416,6 +2336,6 @@ export const GENERATED_RUNTIME_RECORD_SCHEMAS: Record<string, Record<string, unk
         "additionalProperties": false
       }
     },
-    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.dead-letter/1.0.0.schema.json"
+    "$id": "https://mdbase.dev/schemas/runtime/v0.2/mdbase.runtime.dead-letter/1.1.0.schema.json"
   }
 };

@@ -12,7 +12,7 @@ groups:
         covers: [runtime/0.2.standard_runtime_pack]
         operation: type_pack_resources_validate
         input:
-          path: "standard-packs/mdbase-runtime/0.2.0/mdbase-pack.yaml"
+          path: "standard-packs/mdbase-runtime/0.2.1/mdbase-pack.yaml"
         expect:
           valid: true
 
@@ -21,7 +21,7 @@ groups:
         operation: json_schema_meta_validate
         input:
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/schemas/**/*.schema.json"
+            - "standard-packs/mdbase-runtime/0.2.1/schemas/**/*.schema.json"
         expect:
           valid: true
 
@@ -32,7 +32,7 @@ groups:
         input:
           schema: "schemas/v0.3/type-file.schema.json"
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/_types/*.md"
+            - "standard-packs/mdbase-runtime/0.2.1/_types/*.md"
         expect:
           valid: true
 
@@ -43,7 +43,7 @@ groups:
         input:
           schema: "schemas/v0.3/data-contract.schema.json"
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
+            - "standard-packs/mdbase-runtime/0.2.1/_contracts/**/*.md"
         expect:
           valid: true
 
@@ -52,7 +52,7 @@ groups:
         operation: data_contract_registry_validate
         input:
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
+            - "standard-packs/mdbase-runtime/0.2.1/_contracts/**/*.md"
         expect:
           valid: true
 
@@ -60,12 +60,12 @@ groups:
         name: "the canonical workflow type validates its record-contract binding"
         operation: data_contract_implementation_validate
         input:
-          contract: "standard-packs/mdbase-runtime/0.2.0/_contracts/mdbase.runtime.workflow/1.0.0.md"
-          type: "standard-packs/mdbase-runtime/0.2.0/_types/workflow.md"
+          contract: "standard-packs/mdbase-runtime/0.2.1/_contracts/mdbase.runtime.workflow/1.1.0.md"
+          type: "standard-packs/mdbase-runtime/0.2.1/_types/workflow.md"
         expect:
           valid: true
           contract: mdbase.runtime.workflow
-          version: 1.0.0
+          version: 1.1.0
 
   - name: "preflight and admission boundary"
     tests:

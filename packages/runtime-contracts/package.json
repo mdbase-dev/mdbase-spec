@@ -1,6 +1,6 @@
 {
   "name": "@callumalpass/mdbase-runtime",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Durable mdbase workflow admission and runtime record contracts built on mdbase interoperability.",
   "license": "MIT",

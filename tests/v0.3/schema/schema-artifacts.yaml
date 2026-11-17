@@ -193,7 +193,7 @@ groups:
         operation: json_schema_meta_validate
         input:
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/schemas/**/*.schema.json"
+            - "standard-packs/mdbase-runtime/0.2.1/schemas/**/*.schema.json"
         expect:
           valid: true
 
@@ -202,7 +202,7 @@ groups:
         input:
           schema: "schemas/v0.3/type-file.schema.json"
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/_types/*.md"
+            - "standard-packs/mdbase-runtime/0.2.1/_types/*.md"
         expect:
           valid: true
 
@@ -211,7 +211,7 @@ groups:
         input:
           schema: "schemas/v0.3/data-contract.schema.json"
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/_contracts/**/*.md"
+            - "standard-packs/mdbase-runtime/0.2.1/_contracts/**/*.md"
         expect:
           valid: true
 
@@ -220,7 +220,7 @@ groups:
         input:
           schema: "schemas/v0.3/type-pack.schema.json"
           paths:
-            - "standard-packs/mdbase-runtime/0.2.0/mdbase-pack.yaml"
+            - "standard-packs/mdbase-runtime/0.2.1/mdbase-pack.yaml"
         expect:
           valid: true
 

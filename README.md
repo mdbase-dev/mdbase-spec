@@ -120,7 +120,7 @@ order_by:
 | Reconcile concurrent edits | [Concurrent Edits Profile](./concurrent-edits/0.1.md) |
 | Install and upgrade types | [Type Packs Profile](./type-packs/0.1.md) |
 | Connect applications | [Event and Action Interoperability](./interop/0.1.md) |
-| Define durable automation | [Durable Runtime Companion Profile](./runtime/0.2.md) and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.0/) |
+| Define durable automation | [Durable Runtime Companion Profile](./runtime/0.2.md) and the [standard runtime pack](./standard-packs/mdbase-runtime/0.2.1/) |
 | Migrate a v0.2 collection | [Migrations And Compatibility](./13-migrations-and-compatibility.md) |
 | Use Obsidian Bases views | [Obsidian Bases adapter](./adapters/obsidian-bases.md) |
 | Exchange typed events and actions | [Event/action interoperability profile 0.1](./interop/0.1.md) and [canonical interoperability schemas](./schemas/interop/v0.1/) |

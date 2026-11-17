@@ -2,6 +2,30 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## Runtime standard pack 0.2.1 and `@callumalpass/mdbase-runtime` 0.2.1 (2026-11-17)
+
+The specification itself is unchanged.
+
+- Runtime records leave the type declaration key to the collection. The ten
+  runtime record schemas required `type` and pinned it (`type:
+  runtime_workflow` and so on), and rejected any other top-level field. A
+  conforming engine writes a record's type under the collection's configured
+  `explicit_type_keys`, so in a collection that declares types with
+  `mdbase_type` every runtime record failed validation, and records carrying
+  both keys failed in every collection. The record contracts are now 1.1.0 and
+  the canonical types version 2: the schemas neither require nor declare
+  `type`, and they accept top-level fields outside the contract, while nested
+  structures stay closed. Every record valid under 1.0.0 is valid under 1.1.0.
+  Each type keeps its `match` rule for hand-written `type:` records.
+- `standard-packs/mdbase-runtime/0.2.1` carries them, with the event and
+  action artifacts unchanged. It still installs the 1.0.0 record contracts,
+  byte-for-byte, so a collection type that implements 1.0.0 stays valid. Pack 0.2.0 stays published as it was, and the
+  generator now writes only the current pack.
+- `@callumalpass/mdbase-runtime` 0.2.1 validates against the 1.1.0 schemas.
+  `validateRuntimeRecord(value, recordType?)` takes the record type for
+  records whose type is declared under another key, and the `type` field on
+  `RuntimeWorkflow` and `RuntimePolicy` is optional.
+
 ## 0.3.0 (2026-11-15)
 
 The first stable specification freezes the rc.6 draft at
