@@ -90,11 +90,16 @@ groups:
               type: object
               properties:
                 at: { type: string, format: local-date-time }
+                instant_only: { type: string, format: date-time }
           ---
       files:
         events/existing.md: |
           ---
           at: "2026-11-27T08:00"
+          ---
+        events/wrong-format.md: |
+          ---
+          instant_only: "2026-11-27T08:00"
           ---
     tests:
       - name: "a floating value needs a collection timezone at validation error"
@@ -105,6 +110,15 @@ groups:
         expect:
           valid: true
           issues: [{ code: timezone_required, severity: warning, field: at }]
+
+      - name: "a floating value in a date-time-only field reports only format_invalid without a zone"
+        id: core.date_time_only_rejects_floating_without_timezone_warning
+        covers: [core_read.json_schema_formats, core_read.machine_readable_diagnostics]
+        operation: validate
+        input: { path: events/wrong-format.md }
+        expect:
+          valid: false
+          issues: [{ code: format_invalid, severity: error, field: instant_only }]
 
       - name: "a floating value needs a collection timezone at validation warn"
         id: core.timezone_required_warn

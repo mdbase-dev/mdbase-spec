@@ -262,17 +262,21 @@ inside `allOf`, `not`, and conditional subschemas are also excluded. A field
 whose branches mix `date` with date-time formats stays a string, even when
 the value contains an offset.
 
-At a date-time location, a valid offset date-time becomes a CEL timestamp. A
-valid floating date-time becomes the timestamp of that clock time in the
+At a date-time location, a string that satisfies every matched schema's
+declared format becomes a CEL timestamp: an offset date-time resolves
+directly, and a floating date-time resolves to that clock time in the
 collection's `settings.timezone`. Omitted seconds are zero. When the clock
 time occurs twice during an overlap, use the earlier instant. When the clock
 skips that time during a gap, move the clock time forward by the length of
 the gap. This matches RFC 5545 and Temporal's `compatible` disambiguation.
 
-Without `settings.timezone`, the floating value stays a string and the
-record gets the warning `timezone_required` (Chapter 04). Implementations
-MUST NOT substitute the runtime or invocation timezone. A value that fails
-its declared format stays a string and the record reports `format_invalid`.
+Without `settings.timezone`, a floating value that satisfies the location's
+declared format stays a string and the record gets the warning
+`timezone_required` (Chapter 04). Implementations MUST NOT substitute the
+runtime or invocation timezone. A value that fails a matched schema's
+declared format — such as a floating value in a `format: date-time`-only
+field, or an offset value in a `format: local-date-time`-only field — stays a
+string and reports `format_invalid` alone (without `timezone_required`).
 Floating date-times introduce no new CEL functions. An untyped offset
 date-time can be converted explicitly with `timestamp()`.
 
