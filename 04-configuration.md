@@ -41,7 +41,7 @@ collection, and a value such as `0.3.0-rc.5` is invalid.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `settings.timezone` | string | local runtime | durable IANA timezone for authority-owned calendar semantics |
+| `settings.timezone` | string | none | durable IANA timezone for type matching, floating date-times, and other collection-owned calendar semantics |
 | `settings.types_folder` | string | `_types` | folder containing type files |
 | `settings.contracts_folder` | string | `_contracts` | folder containing data contract files |
 | `settings.record_extensions` | list of strings | `[md]` | record file extensions without dot |
@@ -66,6 +66,12 @@ ambient aliases such as `local` are invalid because they do not name a durable
 calendar authority or model daylight-saving transitions. An invalid configured
 timezone makes the collection configuration invalid; an implementation MUST
 NOT silently substitute its runtime timezone.
+
+At a date-time location (Chapter 10), this setting resolves a floating
+`local-date-time` to an instant. If the setting is absent, the floating value
+stays a string and the record receives a `timezone_required` warning stating
+that the collection needs `settings.timezone`. Implementations MUST NOT use
+the runtime timezone or an invocation timezone for this resolution.
 
 The types and contracts folders MUST be different normalized paths. Both are
 reserved control-file folders and are excluded from ordinary record discovery.
@@ -93,15 +99,16 @@ single record being written. Checks are divided into three tiers:
 | cross-record | `collection.unique` rules with `enforce: report`, `link_not_found`, link `target_type` mismatches, `ambiguous_link`, and `path_collision` | reported, never rejected |
 
 A single-record check depends only on the record's own path, frontmatter,
-body, and the type registry. A cross-record check also depends on other
-records; such a check never blocks a write, because another tool, another
-device, or a later edit can change the other records at any time. The only
-exception is a uniqueness rule that explicitly opts into `enforce: write`
-(Chapter 07).
+body, the collection configuration, and the type registry. A cross-record
+check also depends on other records. It never blocks a write, because another
+tool, another device, or a later edit can change the other records at any time.
+The only exception is a uniqueness rule that explicitly opts into
+`enforce: write` (Chapter 07).
 
-`path_value_inconsistent` and `path_field_in_frontmatter` (Chapter 07) are
-single-record checks whose severity is always `warning`: they are reported at
-levels `warn` and `error` and never reject a write.
+`timezone_required` and the Chapter 07 diagnostics `path_value_inconsistent`
+and `path_field_in_frontmatter` always have severity `warning`. Tools report
+these single-record diagnostics at levels `warn` and `error`. They never
+reject a write.
 
 `path_value_normalized` (Chapter 07) is not a validation issue. It is a
 warning in the result of the write that normalized the value, at every
@@ -123,7 +130,7 @@ through an engine.
 | --- | --- | --- | --- |
 | `off` | not performed | return records without validation diagnostics | write without record validation |
 | `warn` | performed | return records with `warning` diagnostics | write and report `warning` diagnostics |
-| `error` | performed | return records with `error` diagnostics | fail before writing when the resulting record has a single-record issue; write and report cross-record issues as `warning` diagnostics |
+| `error` | performed | report issues as errors except for warning-only checks | reject a single-record error, otherwise write and report warnings |
 
 At every level a read returns the record, including an invalid one, and a query
 evaluates every candidate. Queries do not report per-record validation issues

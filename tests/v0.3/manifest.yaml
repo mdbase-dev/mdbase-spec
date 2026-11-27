@@ -234,6 +234,7 @@ fixture_sets:
     coverage_targets: [core_read, collection_semantics, links, core_write, lifecycle]
     files:
       - core/core-collection.yaml
+      - core/local-date-time.yaml
       - core/optional-membership.yaml
       - core/core-write.yaml
       - core/links-and-discovery.yaml
@@ -268,6 +269,7 @@ fixture_sets:
       - cel/match-determinism.yaml
       - cel/regex-profile.yaml
       - cel/query-order.yaml
+      - cel/local-date-time.yaml
   - id: views
     description: Ordinary view records resolve named queries, invocation context, and advisory presentation.
     coverage_targets: [cel_query]

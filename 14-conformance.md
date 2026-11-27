@@ -177,7 +177,7 @@ The v0.3 core codes include `invalid_request`, `duplicate_batch_path`,
 `invalid_data_contract`, `data_contract_not_found`, `data_contract_conflict`,
 `data_contract_version_mismatch`, `data_contract_binding_invalid`,
 `data_contract_field_invalid`, `data_contract_record_invalid`,
-`invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
+`timezone_required`, `invalid_timezone`, and the JSON Schema `schema_<keyword>` codes from Chapter
 06. Runtime profile 0.2 reuses interoperability codes such as
 `unknown_contract`, `contract_digest_conflict`, `no_provider`,
 `ambiguous_provider`, and `capability_denied`, and additionally defines
@@ -247,7 +247,8 @@ CEL implementations MUST:
 - support the CEL optional types extension
 - supply the system bindings defined for that context in Chapter 10
 - preserve the mdbase missing, null, raw, and effective-value contract
-- type `format: date-time` values as timestamps and provide `now()`,
+- type offset and floating values at date-time locations according to Chapter
+  10 and provide `now()`,
   `today()`, the date conversions, and the date-string methods with declared
   timezone behavior
 - provide the `lower()` and `upper()` text helpers with Unicode default case
