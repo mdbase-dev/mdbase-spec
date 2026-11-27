@@ -139,11 +139,26 @@ profile requires assertion behavior for:
 
 - `format: date`
 - `format: date-time`
+- `format: local-date-time`
 - `format: time`
 
 `date`, `time`, and `date-time` use the RFC 3339 productions referenced by JSON
 Schema. `date-time` values MUST contain `Z` or a numeric UTC offset. Invalid
 values produce `format_invalid` diagnostics.
+
+A `local-date-time` is a floating clock time. It consists of an RFC 3339
+`full-date`, an uppercase `T`, and `HH:MM`. Seconds (`:SS`) are optional.
+When seconds are present they may be followed by a decimal point and one or
+more ASCII digits. Clock components use two ASCII digits each, with hours
+from 00 to 23 and minutes and seconds from 00 to 59. Examples include
+`2026-11-27T08:00`, `2026-11-27T08:00:00`, and `2026-11-27T08:00:00.5`.
+Invalid calendar dates, invalid clock times, and values with a `Z` suffix
+or numeric offset MUST fail with `format_invalid`. Validation of this
+format does not require a timezone.
+
+A schema using `local-date-time` remains valid JSON Schema 2020-12. Outside
+mdbase, unknown formats are annotations under the base dialect. Hosts that
+assert mdbase formats must register `local-date-time`.
 
 Other formats such as `email`, `uri`, and `uuid` MAY be asserted by
 implementations. Collections that require them depend on implementation-specific

@@ -190,17 +190,24 @@ the tool. In ascending order, values sort first by kind:
 | 6 | map | by number of keys |
 | 7 | null or missing | all equal |
 
-A string is of the date or date-time kind only when the tool knows it is one:
+Rank 3 includes:
 
-- the value of a field of a typed record, when every type the record
-  matches declares the same `format: date` or the same `format: date-time`
-  for that field, and the value is valid for that format and, for a
-  date-time, has an offset
+- a valid `date` field of a typed record when every matched type declares
+  `format: date`
+- a valid offset date-time at a date-time location as defined in Chapter 10
+- a valid floating date-time at such a location when `settings.timezone` is
+  configured, ordered by its resolved instant alongside offset date-times
 - a projection or selection value that is a CEL timestamp
 
-Every other string is of the string kind, however it is written: a string
-that merely looks like a date is not guessed to be one, and an invalid value
-in a `format: date` field sorts as a string, after every valid date.
+Every other string sorts at rank 4. This includes a floating date-time when
+the collection has no `settings.timezone`, an invalid date or date-time, an
+untyped string that looks like a date, and a field whose schema mixes
+`date` and date-time branches.
+
+Changing `settings.timezone` can change the resolved instant of a floating
+value and its position in a query. Implementations MUST include the
+collection timezone (including its absence) in the catalog fingerprint for
+materialized index rows and invalidate cached query state that depends on it.
 
 Two lists with the same number of items, and two maps with the same number
 of keys, compare equal whatever they contain. A query that needs an order

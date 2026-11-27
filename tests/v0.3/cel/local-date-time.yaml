@@ -1,0 +1,187 @@
+name: "Floating date-time typing and ordering"
+spec_version: "0.3.0"
+fixture_set: cel
+category: query
+spec_ref: "v0.3/10, v0.3/11"
+
+groups:
+  - name: "America/New_York clock times"
+    setup:
+      config: |
+        spec_version: "0.3.0"
+        settings: { timezone: America/New_York }
+      types:
+        event.md: |
+          ---
+          kind: mdbase.type
+          name: event
+          version: 1
+          match: { path_glob: "events/**/*.md" }
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                clock: { type: string, format: local-date-time }
+                at:
+                  anyOf:
+                    - { type: string, format: date-time }
+                    - { type: string, format: local-date-time }
+                start:
+                  oneOf:
+                    - { type: string, format: date-time }
+                    - { type: string, format: local-date-time }
+                due:
+                  anyOf:
+                    - { type: string, format: date }
+                    - { type: string, format: date-time }
+                    - { type: string, format: local-date-time }
+          ---
+        appointment.md: |
+          ---
+          kind: mdbase.type
+          name: appointment
+          version: 1
+          match: { path_glob: "events/gap.md" }
+          schema:
+            dialect: json-schema-2020-12
+            value:
+              type: object
+              properties:
+                clock:
+                  anyOf:
+                    - { type: string, format: local-date-time }
+                    - { type: string, format: date-time }
+                start: { type: string }
+          ---
+      files:
+        events/overlap.md: |
+          ---
+          clock: "2026-11-01T01:30"
+          at: "2026-11-01T01:30"
+          start: "2026-11-01T01:30"
+          due: "2026-11-01T01:30"
+          ---
+        events/gap.md: |
+          ---
+          clock: "2026-03-08T02:30:12.5"
+          start: "2026-03-08T02:30:12.5"
+          ---
+        events/early.md: |
+          ---
+          at: "2026-11-01T04:15:00Z"
+          due: "2026-11-01T04:15:00Z"
+          ---
+        events/late.md: |
+          ---
+          at: "2026-11-01T01:00:00-05:00"
+          start: "2026-11-01T01:00:00-05:00"
+          due: "2026-11-01T01:00:00-05:00"
+          ---
+        events/after.md: |
+          ---
+          at: "2026-11-01T03:00"
+          due: "2026-11-01T03:00"
+          ---
+    tests:
+      - name: "direct, anyOf, and oneOf locations use the earlier overlap instant"
+        id: cel.local_date_time_overlap
+        covers: [cel.date_and_duration, cel_query.query_filtering]
+        operation: query
+        input:
+          timezone: UTC
+          where: >-
+            clock == timestamp("2026-11-01T05:30:00Z") &&
+            at == clock && start == clock && due == "2026-11-01T01:30"
+        expect:
+          valid: true
+          results: [{ path: events/overlap.md }]
+
+      - name: "a gap advances the clock by the gap length, preserving minutes and fraction"
+        id: cel.local_date_time_gap
+        covers: [cel.date_and_duration]
+        operation: evaluate_cel
+        input:
+          path: events/gap.md
+          expression: 'clock == timestamp("2026-03-08T07:30:12.5Z")'
+        expect: { valid: true, value: true }
+
+      - name: "typing requires a date-time declaration in every matched schema"
+        id: cel.local_date_time_all_matched_types
+        covers: [cel.date_and_duration]
+        operation: evaluate_cel
+        input:
+          path: events/gap.md
+          expression: 'clock == timestamp("2026-03-08T07:30:12.5Z") && start == "2026-03-08T02:30:12.5"'
+        expect: { valid: true, value: true }
+
+      - name: "an offset remains an instant at both date-time unions"
+        id: cel.date_time_union_offset
+        covers: [cel.date_and_duration]
+        operation: evaluate_cel
+        input:
+          path: events/late.md
+          expression: 'start == timestamp("2026-11-01T06:00:00Z") && at == start && due == "2026-11-01T01:00:00-05:00"'
+        expect: { valid: true, value: true }
+
+      - name: "an invocation timezone cannot resolve floating values without a collection timezone"
+        id: cel.local_date_time_without_zone
+        covers: [cel.date_and_duration, cel_query.query_filtering]
+        operation: query
+        setup:
+          config: |
+            spec_version: "0.3.0"
+        input:
+          timezone: America/New_York
+          where: 'clock == "2026-11-01T01:30" && at == clock && start == clock'
+        expect:
+          valid: true
+          results: [{ path: events/overlap.md }]
+
+      - name: "resolved floating values interleave with offset values by instant"
+        id: query.local_date_time_order_instants
+        covers: [cel_query.value_order]
+        operation: query
+        input:
+          where: 'has(record.at)'
+          order_by: [{ field: at }]
+        expect:
+          valid: true
+          results:
+            - { path: events/early.md }
+            - { path: events/overlap.md }
+            - { path: events/late.md }
+            - { path: events/after.md }
+
+      - name: "without a collection timezone floating strings follow all offset instants"
+        id: query.local_date_time_order_without_zone
+        covers: [cel_query.value_order]
+        operation: query
+        setup:
+          config: |
+            spec_version: "0.3.0"
+        input:
+          where: 'has(record.at)'
+          order_by: [{ field: at }]
+        expect:
+          valid: true
+          results:
+            - { path: events/early.md }
+            - { path: events/late.md }
+            - { path: events/overlap.md }
+            - { path: events/after.md }
+
+      - name: "a union with a date branch orders both floating and offset values as strings"
+        id: query.local_date_time_order_mixed_date
+        covers: [cel_query.value_order]
+        operation: query
+        input:
+          where: 'has(record.due)'
+          order_by: [{ field: due }]
+        expect:
+          valid: true
+          results:
+            - { path: events/late.md }
+            - { path: events/overlap.md }
+            - { path: events/after.md }
+            - { path: events/early.md }

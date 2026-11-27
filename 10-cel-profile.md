@@ -247,14 +247,34 @@ strings:
 - A **timestamp** is CEL's standard `google.protobuf.Timestamp`.
 - A **duration** is CEL's standard `google.protobuf.Duration`.
 
-Date fields therefore stay strings in every context. In query, projection, and
-lifecycle contexts, a string at a location that every matched schema declares
-`format: date-time` becomes a timestamp, because date-time offsets make string
-comparison unreliable. A schema location is reachable from the root through
-`properties`, `items`, and local `$ref`; locations inside `allOf`, `anyOf`,
-`oneOf`, `not`, and conditional subschemas are not used for typing. A value
-that fails its format stays a string and the record reports `format_invalid`.
-Untyped date-times are converted explicitly with `timestamp()`.
+Date fields stay strings in every context. In query, projection, and lifecycle
+contexts, a location is a **date-time location** when the record matches at
+least one schema and every matched schema declares at that location either:
+
+- `format: date-time` or `format: local-date-time`
+- an `anyOf` or `oneOf` whose every branch is a string schema with one of
+  those two formats
+
+Locations are reachable from the root through `properties`, `items`, and
+local `$ref`. The date-time union above is the sole exception to the rule
+that locations inside `anyOf` and `oneOf` are not used for typing. Locations
+inside `allOf`, `not`, and conditional subschemas are also excluded. A field
+whose branches mix `date` with date-time formats stays a string, even when
+the value contains an offset.
+
+At a date-time location, a valid offset date-time becomes a CEL timestamp. A
+valid floating date-time becomes the timestamp of that clock time in the
+collection's `settings.timezone`. Omitted seconds are zero. When the clock
+time occurs twice during an overlap, use the earlier instant. When the clock
+skips that time during a gap, move the clock time forward by the length of
+the gap. This matches RFC 5545 and Temporal's `compatible` disambiguation.
+
+Without `settings.timezone`, the floating value stays a string and the
+record gets the warning `timezone_required` (Chapter 04). Implementations
+MUST NOT substitute the runtime or invocation timezone. A value that fails
+its declared format stays a string and the record reports `format_invalid`.
+Floating date-times introduce no new CEL functions. An untyped offset
+date-time can be converted explicitly with `timestamp()`.
 
 ### Functions
 
@@ -299,7 +319,8 @@ Date results are already strings. A timestamp result serializes as an RFC 3339
 date-time in UTC with a `Z` suffix. A duration result serializes as a CEL
 duration string in seconds, such as `"5400s"`. Typing never changes persisted
 or `effective_frontmatter` values; it applies only to expression evaluation and
-expression results.
+expression results. The engine never rewrites a floating value as an instant.
+Lifecycle `now: true` continues to write a UTC timestamp with a `Z` suffix.
 
 ## Text Helpers
 

@@ -23,7 +23,7 @@
         "timezone": {
           "type": "string",
           "minLength": 1,
-          "description": "Durable IANA timezone for collection-authority calendar semantics"
+          "description": "Durable IANA timezone for type matching, resolving floating date-times, and other collection-owned calendar semantics"
         },
         "types_folder": {
           "type": "string",

@@ -2,6 +2,13 @@
 
 All notable changes to this specification and conformance suite are documented here.
 
+## Unreleased
+
+- The profile asserts `local-date-time` for floating clock times. At
+  date-time locations, CEL and query ordering resolve them in the collection
+  timezone. When the setting is absent they remain strings and validation
+  reports a `timezone_required` warning.
+
 ## Runtime standard pack 0.2.1 and `@callumalpass/mdbase-runtime` 0.2.1 (2026-11-17)
 
 The specification itself is unchanged.
